@@ -1,0 +1,44 @@
+[
+  {
+    "_id": "13dc9a3c-ad5b-46e8-bc93-762265ee6d44",
+    "operacion": "despacho_material",
+    "dispositivo": "tablet_operativa",
+    "geo_ubicacion": {
+      "latitud": -36.142,
+      "longitud": -71.872
+    },
+    "tag_iot": "",
+    "sku": "SKU-9901",
+    "descripcion": "Filtro de Aceite",
+    "obra": "Obra Centro",
+    "cantidad": 1
+  },
+  {
+    "_id": "34852a9c-27dc-4237-94a8-b0ba850118b8",
+    "operacion": "despacho_material",
+    "dispositivo": "tablet_operativa",
+    "geo_ubicacion": {
+      "latitud": -36.142,
+      "longitud": -71.872
+    },
+    "tag_iot": "",
+    "sku": "SKU-9901",
+    "descripcion": "Filtro de Aceite",
+    "obra": "Obra Centro",
+    "cantidad": 1
+  },
+  {
+    "_id": "bc7da31c-8875-4858-8270-9203a315e682",
+    "operacion": "despacho_material",
+    "dispositivo": "tablet_operativa",
+    "geo_ubicacion": {
+      "latitud": -36.142,
+      "longitud": -71.872
+    },
+    "tag_iot": "",
+    "sku": "SKU-9901",
+    "descripcion": "Filtro de Aceite",
+    "obra": "Obra Centro",
+    "cantidad": 1
+  }
+]
