@@ -1,0 +1,721 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Prototipo Interfaz - Sistema Logístico General</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Iconos FontAwesome -->
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+      rel="stylesheet"
+    />
+
+    <style>
+      /* Iluminación del menú */
+      .sidebar-aurora {
+        position: absolute;
+        inset: 0;
+        z-index: 0;
+        background-color: #020617; /* Fondo oscuro */
+        overflow: hidden;
+        pointer-events: none;
+      }
+
+      .blob {
+        position: absolute;
+        filter: blur(70px);
+        border-radius: 50%;
+        opacity: 0.6;
+        animation: movimientoFluido 8s infinite alternate
+          cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      /* Luz azul */
+      .blob-1 {
+        top: -10%;
+        left: -50%;
+        width: 250px;
+        height: 250px;
+        background-color: #2563eb;
+        animation-duration: 12s;
+      }
+
+      /* Luz celeste */
+      .blob-2 {
+        bottom: -10%;
+        right: -50%;
+        width: 300px;
+        height: 300px;
+        background-color: #0ea5e9;
+        animation-duration: 15s;
+        animation-direction: alternate-reverse;
+      }
+
+      /* Luz índigo */
+      .blob-3 {
+        top: 30%;
+        left: -20%;
+        width: 200px;
+        height: 200px;
+        background-color: #4f46e5;
+        animation-duration: 10s;
+        animation-delay: -2s;
+      }
+
+      @keyframes movimientoFluido {
+        0% {
+          transform: translate(0, 0) scale(1);
+        }
+        50% {
+          transform: translate(15%, 20%) scale(1.15);
+        }
+        100% {
+          transform: translate(-10%, 15%) scale(0.9);
+        }
+      }
+
+      /* Modo boceto */
+      body.modo-boceto * {
+        background-color: #f3f4f6 !important;
+        color: transparent !important;
+        border: 1px solid #9ca3af !important;
+        box-shadow: none !important;
+        border-radius: 4px !important;
+      }
+      body.modo-boceto i,
+      body.modo-boceto img {
+        opacity: 0 !important;
+      }
+
+      .parpadeo-rojo {
+        animation: alerta 2s infinite;
+      }
+      @keyframes alerta {
+        0%,
+        100% {
+          background-color: #fef2f2;
+        }
+        50% {
+          background-color: #fee2e2;
+        }
+      }
+    </style>
+
+    <script>
+      // Control de sesión
+      if (localStorage.getItem("sesion_fyag") !== "activa") {
+        window.location.href = "login.html";
+      }
+    </script>
+  </head>
+  <body
+    class="bg-gray-100 flex h-screen overflow-hidden font-sans text-gray-800 transition-all duration-300"
+  >
+    <!-- Menú lateral -->
+    <aside
+      class="w-64 text-white flex flex-col shadow-2xl z-20 relative overflow-hidden"
+    >
+      <!-- Iluminación del menú -->
+      <div class="sidebar-aurora">
+        <div class="blob blob-1"></div>
+        <div class="blob blob-2"></div>
+        <div class="blob blob-3"></div>
+      </div>
+
+      <!-- Contenido del menú -->
+      <div
+        class="relative z-10 flex flex-col h-full bg-slate-900/30 backdrop-blur-sm border-r border-slate-700/50"
+      >
+        <div class="p-6 border-b border-slate-700/50 flex items-center gap-3">
+          <div
+            class="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-700 rounded-xl flex items-center justify-center font-extrabold text-lg shadow-lg tracking-wider"
+          >
+            FY
+          </div>
+          <div>
+            <h1 class="text-base font-bold leading-tight tracking-wide">
+              Logística FYAG
+            </h1>
+            <p class="text-[11px] text-blue-300 font-medium">
+              Control Operativo
+            </p>
+          </div>
+        </div>
+
+        <!-- Navegación -->
+        <nav class="flex-1 p-4 space-y-2 text-sm font-medium">
+          <p
+            class="text-xs text-slate-400 font-bold uppercase tracking-wider mb-2 mt-4 px-2 drop-shadow-md"
+          >
+            Módulos Operativos
+          </p>
+
+          <button
+            onclick="cambiarPestana('tab-bodega', this)"
+            class="menu-btn w-full flex items-center gap-3 bg-blue-600 text-white p-3 rounded-lg shadow transition text-left"
+          >
+            <i class="fas fa-boxes w-5 text-center"></i> Bodega y Despachos
+          </button>
+
+          <button
+            onclick="cambiarPestana('tab-catalogo', this)"
+            class="menu-btn w-full flex items-center gap-3 text-slate-300 p-3 hover:bg-white/10 hover:text-white rounded-lg transition text-left"
+          >
+            <i class="fas fa-clipboard-list w-5 text-center"></i> Catálogo y
+            Auditoría
+          </button>
+
+          <button
+            onclick="cambiarPestana('tab-finanzas', this)"
+            class="menu-btn w-full flex items-center gap-3 text-slate-300 p-3 hover:bg-white/10 hover:text-white rounded-lg transition text-left"
+          >
+            <i class="fas fa-file-invoice-dollar w-5 text-center"></i> Compras y
+            Finanzas
+          </button>
+        </nav>
+
+        <div
+          class="p-4 bg-slate-950/50 border-t border-slate-700/50 flex items-center justify-between"
+        >
+          <div class="flex items-center gap-3">
+            <div
+              class="w-10 h-10 rounded-full bg-slate-700/80 border border-slate-500/50 flex items-center justify-center text-slate-300 shadow-inner"
+            >
+              <i class="fas fa-user"></i>
+            </div>
+            <div>
+              <p
+                class="text-sm font-bold text-white drop-shadow"
+                id="nombre-usuario"
+              >
+                Usuario
+              </p>
+              <p class="text-xs text-slate-300 drop-shadow">
+                Usuario de Sistema
+              </p>
+            </div>
+          </div>
+          <button
+            onclick="cerrarSesion()"
+            class="text-red-400 hover:text-red-300 ml-2"
+            title="Cerrar Sesión"
+          >
+            <i class="fas fa-sign-out-alt text-lg drop-shadow"></i>
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Contenido principal -->
+    <main class="flex-1 flex flex-col relative overflow-y-auto">
+      <!-- Encabezado -->
+      <header
+        class="bg-white h-16 border-b border-gray-200 flex items-center justify-between px-8 shadow-sm z-10"
+      >
+        <h2 id="titulo-header" class="text-xl font-bold text-gray-800">
+          Módulo de Bodega y Despachos
+        </h2>
+        <div class="flex items-center gap-4 text-sm text-gray-500">
+          <button
+            type="button"
+            class="hover:text-blue-600 transition"
+            aria-label="Notificaciones"
+          >
+            <i class="fas fa-bell text-lg" aria-hidden="true"></i>
+          </button>
+        </div>
+      </header>
+
+      <!-- Secciones -->
+      <div class="p-8 h-full">
+        <!-- Bodega y despachos -->
+        <div id="tab-bodega" class="pestana-contenido block h-full">
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- Despacho -->
+            <div
+              class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100"
+            >
+              <div class="flex justify-between items-center mb-6">
+                <h3 class="text-lg font-bold text-gray-800">
+                  <i class="fas fa-truck-fast text-blue-600 mr-2"></i> Nuevo
+                  Despacho a Obra
+                </h3>
+                <button
+                  onclick="abrirQR()"
+                  class="bg-blue-50 text-blue-600 px-4 py-2 rounded-lg hover:bg-blue-100 transition text-sm font-bold border border-blue-200 shadow-sm"
+                >
+                  <i class="fas fa-qrcode mr-2"></i> Escanear Artículo
+                </button>
+              </div>
+
+              <div class="space-y-5 text-sm">
+                <div>
+                  <label class="block font-semibold text-gray-600 mb-1"
+                    >Obra de Destino (Buscador Predictivo)</label
+                  >
+                  <input
+                    type="text"
+                    id="obra-dest"
+                    class="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 outline-none"
+                    placeholder="Escriba mínimo 3 letras (Ej: OBR)"
+                  />
+                </div>
+                <div>
+                  <label class="block font-semibold text-gray-600 mb-1"
+                    >Artículo a despachar</label
+                  >
+                  <input
+                    type="text"
+                    id="input-articulo"
+                    disabled
+                    value="Esperando escaneo de cámara..."
+                    class="w-full bg-gray-50 border border-gray-200 text-gray-500 rounded-lg p-3"
+                  />
+                </div>
+                <div class="flex gap-4">
+                  <div class="flex-1">
+                    <label class="block font-semibold text-gray-600 mb-1"
+                      >Cantidad</label
+                    >
+                    <input
+                      type="number"
+                      id="cant-despacho"
+                      min="1"
+                      value="1"
+                      class="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 outline-none"
+                    />
+                  </div>
+                </div>
+                <button
+                  onclick="validarDespacho()"
+                  class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg p-3 mt-2 shadow-md transition"
+                >
+                  <i class="fas fa-check-circle mr-2"></i> Confirmar Despacho
+                </button>
+              </div>
+            </div>
+
+            <!-- Mermas -->
+            <div
+              class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100"
+            >
+              <h3 class="text-lg font-bold text-gray-800 mb-6">
+                <i class="fas fa-triangle-exclamation text-orange-500 mr-2"></i>
+                Registro de Merma
+              </h3>
+              <div class="space-y-5 text-sm">
+                <div>
+                  <label class="block font-semibold text-gray-600 mb-1"
+                    >Artículo Dañado</label
+                  >
+                  <select
+                    class="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-orange-500 outline-none bg-white"
+                  >
+                    <option>Seleccione artículo del catálogo...</option>
+                    <option>Compresor 5HP Inverter</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block font-semibold text-gray-600 mb-1"
+                    >Motivo / Justificación (Obligatorio)</label
+                  >
+                  <textarea
+                    id="motivo-merma"
+                    rows="3"
+                    class="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-orange-500 outline-none"
+                    placeholder="Describa por qué se da de baja el producto..."
+                  ></textarea>
+                </div>
+                <button
+                  onclick="validarMerma()"
+                  class="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-lg p-3 mt-2 shadow-md transition"
+                >
+                  <i class="fas fa-save mr-2"></i> Guardar Merma
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Catálogo y auditoría -->
+        <div id="tab-catalogo" class="pestana-contenido hidden h-full">
+          <div
+            class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 h-full flex flex-col"
+          >
+            <div class="flex justify-between items-center mb-6">
+              <h3 class="text-lg font-bold text-gray-800">
+                <i class="fas fa-table-list text-indigo-600 mr-2"></i> Cardex de
+                Inventario Central
+              </h3>
+              <div class="flex gap-3">
+                <button
+                  class="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition text-sm font-bold shadow-sm"
+                >
+                  <i class="fas fa-file-pdf text-red-500 mr-2"></i> Exportar PDF
+                </button>
+                <button
+                  class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition text-sm font-bold shadow-sm"
+                >
+                  <i class="fas fa-plus mr-2"></i> Nuevo Artículo
+                </button>
+              </div>
+            </div>
+
+            <div
+              class="overflow-x-auto border border-gray-200 rounded-xl flex-1"
+            >
+              <table class="w-full text-left text-sm whitespace-nowrap">
+                <thead
+                  class="bg-slate-50 text-slate-600 border-b border-gray-200"
+                >
+                  <tr>
+                    <th class="p-4 font-bold">Código SKU</th>
+                    <th class="p-4 font-bold">Descripción del Insumo</th>
+                    <th class="p-4 font-bold">Categoría</th>
+                    <th class="p-4 font-bold text-center">Stock Físico</th>
+                    <th class="p-4 font-bold">Estado del Sistema</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                  <tr class="hover:bg-slate-50 transition">
+                    <td class="p-4 font-semibold text-slate-700">FIT-098</td>
+                    <td class="p-4 text-slate-600">Válvula de bola 2"</td>
+                    <td class="p-4 text-slate-500">Fitting</td>
+                    <td
+                      class="p-4 font-bold text-slate-800 text-center text-lg"
+                    >
+                      45
+                    </td>
+                    <td class="p-4">
+                      <span
+                        class="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-bold border border-green-200"
+                        >Stock Normal</span
+                      >
+                    </td>
+                  </tr>
+                  <tr class="parpadeo-rojo border-y border-red-200">
+                    <td class="p-4 font-bold text-red-700">REF-042</td>
+                    <td class="p-4 text-red-800 font-bold">
+                      Gas Refrigerante R410A
+                    </td>
+                    <td class="p-4 text-red-600">Refrigeración</td>
+                    <td class="p-4 font-bold text-red-700 text-center text-lg">
+                      2
+                    </td>
+                    <td class="p-4">
+                      <span
+                        class="bg-red-600 text-white px-3 py-1 rounded-full text-xs font-bold shadow-sm"
+                        ><i class="fas fa-triangle-exclamation mr-1"></i> Stock
+                        Crítico</span
+                      >
+                    </td>
+                  </tr>
+                  <tr class="hover:bg-slate-50 transition">
+                    <td class="p-4 font-semibold text-slate-700">ELE-112</td>
+                    <td class="p-4 text-slate-600">Cable Eléctrico 12 AWG</td>
+                    <td class="p-4 text-slate-500">Electricidad</td>
+                    <td
+                      class="p-4 font-bold text-slate-800 text-center text-lg"
+                    >
+                      120
+                    </td>
+                    <td class="p-4">
+                      <span
+                        class="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-bold border border-green-200"
+                        >Stock Normal</span
+                      >
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Compras y finanzas -->
+        <div id="tab-finanzas" class="pestana-contenido hidden h-full">
+          <div
+            class="max-w-4xl mx-auto bg-white p-8 rounded-2xl shadow-sm border border-gray-100"
+          >
+            <h3 class="text-xl font-bold text-gray-800 mb-2">
+              <i class="fas fa-file-invoice-dollar text-green-600 mr-2"></i>
+              Ingreso de Factura de Compra
+            </h3>
+            <p class="text-gray-500 text-sm mb-8">
+              Calculadora automática de descuentos en cascada e impuestos.
+            </p>
+
+            <div
+              class="grid grid-cols-2 gap-6 text-sm mb-6 pb-6 border-b border-gray-100"
+            >
+              <div>
+                <label class="block font-semibold text-gray-600 mb-1"
+                  >Nº de Factura</label
+                >
+                <input
+                  type="text"
+                  class="w-full border border-gray-300 rounded-lg p-3 bg-gray-50"
+                  value="FAC-99201"
+                />
+              </div>
+              <div>
+                <label class="block font-semibold text-gray-600 mb-1"
+                  >Proveedor (RUT Validado)</label
+                >
+                <input
+                  type="text"
+                  class="w-full border border-gray-300 rounded-lg p-3 bg-gray-50"
+                  value="Importadora Industrial SPA"
+                />
+              </div>
+            </div>
+
+            <h4 class="font-bold text-gray-700 mb-4">
+              Detalle del Artículo (Ejemplo)
+            </h4>
+            <div class="grid grid-cols-4 gap-4 text-sm mb-6">
+              <div class="col-span-4 lg:col-span-1">
+                <label class="block text-gray-500 mb-1"
+                  >Valor Neto Unitario</label
+                >
+                <input
+                  type="text"
+                  class="w-full border border-gray-300 rounded-lg p-3"
+                  value="$100.000"
+                />
+              </div>
+              <div class="col-span-4 lg:col-span-3 grid grid-cols-3 gap-4">
+                <div>
+                  <label class="block text-gray-500 mb-1"
+                    >Descuento 1 (%)</label
+                  >
+                  <input
+                    type="number"
+                    class="w-full border border-gray-300 rounded-lg p-3 text-center"
+                    value="10"
+                  />
+                </div>
+                <div>
+                  <label class="block text-gray-500 mb-1"
+                    >Descuento 2 (%)</label
+                  >
+                  <input
+                    type="number"
+                    class="w-full border border-gray-300 rounded-lg p-3 text-center"
+                    value="5"
+                  />
+                </div>
+                <div>
+                  <label class="block text-gray-500 mb-1"
+                    >Descuento 3 (%)</label
+                  >
+                  <input
+                    type="number"
+                    class="w-full border border-gray-300 rounded-lg p-3 text-center"
+                    value="2"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div
+              class="bg-slate-800 text-white p-6 rounded-xl shadow-inner mb-6"
+            >
+              <div class="flex justify-between items-center text-lg">
+                <span class="text-slate-300"
+                  >Costo Neto Final (Con 3 Dsctos):</span
+                >
+                <span class="font-bold">$83.790</span>
+              </div>
+              <div class="flex justify-between items-center text-lg mt-2">
+                <span class="text-slate-300">Total con IVA (19%):</span>
+                <span class="font-bold text-green-400">$99.710</span>
+              </div>
+            </div>
+
+            <button
+              onclick="calcularFinanzas()"
+              class="w-full bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg p-4 shadow-lg transition text-lg"
+            >
+              <i class="fas fa-check-double mr-2"></i> Registrar Compra en
+              Sistema
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Lector QR -->
+      <div
+        id="modal-qr"
+        class="hidden fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-sm items-center justify-center"
+      >
+        <div
+          class="bg-white rounded-2xl shadow-2xl p-8 w-[400px] text-center border-t-4 border-blue-500"
+        >
+          <h3 class="text-xl font-bold text-slate-800 mb-2">
+            <i class="fas fa-camera text-blue-500 mr-2"></i> Lector Activo
+          </h3>
+          <p class="text-sm text-slate-500 mb-6">
+            Enfoque el código de barras o QR
+          </p>
+          <div
+            class="w-full h-48 bg-slate-100 border-2 border-dashed border-blue-300 rounded-xl flex items-center justify-center mb-8 relative overflow-hidden"
+          >
+            <i class="fas fa-qrcode text-6xl text-slate-300"></i>
+            <div
+              class="absolute w-full h-1 bg-blue-500 top-1/2 -translate-y-1/2 shadow-[0_0_15px_rgba(59,130,246,1)]"
+            ></div>
+          </div>
+          <div class="flex gap-3">
+            <button
+              onclick="cerrarQR()"
+              class="flex-1 border border-slate-300 text-slate-600 hover:bg-slate-100 font-bold py-3 rounded-xl transition"
+            >
+              Cancelar
+            </button>
+            <button
+              onclick="simularLectura()"
+              class="flex-1 bg-blue-600 text-white hover:bg-blue-700 font-bold py-3 rounded-xl shadow-md transition"
+            >
+              Simular Lectura
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Notificaciones -->
+      <div
+        id="toast"
+        class="hidden fixed bottom-6 left-1/2 -translate-x-1/2 px-6 py-4 rounded-xl shadow-2xl items-center gap-4 z-50 text-white font-bold transition-all"
+      >
+        <span id="toast-msg"></span>
+      </div>
+
+      <!-- Modo boceto -->
+      <button
+        onclick="alternarWireframe()"
+        class="fixed bottom-6 right-6 bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-900 w-12 h-12 rounded-full shadow-xl border border-slate-600 flex items-center justify-center transition hover:scale-110 z-40"
+        title="Activar Modo Wireframe (Boceto)"
+      >
+        <i class="fas fa-pencil-ruler text-xl"></i>
+      </button>
+    </main>
+
+    <script>
+      document.getElementById("nombre-usuario").innerText =
+        localStorage.getItem("usuario_nombre") || "Israel Ortega";
+
+      function cerrarSesion() {
+        localStorage.removeItem("sesion_fyag");
+        localStorage.removeItem("usuario_nombre");
+        window.location.href = "login.html";
+      }
+
+      function cambiarPestana(idTab, btnElement) {
+        document
+          .querySelectorAll(".pestana-contenido")
+          .forEach((p) => p.classList.add("hidden"));
+        document
+          .querySelectorAll(".menu-btn")
+          .forEach(
+            (b) =>
+              (b.className =
+                "menu-btn w-full flex items-center gap-3 text-slate-300 p-3 hover:bg-white/10 hover:text-white rounded-lg transition text-left"),
+          );
+
+        document.getElementById(idTab).classList.remove("hidden");
+        btnElement.className =
+          "menu-btn w-full flex items-center gap-3 bg-blue-600 text-white p-3 rounded-lg shadow transition text-left";
+
+        const titulos = {
+          "tab-bodega": "Módulo de Bodega y Despachos",
+          "tab-catalogo": "Auditoría y Catálogo Central",
+          "tab-finanzas": "Gestión de Abastecimiento y Finanzas",
+        };
+        document.getElementById("titulo-header").innerText = titulos[idTab];
+      }
+
+      function mostrarMensaje(mensaje, tipo) {
+        const toast = document.getElementById("toast");
+        toast.className = `fixed bottom-6 left-1/2 -translate-x-1/2 px-6 py-4 rounded-xl shadow-2xl flex items-center gap-4 z-50 text-white font-bold transition-all ${tipo === "error" ? "bg-red-600" : "bg-slate-800 border border-slate-600"}`;
+        document.getElementById("toast-msg").innerHTML =
+          tipo === "error"
+            ? `<i class="fas fa-exclamation-triangle mr-2"></i>${mensaje}`
+            : `<i class="fas fa-info-circle text-blue-400 mr-2"></i>${mensaje}`;
+        setTimeout(() => toast.classList.add("hidden"), 3000);
+      }
+
+      function validarDespacho() {
+        const cant = document.getElementById("cant-despacho").value;
+        const obra = document.getElementById("obra-dest").value;
+        if (!obra.trim()) {
+          mostrarMensaje("Debe especificar la obra de destino.", "error");
+          return;
+        }
+        if (cant <= 0 || cant === "") {
+          mostrarMensaje(
+            "La cantidad a despachar debe ser mayor a cero.",
+            "error",
+          );
+          return;
+        }
+        mostrarMensaje(
+          "Despacho registrado correctamente y validado con bloqueo ACID.",
+          "exito",
+        );
+        document.getElementById("cant-despacho").value = "1";
+      }
+
+      function validarMerma() {
+        const motivo = document.getElementById("motivo-merma").value;
+        if (motivo.trim() === "") {
+          mostrarMensaje(
+            "La justificación de la merma es obligatoria.",
+            "error",
+          );
+          return;
+        }
+        mostrarMensaje(
+          "Merma registrada y guardada en el Cardex de forma inalterable.",
+          "exito",
+        );
+        document.getElementById("motivo-merma").value = "";
+      }
+
+      function calcularFinanzas() {
+        mostrarMensaje(
+          "Factura procesada. Stock incrementado y precios actualizados en base de datos.",
+          "exito",
+        );
+      }
+
+      function abrirQR() {
+        document.getElementById("modal-qr").classList.remove("hidden");
+        document.getElementById("modal-qr").classList.add("flex");
+      }
+      function cerrarQR() {
+        document.getElementById("modal-qr").classList.add("hidden");
+        document.getElementById("modal-qr").classList.remove("flex");
+      }
+      function simularLectura() {
+        cerrarQR();
+        const input = document.getElementById("input-articulo");
+        input.value = "SKU-9901 | Filtro de Aceite Industrial";
+        input.classList.remove("text-gray-500", "bg-gray-50");
+        input.classList.add(
+          "text-blue-700",
+          "bg-blue-50",
+          "border-blue-300",
+          "font-bold",
+        );
+        mostrarMensaje("Código escaneado correctamente.", "exito");
+      }
+      function alternarWireframe() {
+        document.body.classList.toggle("modo-boceto");
+      }
+    </script>
+  </body>
+</html>

@@ -1,0 +1,738 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+    <title>App Tablet - Sistema Logístico FYAG</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Iconos FontAwesome -->
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+      rel="stylesheet"
+    />
+
+    <style>
+      /* Iluminación del menú  */
+      .sidebar-aurora {
+        position: absolute;
+        inset: 0;
+        z-index: 0;
+        background-color: #020617;
+        overflow: hidden;
+        pointer-events: none;
+      }
+
+      .blob {
+        position: absolute;
+        filter: blur(70px);
+        border-radius: 50%;
+        opacity: 0.6;
+        animation: movimientoFluido 8s infinite alternate
+          cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      .blob-1 {
+        top: -10%;
+        left: -50%;
+        width: 250px;
+        height: 250px;
+        background-color: #2563eb;
+        animation-duration: 12s;
+      }
+      .blob-2 {
+        bottom: -10%;
+        right: -50%;
+        width: 300px;
+        height: 300px;
+        background-color: #0ea5e9;
+        animation-duration: 15s;
+        animation-direction: alternate-reverse;
+      }
+      .blob-3 {
+        top: 30%;
+        left: -20%;
+        width: 200px;
+        height: 200px;
+        background-color: #4f46e5;
+        animation-duration: 10s;
+        animation-delay: -2s;
+      }
+
+      @keyframes movimientoFluido {
+        0% {
+          transform: translate(0, 0) scale(1);
+        }
+        50% {
+          transform: translate(15%, 20%) scale(1.15);
+        }
+        100% {
+          transform: translate(-10%, 15%) scale(0.9);
+        }
+      }
+
+      /* Evitar scroll horizontal en tablets */
+      body {
+        overscroll-behavior-y: none;
+      }
+
+      /* Animación de alerta */
+      .parpadeo-rojo {
+        animation: alerta 2s infinite;
+      }
+      @keyframes alerta {
+        0%,
+        100% {
+          background-color: #fef2f2;
+        }
+        50% {
+          background-color: #fee2e2;
+        }
+      }
+    </style>
+
+    <script>
+      // Control de sesión
+      if (localStorage.getItem("sesion_fyag") !== "activa") {
+        window.location.href = "{% url 'login' %}";
+      }
+    </script>
+  </head>
+  <body
+    class="bg-slate-50 flex h-screen overflow-hidden font-sans text-gray-800"
+  >
+    <!-- OVERLAY OSCURO PARA EL MENÚ (Aparece al abrir el menú en tablet) -->
+    <div
+      id="sidebar-overlay"
+      onclick="toggleMenu()"
+      class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-40 hidden transition-opacity duration-300"
+    ></div>
+
+    <!-- MENÚ LATERAL (DRAWER DESLIZABLE) -->
+    <!-- Se oculta a la izquierda por defecto (-translate-x-full) -->
+    <aside
+      id="sidebar"
+      class="fixed inset-y-0 left-0 w-72 text-white flex flex-col shadow-2xl z-50 transform -translate-x-full transition-transform duration-300 ease-in-out"
+    >
+      <!-- Iluminación del menú -->
+      <div class="sidebar-aurora">
+        <div class="blob blob-1"></div>
+        <div class="blob blob-2"></div>
+        <div class="blob blob-3"></div>
+      </div>
+
+      <!-- Contenido del menú -->
+      <div
+        class="relative z-10 flex flex-col h-full bg-slate-900/40 backdrop-blur-md border-r border-slate-700/50"
+      >
+        <!-- Botón cerrar menú (Solo visible al estar abierto) -->
+        <button
+          onclick="toggleMenu()"
+          class="absolute top-4 right-4 text-slate-300 hover:text-white bg-slate-800/50 p-2 rounded-lg"
+        >
+          <i class="fas fa-times text-xl"></i>
+        </button>
+
+        <div
+          class="p-6 border-b border-slate-700/50 flex items-center gap-4 mt-4"
+        >
+          <div
+            class="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-700 rounded-xl flex items-center justify-center font-extrabold text-xl shadow-lg tracking-wider"
+          >
+            FY
+          </div>
+          <div>
+            <h1 class="text-lg font-bold leading-tight tracking-wide">
+              Logística FYAG
+            </h1>
+            <p class="text-xs text-blue-300 font-medium">App Operativa</p>
+          </div>
+        </div>
+
+        <!-- Navegación -->
+        <nav class="flex-1 p-4 space-y-3 overflow-y-auto">
+          <p
+            class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-3 px-2"
+          >
+            Módulos
+          </p>
+
+          <button
+            onclick="cambiarPestana('tab-bodega', this)"
+            class="menu-btn w-full flex items-center gap-4 bg-blue-600 text-white p-4 rounded-xl shadow-md transition text-left text-sm font-bold"
+          >
+            <i class="fas fa-boxes w-6 text-center text-lg"></i> Bodega y
+            Despachos
+          </button>
+
+          <button
+            onclick="cambiarPestana('tab-catalogo', this)"
+            class="menu-btn w-full flex items-center gap-4 text-slate-300 p-4 hover:bg-white/10 hover:text-white rounded-xl transition text-left text-sm font-semibold"
+          >
+            <i class="fas fa-clipboard-list w-6 text-center text-lg"></i>
+            Catálogo y Auditoría
+          </button>
+
+          <button
+            onclick="cambiarPestana('tab-finanzas', this)"
+            class="menu-btn w-full flex items-center gap-4 text-slate-300 p-4 hover:bg-white/10 hover:text-white rounded-xl transition text-left text-sm font-semibold"
+          >
+            <i class="fas fa-file-invoice-dollar w-6 text-center text-lg"></i>
+            Compras y Finanzas
+          </button>
+        </nav>
+
+        <!-- Perfil Usuario -->
+        <div
+          class="p-5 bg-slate-950/60 border-t border-slate-700/50 flex items-center justify-between"
+        >
+          <div class="flex items-center gap-3">
+            <div
+              class="w-10 h-10 rounded-full bg-slate-700 border border-slate-500 flex items-center justify-center text-slate-300 shadow-inner"
+            >
+              <i class="fas fa-user"></i>
+            </div>
+            <div>
+              <p
+                class="text-sm font-bold text-white leading-tight"
+                id="nombre-usuario"
+              >
+                Usuario
+              </p>
+              <p class="text-[10px] text-slate-400">Bodeguero Terreno</p>
+            </div>
+          </div>
+          <button
+            onclick="cerrarSesion()"
+            class="text-red-400 hover:text-red-300 p-2 bg-red-400/10 rounded-lg transition"
+            title="Cerrar Sesión"
+          >
+            <i class="fas fa-power-off"></i>
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- CONTENIDO PRINCIPAL (App) -->
+    <main class="flex-1 flex flex-col relative h-full overflow-hidden">
+      <!-- ENCABEZADO TIPO APP (App Bar) -->
+      <header
+        class="bg-white h-16 min-h-[64px] border-b border-gray-200 flex items-center justify-between px-4 shadow-sm z-10 shrink-0"
+      >
+        <div class="flex items-center gap-3">
+          <!-- Botón Menú Hamburguesa -->
+          <button
+            onclick="toggleMenu()"
+            class="text-slate-600 hover:text-blue-600 bg-slate-100 hover:bg-blue-50 p-2.5 rounded-lg transition"
+          >
+            <i class="fas fa-bars text-xl"></i>
+          </button>
+          <h2
+            id="titulo-header"
+            class="text-lg md:text-xl font-bold text-slate-800 truncate"
+          >
+            Bodega y Despachos
+          </h2>
+        </div>
+        <button class="text-slate-400 hover:text-blue-600 p-2 relative">
+          <i class="fas fa-bell text-xl"></i>
+          <span
+            class="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white"
+          ></span>
+        </button>
+      </header>
+
+      <!-- ÁREA DE TRABAJO (Scrollable) -->
+      <div
+        class="p-4 md:p-6 flex-1 overflow-y-auto w-full max-w-6xl mx-auto pb-24"
+      >
+        <!-- TAB 1: BODEGA Y DESPACHOS -->
+        <div id="tab-bodega" class="pestana-contenido block">
+          {% if messages %}
+          <div class="mb-4 space-y-2">
+            {% for message in messages %}
+            <div
+              class="rounded-xl border px-4 py-3 text-sm font-bold {% if message.tags == 'error' %}border-red-200 bg-red-50 text-red-700{% else %}border-green-200 bg-green-50 text-green-700{% endif %}"
+            >
+              {{ message }}
+            </div>
+            {% endfor %}
+          </div>
+          {% endif %}
+          <!-- Grid ajustado para Tablet (Se apilan en vertical si la pantalla es muy estrecha, 2 columnas si hay espacio) -->
+          <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+            <!-- Despacho -->
+            <div
+              class="bg-white p-5 md:p-6 rounded-2xl shadow-sm border border-slate-100"
+            >
+              <div
+                class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6 pb-4 border-b border-slate-50"
+              >
+                <h3 class="text-lg font-bold text-slate-800">
+                  <i
+                    class="fas fa-truck-fast text-blue-600 mr-2 bg-blue-50 p-2 rounded-lg"
+                  ></i>
+                  Nuevo Despacho
+                </h3>
+                <button
+                  onclick="abrirQR()"
+                  class="bg-blue-600 text-white px-5 py-3 rounded-xl hover:bg-blue-700 transition text-sm font-bold shadow-md shadow-blue-200 flex items-center justify-center w-full sm:w-auto"
+                >
+                  <i class="fas fa-camera mr-2 text-lg"></i> Escanear
+                </button>
+              </div>
+
+              <form
+                method="POST"
+                action="{% url 'procesar_despacho' %}"
+                class="space-y-5"
+              >
+                {% csrf_token %}
+                <div>
+                  <label class="block text-sm font-bold text-slate-600 mb-1.5"
+                    >Obra de Destino</label
+                  >
+                  <div class="relative">
+                    <i
+                      class="fas fa-building absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+                    ></i>
+                    <select
+                      id="obra-dest"
+                      name="obra"
+                      class="w-full border border-slate-200 rounded-xl py-3.5 pl-11 pr-4 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-sm bg-slate-50 focus:bg-white"
+                      required
+                    >
+                      <option value="">Seleccione una obra...</option>
+                      {% for obra in obras %}
+                      <option value="{{ obra.id }}">{{ obra.nombre }}</option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label class="block text-sm font-bold text-slate-600 mb-1.5"
+                    >Artículo a despachar</label
+                  >
+                  <div class="relative">
+                    <i
+                      class="fas fa-box absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+                    ></i>
+                    <select
+                      id="input-articulo"
+                      name="articulo"
+                      class="w-full border border-slate-200 text-slate-700 rounded-xl py-3.5 pl-11 pr-4 text-sm font-medium"
+                      required
+                    >
+                      <option value="">Seleccione un artículo...</option>
+                      {% for articulo in articulos %}
+                      <option value="{{ articulo.id }}">
+                        {{ articulo.sku }} | {{ articulo.descripcion }}
+                      </option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                </div>
+                <div class="w-1/2">
+                  <label class="block text-sm font-bold text-slate-600 mb-1.5"
+                    >Cantidad</label
+                  >
+                  <input
+                    type="number"
+                    id="cant-despacho"
+                    name="cantidad"
+                    min="1"
+                    value="1"
+                    class="w-full border border-slate-200 rounded-xl p-3.5 focus:ring-2 focus:ring-blue-500 outline-none text-lg font-bold text-center bg-slate-50 focus:bg-white"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl py-4 mt-4 shadow-lg shadow-blue-200 transition flex items-center justify-center text-base"
+                >
+                  <i class="fas fa-check-circle mr-2 text-lg"></i> Confirmar
+                  Despacho
+                </button>
+              </form>
+            </div>
+
+            <!-- Mermas -->
+            <div
+              class="bg-white p-5 md:p-6 rounded-2xl shadow-sm border border-slate-100"
+            >
+              <div class="flex items-center mb-6 pb-4 border-b border-slate-50">
+                <h3 class="text-lg font-bold text-slate-800">
+                  <i
+                    class="fas fa-triangle-exclamation text-orange-500 mr-2 bg-orange-50 p-2 rounded-lg"
+                  ></i>
+                  Registro de Merma
+                </h3>
+              </div>
+              <div class="space-y-5">
+                <div>
+                  <label class="block text-sm font-bold text-slate-600 mb-1.5"
+                    >Artículo Dañado</label
+                  >
+                  <select
+                    class="w-full border border-slate-200 rounded-xl p-3.5 focus:ring-2 focus:ring-orange-500 outline-none bg-slate-50 focus:bg-white text-sm"
+                  >
+                    <option>Seleccione artículo...</option>
+                    <option>Compresor 5HP Inverter</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-sm font-bold text-slate-600 mb-1.5"
+                    >Justificación (Obligatorio)</label
+                  >
+                  <textarea
+                    id="motivo-merma"
+                    rows="4"
+                    class="w-full border border-slate-200 rounded-xl p-3.5 focus:ring-2 focus:ring-orange-500 outline-none bg-slate-50 focus:bg-white text-sm resize-none"
+                    placeholder="Motivo de la baja..."
+                  ></textarea>
+                </div>
+                <button
+                  onclick="validarMerma()"
+                  class="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-xl py-4 mt-2 shadow-lg shadow-orange-200 transition flex items-center justify-center text-base"
+                >
+                  <i class="fas fa-save mr-2 text-lg"></i> Guardar Merma
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 2: CATÁLOGO -->
+        <div id="tab-catalogo" class="pestana-contenido hidden h-full">
+          <div
+            class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col"
+          >
+            <div
+              class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6"
+            >
+              <h3 class="text-lg font-bold text-slate-800">
+                <i
+                  class="fas fa-table-list text-indigo-600 mr-2 bg-indigo-50 p-2 rounded-lg"
+                ></i>
+                Cardex Central
+              </h3>
+              <button
+                class="bg-indigo-600 text-white px-5 py-3 rounded-xl hover:bg-indigo-700 transition text-sm font-bold shadow-md shadow-indigo-200 flex items-center justify-center w-full sm:w-auto"
+              >
+                <i class="fas fa-plus mr-2 text-lg"></i> Nuevo
+              </button>
+            </div>
+
+            <!-- Tabla responsiva (Se puede deslizar hacia el lado en tablet) -->
+            <div class="overflow-x-auto rounded-xl border border-slate-200">
+              <table
+                class="w-full text-left text-sm whitespace-nowrap min-w-[600px]"
+              >
+                <thead
+                  class="bg-slate-50 text-slate-600 border-b border-slate-200"
+                >
+                  <tr>
+                    <th class="p-4 font-bold">SKU</th>
+                    <th class="p-4 font-bold">Descripción</th>
+                    <th class="p-4 font-bold text-center">Stock</th>
+                    <th class="p-4 font-bold">Estado</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                  <tr class="hover:bg-slate-50 transition">
+                    <td class="p-4 font-bold text-slate-700">FIT-098</td>
+                    <td class="p-4 text-slate-600 font-medium">
+                      Válvula de bola 2"
+                    </td>
+                    <td
+                      class="p-4 font-extrabold text-slate-800 text-center text-base"
+                    >
+                      45
+                    </td>
+                    <td class="p-4">
+                      <span
+                        class="bg-green-100 text-green-700 px-3 py-1 rounded-lg text-xs font-bold"
+                        >Stock Normal</span
+                      >
+                    </td>
+                  </tr>
+                  <tr class="parpadeo-rojo border-y border-red-200">
+                    <td class="p-4 font-bold text-red-700">REF-042</td>
+                    <td class="p-4 text-red-800 font-bold">
+                      Gas Refrigerante R410A
+                    </td>
+                    <td
+                      class="p-4 font-extrabold text-red-700 text-center text-lg"
+                    >
+                      2
+                    </td>
+                    <td class="p-4">
+                      <span
+                        class="bg-red-600 text-white px-3 py-1 rounded-lg text-xs font-bold shadow-sm"
+                        ><i class="fas fa-triangle-exclamation mr-1"></i>
+                        Crítico</span
+                      >
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 3: FINANZAS -->
+        <div id="tab-finanzas" class="pestana-contenido hidden h-full">
+          <div
+            class="max-w-2xl mx-auto bg-white p-5 md:p-8 rounded-2xl shadow-sm border border-slate-100"
+          >
+            <h3 class="text-xl font-bold text-slate-800 mb-2">
+              <i
+                class="fas fa-file-invoice-dollar text-green-600 mr-2 bg-green-50 p-2 rounded-lg"
+              ></i>
+              Ingreso de Factura
+            </h3>
+            <p
+              class="text-slate-500 text-sm mb-6 pb-6 border-b border-slate-100"
+            >
+              Calculadora automática de descuentos e impuestos.
+            </p>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 text-sm mb-8">
+              <div>
+                <label class="block font-bold text-slate-600 mb-1.5"
+                  >Nº de Factura</label
+                >
+                <input
+                  type="text"
+                  class="w-full border border-slate-200 rounded-xl p-3.5 bg-slate-50 font-bold"
+                  value="FAC-99201"
+                />
+              </div>
+              <div>
+                <label class="block font-bold text-slate-600 mb-1.5"
+                  >Valor Neto Unitario</label
+                >
+                <input
+                  type="text"
+                  class="w-full border border-slate-200 rounded-xl p-3.5 bg-slate-50 font-bold"
+                  value="$100.000"
+                />
+              </div>
+            </div>
+
+            <div
+              class="bg-slate-800 text-white p-6 rounded-2xl shadow-inner mb-6"
+            >
+              <div
+                class="flex justify-between items-center text-base md:text-lg"
+              >
+                <span class="text-slate-300">Costo Neto (Dsctos listos):</span>
+                <span class="font-bold">$83.790</span>
+              </div>
+              <div
+                class="flex justify-between items-center text-lg md:text-xl mt-3 pt-3 border-t border-slate-700"
+              >
+                <span class="text-slate-300 font-bold">Total IVA (19%):</span>
+                <span class="font-black text-green-400 tracking-wide"
+                  >$99.710</span
+                >
+              </div>
+            </div>
+
+            <button
+              onclick="calcularFinanzas()"
+              class="w-full bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl p-4 shadow-lg shadow-green-200 transition text-lg flex items-center justify-center"
+            >
+              <i class="fas fa-check-double mr-2"></i> Registrar Compra
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Lector QR (Modal adaptado para pantalla táctil) -->
+      <div
+        id="modal-qr"
+        class="hidden fixed inset-0 z-50 bg-slate-900/90 backdrop-blur-md items-center justify-center p-4"
+      >
+        <div
+          class="bg-white rounded-3xl shadow-2xl p-6 w-full max-w-sm text-center"
+        >
+          <h3 class="text-xl font-bold text-slate-800 mb-2">Escáner Activo</h3>
+          <p class="text-sm text-slate-500 mb-6">
+            Apunte la cámara de la tablet al código
+          </p>
+
+          <div
+            class="w-full aspect-square bg-slate-100 border-4 border-dashed border-blue-300 rounded-2xl flex items-center justify-center mb-6 relative overflow-hidden"
+          >
+            <i class="fas fa-qrcode text-6xl text-slate-300"></i>
+            <div
+              class="absolute w-full h-1 bg-blue-500 top-1/2 -translate-y-1/2 shadow-[0_0_20px_rgba(59,130,246,1)]"
+            ></div>
+          </div>
+
+          <div class="flex flex-col gap-3">
+            <button
+              onclick="simularLectura()"
+              class="w-full bg-blue-600 text-white font-bold py-4 rounded-xl shadow-lg shadow-blue-200 active:scale-95 transition text-lg"
+            >
+              Simular Lectura Exitosa
+            </button>
+            <button
+              onclick="cerrarQR()"
+              class="w-full bg-slate-100 text-slate-600 font-bold py-4 rounded-xl active:scale-95 transition"
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Notificaciones Tipo App -->
+      <div
+        id="toast"
+        class="hidden fixed bottom-6 left-1/2 -translate-x-1/2 w-11/12 max-w-sm px-5 py-4 rounded-2xl shadow-2xl items-center gap-3 z-50 text-white font-bold transition-all"
+      >
+        <span id="toast-msg" class="flex items-center text-sm"></span>
+      </div>
+    </main>
+
+    <script>
+      // Lógica de UI para Tablet
+      function toggleMenu() {
+        const sidebar = document.getElementById("sidebar");
+        const overlay = document.getElementById("sidebar-overlay");
+
+        sidebar.classList.toggle("-translate-x-full");
+
+        if (overlay.classList.contains("hidden")) {
+          overlay.classList.remove("hidden");
+          setTimeout(() => overlay.classList.add("opacity-100"), 10);
+        } else {
+          overlay.classList.remove("opacity-100");
+          setTimeout(() => overlay.classList.add("hidden"), 300);
+        }
+      }
+
+      document.getElementById("nombre-usuario").innerText =
+        localStorage.getItem("usuario_nombre") || "Israel Ortega";
+
+      function cerrarSesion() {
+        localStorage.removeItem("sesion_fyag");
+        localStorage.removeItem("usuario_nombre");
+        window.location.href = "{% url 'login' %}";
+      }
+
+      function cambiarPestana(idTab, btnElement) {
+        // Cambiar contenido
+        document
+          .querySelectorAll(".pestana-contenido")
+          .forEach((p) => p.classList.add("hidden"));
+        document.getElementById(idTab).classList.remove("hidden");
+
+        // Estilos de botones
+        document
+          .querySelectorAll(".menu-btn")
+          .forEach(
+            (b) =>
+              (b.className =
+                "menu-btn w-full flex items-center gap-4 text-slate-300 p-4 hover:bg-white/10 hover:text-white rounded-xl transition text-left text-sm font-semibold"),
+          );
+        btnElement.className =
+          "menu-btn w-full flex items-center gap-4 bg-blue-600 text-white p-4 rounded-xl shadow-md transition text-left text-sm font-bold";
+
+        // Cambiar título
+        const titulos = {
+          "tab-bodega": "Bodega y Despachos",
+          "tab-catalogo": "Cardex Central",
+          "tab-finanzas": "Ingreso de Compras",
+        };
+        document.getElementById("titulo-header").innerText = titulos[idTab];
+
+        // Autocerrar el menú si estamos en un dispositivo móvil/tablet
+        if (window.innerWidth < 1024) {
+          toggleMenu();
+        }
+      }
+
+      // Resto de tus funciones originales intactas
+      function mostrarMensaje(mensaje, tipo) {
+        const toast = document.getElementById("toast");
+        toast.className = `fixed bottom-6 left-1/2 -translate-x-1/2 w-11/12 max-w-sm px-5 py-4 rounded-2xl shadow-2xl flex items-center gap-3 z-50 text-white font-bold transition-all ${tipo === "error" ? "bg-red-600" : "bg-slate-800"}`;
+        document.getElementById("toast-msg").innerHTML =
+          tipo === "error"
+            ? `<i class="fas fa-circle-xmark text-xl mr-2"></i> ${mensaje}`
+            : `<i class="fas fa-circle-check text-green-400 text-xl mr-2"></i> ${mensaje}`;
+        setTimeout(() => toast.classList.add("hidden"), 3000);
+      }
+
+      function validarDespacho() {
+        const cant = document.getElementById("cant-despacho").value;
+        const obra = document.getElementById("obra-dest").value;
+        if (!obra.trim()) {
+          mostrarMensaje("Falta obra de destino.", "error");
+          return;
+        }
+        if (cant <= 0 || cant === "") {
+          mostrarMensaje("Cantidad inválida.", "error");
+          return;
+        }
+        mostrarMensaje("Despacho validado (ACID).", "exito");
+        document.getElementById("cant-despacho").value = "1";
+      }
+
+      function validarMerma() {
+        const motivo = document.getElementById("motivo-merma").value;
+        if (motivo.trim() === "") {
+          mostrarMensaje("Falta justificación.", "error");
+          return;
+        }
+        mostrarMensaje("Merma inalterable guardada.", "exito");
+        document.getElementById("motivo-merma").value = "";
+      }
+
+      function calcularFinanzas() {
+        mostrarMensaje("Compra y stock registrados.", "exito");
+      }
+
+      function abrirQR() {
+        document.getElementById("modal-qr").classList.remove("hidden");
+        document.getElementById("modal-qr").classList.add("flex");
+      }
+      function cerrarQR() {
+        document.getElementById("modal-qr").classList.add("hidden");
+        document.getElementById("modal-qr").classList.remove("flex");
+      }
+      function simularLectura() {
+        cerrarQR();
+        const select = document.getElementById("input-articulo");
+        const opcion = Array.from(select.options).find((item) =>
+          item.text.includes("SKU-9901"),
+        );
+        if (opcion) {
+          select.value = opcion.value;
+        }
+        select.classList.remove("text-slate-500", "bg-slate-100");
+        select.classList.add(
+          "text-blue-700",
+          "bg-blue-50",
+          "border-blue-400",
+          "font-bold",
+        );
+        mostrarMensaje("Código escaneado.", "exito");
+      }
+    </script>
+    {% if messages %} {% for message in messages %}
+    <script>
+      mostrarMensaje(
+        "{{ message|escapejs }}",
+        "{{ message.tags }}" === "error" ? "error" : "exito",
+      );
+    </script>
+    {% endfor %} {% endif %}
+  </body>
+</html>
