@@ -77,11 +77,14 @@ WSGI_APPLICATION = 'logistica_fyag.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'gestion_fyag_db',
-        'USER': 'postgres',
-        'PASSWORD': 'postgres', 
-        'HOST': 'localhost',
+        'NAME': 'neondb',
+        'USER': 'neondb_owner',
+        'PASSWORD': 'npg_tUf1SQjh4XiW',
+        'HOST': 'ep-polished-art-befuodoc-pooler.c-9.us-east-2.aws.neon.tech',
         'PORT': '5432',
+        'OPTIONS': {
+            'sslmode': 'require',
+        }
     }
 }
 
