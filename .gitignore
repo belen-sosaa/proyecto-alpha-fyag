@@ -219,6 +219,3 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 
-# docker scripts
-docker-compose.yml
-init-scripts/
