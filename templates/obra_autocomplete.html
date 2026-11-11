@@ -1,0 +1,19 @@
+<div data-obra-autocomplete
+     data-url="{% url 'obras_buscar' %}">
+
+  <label>
+    Obra de destino
+    <input
+      type="text"
+      data-obra-texto
+      placeholder="Escribe al menos 3 letras"
+      autocomplete="off"
+      required
+    >
+  </label>
+
+  <input type="hidden" name="obra" data-obra-id>
+
+  <ul data-obra-resultados hidden></ul>
+  <p data-obra-mensaje role="status"></p>
+</div>

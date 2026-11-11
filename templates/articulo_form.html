@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% block title %}Nuevo artículo{% endblock %}
+
+{% block content %}
+  <h1>Nuevo artículo</h1>
+
+  <form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+
+    <button type="submit">Guardar artículo</button>
+    <a href="{% url 'bodega_web' %}">Cancelar</a>
+  </form>
+{% endblock %}
