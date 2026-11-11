@@ -3,11 +3,12 @@ import uuid
 from pathlib import Path
 
 from django.contrib import messages
-from django.contrib.auth.models import User
+from django.contrib.auth.views import LoginView
 from django.db import transaction
+from django.urls import reverse
 from django.shortcuts import redirect, render
 from django.contrib.auth.decorators import login_required
-from django.db import IntegrityError, transaction
+from django.db import IntegrityError
 from django.http import JsonResponse
 
 from .models import Articulo, Despacho, Obra,BitacoraAuditoria
@@ -16,8 +17,21 @@ from .forms import ArticuloForm
 
 
 
-def vista_login(request):
-    return render(request, 'login.html')
+class AccesoView(LoginView):
+    template_name = "login.html"
+
+    def get_success_url(self):
+        siguiente = self.get_redirect_url()
+        if siguiente:
+            return siguiente
+
+        destinos = {
+            "web": "bodega_web",
+            "mobile": "bodega_mobile",
+        }
+
+        destino = self.request.POST.get("destino", "web")
+        return reverse(destinos.get(destino, "bodega_web"))
 
 
 @login_required
@@ -92,6 +106,7 @@ def articulo_crear(request):
     return render(request, "articulo_form.html", {"form": form})
 
 
+@login_required
 def vista_mobile(request):
     return render(request, 'Mobile.html', {
         'articulos': Articulo.objects.select_related('categoria').all(),
@@ -99,6 +114,7 @@ def vista_mobile(request):
     })
 
 
+@login_required
 @transaction.atomic
 def procesar_despacho(request):
     if request.method != 'POST':
@@ -132,10 +148,7 @@ def procesar_despacho(request):
         messages.error(request, 'Stock insuficiente para realizar el despacho.')
         return redirect('bodega_mobile')
 
-    usuario = request.user if request.user.is_authenticated else User.objects.first()
-    if usuario is None:
-        messages.error(request, 'Debe existir un usuario registrado para despachar.')
-        return redirect('login')
+    usuario = request.user
 
     despacho = Despacho(
         articulo=articulo,

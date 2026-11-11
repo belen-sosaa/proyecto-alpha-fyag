@@ -15,12 +15,14 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
+from django.contrib.auth.views import LogoutView
 from django.urls import path
 from apps.bodega import views
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('', views.vista_login, name='login'),
+    path('', views.AccesoView.as_view(), name='login'),
+    path('logout/', LogoutView.as_view(), name='logout'),
     path('bodega/', views.vista_bodega, name='bodega_web'),
     path('articulos/nuevo/', views.articulo_crear, name = "articulo_crear"),
     path('mobile/', views.vista_mobile, name='bodega_mobile'),
