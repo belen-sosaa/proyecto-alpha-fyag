@@ -37,7 +37,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'bodega',
+    "apps.bodega.apps.BodegaConfig",
 ]
 
 MIDDLEWARE = [
@@ -129,3 +129,10 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+LOGIN_URL = "login"
+LOGIN_REDIRECT_URL = "bodega_web"
+LOGOUT_REDIRECT_URL = "login"
+
+SESSION_COOKIE_AGE = 900
+SESSION_SAVE_EVERY_REQUEST = True

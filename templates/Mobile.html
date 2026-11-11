@@ -1,3 +1,4 @@
+{% load static %}
 <!doctype html>
 <html lang="es">
   <head>
@@ -95,12 +96,6 @@
       }
     </style>
 
-    <script>
-      // Control de sesión
-      if (localStorage.getItem("sesion_fyag") !== "activa") {
-        window.location.href = "{% url 'login' %}";
-      }
-    </script>
   </head>
   <body
     class="bg-slate-50 flex h-screen overflow-hidden font-sans text-gray-800"
@@ -201,18 +196,21 @@
                 class="text-sm font-bold text-white leading-tight"
                 id="nombre-usuario"
               >
-                Usuario
+                {{ request.user.get_full_name|default:request.user.username }}
               </p>
               <p class="text-[10px] text-slate-400">Bodeguero Terreno</p>
             </div>
           </div>
-          <button
-            onclick="cerrarSesion()"
-            class="text-red-400 hover:text-red-300 p-2 bg-red-400/10 rounded-lg transition"
-            title="Cerrar Sesión"
-          >
-            <i class="fas fa-power-off"></i>
-          </button>
+          <form method="post" action="{% url 'logout' %}">
+            {% csrf_token %}
+            <button
+              type="submit"
+              class="text-red-400 hover:text-red-300 p-2 bg-red-400/10 rounded-lg transition"
+              title="Cerrar Sesión"
+            >
+              <i class="fas fa-power-off"></i>
+            </button>
+          </form>
         </div>
       </div>
     </aside>
@@ -300,17 +298,9 @@
                     <i
                       class="fas fa-building absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
                     ></i>
-                    <select
-                      id="obra-dest"
-                      name="obra"
-                      class="w-full border border-slate-200 rounded-xl py-3.5 pl-11 pr-4 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-sm bg-slate-50 focus:bg-white"
-                      required
-                    >
-                      <option value="">Seleccione una obra...</option>
-                      {% for obra in obras %}
-                      <option value="{{ obra.id }}">{{ obra.nombre }}</option>
-                      {% endfor %}
-                    </select>
+
+                    {% include "includes/obra_autocomplete.html" %}
+                    
                   </div>
                 </div>
                 <div>
@@ -618,15 +608,6 @@
         }
       }
 
-      document.getElementById("nombre-usuario").innerText =
-        localStorage.getItem("usuario_nombre") || "Israel Ortega";
-
-      function cerrarSesion() {
-        localStorage.removeItem("sesion_fyag");
-        localStorage.removeItem("usuario_nombre");
-        window.location.href = "{% url 'login' %}";
-      }
-
       function cambiarPestana(idTab, btnElement) {
         // Cambiar contenido
         document
@@ -734,5 +715,6 @@
       );
     </script>
     {% endfor %} {% endif %}
+    <script src="{% static 'bodega/obra_auto.js' %}" defer></script>
   </body>
 </html>

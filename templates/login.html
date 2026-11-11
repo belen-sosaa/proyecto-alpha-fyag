@@ -155,22 +155,27 @@
         </p>
       </div>
 
-      <form id="form-login" class="space-y-5">
+      <form id="form-login" method="post" action="{% url 'login' %}" class="space-y-5">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{{ next|default:'' }}">
         <div>
           <label class="block text-slate-700 font-bold mb-2 text-sm"
-            >Correo del Trabajador</label
+            >Nombre de usuario</label
           >
           <div class="relative">
             <div
               class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"
             >
-              <i class="fas fa-envelope text-slate-400"></i>
+              <i class="fas fa-user text-slate-400"></i>
             </div>
             <input
-              type="email"
-              id="email"
+              type="text"
+              id="username"
+              name="username"
+              value="{{ form.username.value|default:'' }}"
+              autocomplete="username"
               class="w-full border border-slate-200 pl-10 p-3 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-slate-50 text-slate-700 transition"
-              placeholder="ejemplo@fyag.cl"
+              placeholder="Nombre de usuario"
               required
             />
           </div>
@@ -189,6 +194,8 @@
             <input
               type="password"
               id="password"
+              name="password"
+              autocomplete="current-password"
               class="w-full border border-slate-200 pl-10 p-3 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-slate-50 text-slate-700 transition"
               placeholder="••••••••"
               required
@@ -196,22 +203,17 @@
           </div>
         </div>
 
-        <!-- Mensaje de error -->
-        <div class="h-8 flex items-center justify-center">
-          <p
-            id="error-msg"
-            class="text-red-500 text-sm hidden font-bold text-center bg-red-50 w-full py-1.5 rounded-lg border border-red-100 shadow-sm"
-          >
-            <i class="fas fa-exclamation-triangle mr-1"></i> Credenciales
-            incorrectas
+        {% if form.errors %}
+          <p role="alert" class="text-red-600">
+            Usuario o contraseña incorrectos, o cuenta inactiva.
           </p>
-        </div>
+        {% endif %}
 
         <button
           type="submit"
           class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl transition shadow-[0_8px_15px_rgba(37,99,235,0.2)] hover:shadow-[0_12px_20px_rgba(37,99,235,0.3)]"
         >
-          Entrar al Sistema
+          Entrar al sistema
         </button>
 
         <fieldset class="pt-2">
@@ -225,7 +227,7 @@
               <input
                 type="radio"
                 name="destino"
-                value="{% url 'bodega_web' %}"
+                value="web"
                 checked
                 class="accent-blue-600"
               />
@@ -240,7 +242,7 @@
               <input
                 type="radio"
                 name="destino"
-                value="{% url 'bodega_mobile' %}"
+                value="mobile"
                 class="accent-blue-600"
               />
               <span>
@@ -252,37 +254,7 @@
         </fieldset>
       </form>
 
-      <div
-        id="login-help"
-        class="mt-8 pt-6 border-t border-slate-100 text-center text-xs text-slate-400"
-      >
-        <p>
-          Para probar usa:
-          <span class="font-bold text-slate-600">admin@fyag.cl</span> /
-          <span class="font-bold text-slate-600">123456</span>
-        </p>
-      </div>
     </div>
 
-    <script>
-      document
-        .getElementById("form-login")
-        .addEventListener("submit", function (e) {
-          e.preventDefault();
-          const email = document.getElementById("email").value;
-          const pass = document.getElementById("password").value;
-          const destino = document.querySelector(
-            'input[name="destino"]:checked',
-          ).value;
-
-          if (email === "admin@fyag.cl" && pass === "123456") {
-            localStorage.setItem("sesion_fyag", "activa");
-            localStorage.setItem("usuario_nombre", "Israel Ortega");
-            window.location.href = destino;
-          } else {
-            document.getElementById("error-msg").classList.remove("hidden");
-          }
-        });
-    </script>
   </body>
 </html>
