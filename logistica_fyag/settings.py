@@ -9,18 +9,22 @@ https://docs.djangoproject.com/en/4.2/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.2/ref/settings/
 """
-
+import os
 from pathlib import Path
 
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
+from dotenv import load_dotenv
+
+# DIRECTORIO PRINCIPAL DEL PROYECTO
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# Cargar las variables del archivo .env.
+load_dotenv(BASE_DIR / ".env")
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-*i(@ezi5^tk2r1nh--f44-huen(tun)f4(!6#-8z9f1dh+cxco'
+SECRET_KEY = os.environ["DJANGO_SECRET_KEY"]
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -29,7 +33,6 @@ ALLOWED_HOSTS = []
 
 
 # Application definition
-
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -50,8 +53,10 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
+# RUTAS
 ROOT_URLCONF = 'logistica_fyag.urls'
 
+# PLANTILLAS
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
@@ -74,24 +79,29 @@ WSGI_APPLICATION = 'logistica_fyag.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
+# PostgreSQL en Neon: base de datos relacional de Django.
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'neondb',
-        'USER': 'neondb_owner',
-        'PASSWORD': 'npg_tUf1SQjh4XiW',
-        'HOST': 'ep-polished-art-befuodoc-pooler.c-9.us-east-2.aws.neon.tech',
-        'PORT': '5432',
-        'OPTIONS': {
-            'sslmode': 'require',
-        }
+    "default": {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": os.environ["DB_NAME"],
+        "USER": os.environ["DB_USER"],
+        "PASSWORD": os.environ["DB_PASSWORD"],
+        "HOST": os.environ["DB_HOST"],
+        "PORT": os.getenv("DB_PORT", "5432"),
+        "OPTIONS": {
+            "sslmode": "require",
+        },
     }
 }
 
+# MongoDB Atlas: almacenamiento documental mediante PyMongo.
+MONGO_URI = os.environ["MONGO_URI"]
+MONGO_DB_NAME = os.environ["MONGO_DB_NAME"]
 
 # Password validation
 # https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators
 
+# VALIDACIÓN DE CONTRASEÑAS
 AUTH_PASSWORD_VALIDATORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
@@ -111,6 +121,7 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/4.2/topics/i18n/
 
+# IDIOMA Y ZONA HORARIA
 LANGUAGE_CODE = 'en-us'
 
 TIME_ZONE = 'UTC'
@@ -123,16 +134,20 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.2/howto/static-files/
 
+# ARCHIVOS ESTÁTICOS
 STATIC_URL = 'static/'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 
+# CLAVES PRIMARIAS PREDETERMINADAS
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# AUTENTICACIÓN Y REDIRECCIONES
 LOGIN_URL = "login"
 LOGIN_REDIRECT_URL = "bodega_web"
 LOGOUT_REDIRECT_URL = "login"
 
+# SESIONES: VENCIMIENTO TRAS 15 MINUTOS DE INACTIVIDAD
 SESSION_COOKIE_AGE = 900
 SESSION_SAVE_EVERY_REQUEST = True
