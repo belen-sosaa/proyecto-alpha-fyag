@@ -20,12 +20,23 @@ from django.urls import path
 from apps.bodega import views
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
-    path('', views.AccesoView.as_view(), name='login'),
-    path('logout/', LogoutView.as_view(), name='logout'),
-    path('bodega/', views.vista_bodega, name='bodega_web'),
-    path('articulos/nuevo/', views.articulo_crear, name = "articulo_crear"),
-    path('mobile/', views.vista_mobile, name='bodega_mobile'),
-    path('obras/buscar/', views.obras_buscar, name= "obras_buscar"),
-    path('despacho/procesar/', views.procesar_despacho, name='procesar_despacho'),
+    # 1. Administración de Django y Autenticación
+    path("admin/", admin.site.urls),
+    path("", views.AccesoView.as_view(), name="login"),
+    path("logout/", LogoutView.as_view(), name="logout"),
+
+    # 2. Panel Principal de Bodega (Web)
+    path("bodega/", views.vista_bodega, name="bodega_web"),
+    path("articulos/nuevo/", views.articulo_crear, name="articulo_crear"),
+
+    # 3. Operación Mobile-First (Tablet), Autocompletado de Obras y Despachos
+    path("mobile/", views.vista_mobile, name="bodega_mobile"),
+    path("obras/buscar/", views.obras_buscar, name="obras_buscar"),
+    path("despacho/procesar/", views.procesar_despacho, name="procesar_despacho"),
+
+    # 4. CRUD de Insumos / Catálogo con RBAC, Filtros y Bloqueo de Eliminación
+    path("catalogo/", views.catalogo_listar, name="catalogo_listar"),# READ (Listar y filtrar)
+    path("catalogo/nuevo/", views.catalogo_crear, name="catalogo_crear"),# CREATE (Crear insumo)
+    path("catalogo/<int:pk>/editar/", views.catalogo_editar, name="catalogo_editar"),# UPDATE (Editar insumo)
+    path("catalogo/<int:pk>/eliminar/", views.catalogo_eliminar, name="catalogo_eliminar"),# DELETE (Eliminar con bloqueo)
 ]

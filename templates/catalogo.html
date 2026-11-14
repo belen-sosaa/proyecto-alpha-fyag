@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+
+{% block title %}Catálogo de insumos{% endblock %}
+
+{% block content %}
+
+  {% if form %}
+    <!-- Formulario para crear o editar -->
+    <h1>{{ titulo }}</h1>
+
+    <form method="post">
+      {% csrf_token %}
+      {{ form.as_p }}
+
+      <button type="submit">Guardar</button>
+      <a href="{% url 'catalogo_listar' %}">Cancelar</a>
+    </form>
+
+  {% elif articulo %}
+    <!-- Confirmación de eliminación -->
+    <h1>Eliminar insumo</h1>
+
+    <p>
+      ¿Deseas eliminar
+      <strong>{{ articulo.sku }} — {{ articulo.descripcion }}</strong>?
+    </p>
+
+    <p>
+      Solo se pueden eliminar insumos sin existencias
+      y sin movimientos asociados.
+    </p>
+
+    <form method="post">
+      {% csrf_token %}
+
+      <button type="submit">Confirmar eliminación</button>
+      <a href="{% url 'catalogo_listar' %}">Cancelar</a>
+    </form>
+
+  {% else %}
+    <!-- Listado y filtros -->
+    <h1>Catálogo de insumos</h1>
+
+    {% if perms.bodega.add_articulo %}
+      <p>
+        <a href="{% url 'catalogo_crear' %}">Crear insumo</a>
+      </p>
+    {% endif %}
+
+    <form method="get">
+      <label for="q">Buscar</label>
+      <input
+        id="q"
+        type="search"
+        name="q"
+        value="{{ q }}"
+        placeholder="SKU, descripción o código de barras"
+      >
+
+      <label for="categoria">Categoría</label>
+      <select id="categoria" name="categoria">
+        <option value="">Todas</option>
+
+        {% for categoria in categorias %}
+          <option
+            value="{{ categoria.pk }}"
+            {% if categoria_seleccionada == categoria.pk|stringformat:"s" %}
+              selected
+            {% endif %}
+          >
+            {{ categoria.nombre }}
+          </option>
+        {% endfor %}
+      </select>
+
+      <button type="submit">Filtrar</button>
+      <a href="{% url 'catalogo_listar' %}">Limpiar filtros</a>
+    </form>
+
+    <table>
+      <thead>
+        <tr>
+          <th>SKU</th>
+          <th>Código de barras</th>
+          <th>Descripción</th>
+          <th>Categoría</th>
+          <th>Unidad</th>
+          <th>Stock</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        {% for articulo in articulos %}
+          <tr>
+            <td>{{ articulo.sku }}</td>
+            <td>{{ articulo.codigo_barras|default_if_none:"—" }}</td>
+            <td>{{ articulo.descripcion }}</td>
+            <td>{{ articulo.categoria.nombre }}</td>
+            <td>{{ articulo.unidad_medida }}</td>
+            <td>{{ articulo.stock_fisico }}</td>
+            <td>
+              {% if perms.bodega.change_articulo %}
+                <a href="{% url 'catalogo_editar' articulo.pk %}">
+                  Editar
+                </a>
+              {% endif %}
+
+              {% if perms.bodega.delete_articulo %}
+                <a href="{% url 'catalogo_eliminar' articulo.pk %}">
+                  Eliminar
+                </a>
+              {% endif %}
+            </td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="7">No se encontraron insumos.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <p>
+      <a href="{% url 'bodega_web' %}">Volver a bodega</a>
+    </p>
+  {% endif %}
+
+{% endblock %}
