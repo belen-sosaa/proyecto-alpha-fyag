@@ -5,7 +5,7 @@ from pathlib import Path
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, permission_required
 from django.contrib.auth.views import LoginView
-from django.db import IntegrityError, transaction
+from django.db import IntegrityError, connection, transaction
 from django.db.models import Q
 from django.db.models.deletion import ProtectedError
 from django.http import JsonResponse
@@ -415,19 +415,20 @@ def catalogo_eliminar(request, pk):
     """
     Elimina un insumo únicamente si no compromete la trazabilidad histórica:
     - Exige permiso RBAC de eliminación (delete_articulo).
-    - Bloquea el borrado si el insumo registra despachos/movimientos asociados (RF-01).
-    - Bloquea el borrado si el insumo aún tiene stock físico mayor a cero.
-    - Registra la eliminación y los datos previos en BitacoraAuditoria (acción ELIMINAR).
+    - Bloquea el borrado si registra despachos o compras.
+    - Bloquea el borrado si aún tiene existencias físicas.
+    - Registra la eliminación y los datos previos en BitacoraAuditoria.
     """
     if request.method == "POST":
         try:
             with transaction.atomic():
+                # Bloquea el registro mientras se comprueba y elimina.
                 articulo = get_object_or_404(
                     Articulo.objects.select_for_update(),
                     pk=pk,
                 )
 
-                # Candado 1: Bloqueo si tiene movimientos de despacho registrados
+                # Candado 1: Bloqueo si tiene movimientos de despacho registrados.
                 if Despacho.objects.filter(articulo=articulo).exists():
                     messages.error(
                         request,
@@ -435,11 +436,46 @@ def catalogo_eliminar(request, pk):
                     )
                     return redirect("catalogo_listar")
 
-                # Candado 2: Bloqueo si posee existencias físicas en bodega
-                if articulo.stock_fisico > 0:
+                # Candado 2: Bloqueo si posee existencias físicas en bodega.
+                # También rechaza valores negativos si hubiera datos inconsistentes.
+                if articulo.stock_fisico != 0:
                     messages.error(
                         request,
-                        "No se puede eliminar un insumo con existencias.",
+                        "No se puede eliminar un insumo cuyo stock "
+                        "sea distinto de cero.",
+                    )
+                    return redirect("catalogo_listar")
+
+                # Candado 3: Comprueba compras en la tabla existente de Neon.
+                # Se utiliza SQL porque DetalleFactura todavía no está
+                # representado en los modelos de esta rama.
+                with connection.cursor() as cursor:
+                    tablas = connection.introspection.table_names(
+                        cursor=cursor
+                    )
+
+                    tiene_compras = False
+
+                    # Una instalación nueva puede no tener todavía
+                    # las tablas del módulo de compras.
+                    if "bodega_detallefactura" in tablas:
+                        cursor.execute(
+                            """
+                            SELECT EXISTS (
+                                SELECT 1
+                                FROM bodega_detallefactura
+                                WHERE articulo_id = %s
+                            )
+                            """,
+                            [articulo.pk],
+                        )
+                        tiene_compras = cursor.fetchone()[0]
+
+                if tiene_compras:
+                    messages.error(
+                        request,
+                        "No se puede eliminar: el insumo tiene "
+                        "compras registradas.",
                     )
                     return redirect("catalogo_listar")
 
@@ -448,7 +484,8 @@ def catalogo_eliminar(request, pk):
 
                 articulo.delete()
 
-                # Registro en bitácora inalterable tras eliminar
+                # Registro en bitácora tras eliminar.
+                # Si falla la auditoría, se revierte también la eliminación.
                 BitacoraAuditoria.objects.create(
                     usuario=request.user,
                     accion="ELIMINAR",
@@ -459,14 +496,40 @@ def catalogo_eliminar(request, pk):
                     detalle="Eliminación de insumo sin movimientos.",
                 )
 
-        # Candado 3: Protección de integridad referencial a nivel de base de datos (PROTECT)
+        # Protección de relaciones conocidas por el ORM de Django (PROTECT).
         except ProtectedError:
             messages.error(
                 request,
                 "No se puede eliminar: tiene registros asociados.",
             )
+
+        # Protección adicional para claves foráneas existentes
+        # en PostgreSQL que no estén representadas en los modelos.
+        # Se captura fuera de la transacción para permitir su reversión.
+        except IntegrityError as error:
+            causa = error.__cause__
+            codigo = (
+                getattr(causa, "pgcode", None)
+                or getattr(causa, "sqlstate", None)
+            )
+
+            # PostgreSQL: 23503 significa violación de clave foránea.
+            # Otros errores deben investigarse y no ocultarse.
+            if codigo != "23503":
+                raise
+
+            messages.error(
+                request,
+                "No se pudo completar la eliminación: existen "
+                "relaciones que impiden la operación. "
+                "El insumo se conservó.",
+            )
+
         else:
-            messages.success(request, "Insumo eliminado correctamente.")
+            messages.success(
+                request,
+                "Insumo eliminado correctamente.",
+            )
 
         return redirect("catalogo_listar")
 

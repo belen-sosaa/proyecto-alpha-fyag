@@ -4,56 +4,132 @@ import django.db.models.deletion
 from django.conf import settings
 from django.db import migrations, models
 
+from apps.bodega.migration_operations import AddFieldIfMissing
+
 
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('bodega', '0001_initial'),
+        ("bodega", "0001_initial"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
-        migrations.RemoveField(
-            model_name='articulo',
-            name='estado',
+        # Cambia el nombre del campo en el historial de Django.
+        # Conserva la columna "estado" y sus valores en PostgreSQL.
+        migrations.SeparateDatabaseAndState(
+            database_operations=[],
+            state_operations=[
+                migrations.RenameField(
+                    model_name="articulo",
+                    old_name="estado",
+                    new_name="estado_registrado",
+                ),
+                migrations.AlterField(
+                    model_name="articulo",
+                    name="estado_registrado",
+                    field=models.CharField(
+                        max_length=50,
+                        db_column="estado",
+                        editable=False,
+                    ),
+                ),
+            ],
         ),
-        migrations.AddField(
-            model_name='articulo',
-            name='codigo_barras',
-            field=models.CharField(blank=True, max_length=100, null=True, unique=True),
+
+        # Agrega estas columnas únicamente si no existen.
+        AddFieldIfMissing(
+            model_name="articulo",
+            name="codigo_barras",
+            field=models.CharField(
+                blank=True,
+                max_length=100,
+                null=True,
+                unique=True,
+            ),
         ),
-        migrations.AddField(
-            model_name='articulo',
-            name='stock_critico',
+
+        AddFieldIfMissing(
+            model_name="articulo",
+            name="stock_critico",
             field=models.PositiveIntegerField(default=0),
         ),
-        migrations.AddField(
-            model_name='articulo',
-            name='stock_minimo',
+
+        AddFieldIfMissing(
+            model_name="articulo",
+            name="stock_minimo",
             field=models.PositiveIntegerField(default=0),
         ),
-        migrations.AddField(
-            model_name='articulo',
-            name='unidad_medida',
-            field=models.CharField(default='unidad', max_length=30),
+
+        AddFieldIfMissing(
+            model_name="articulo",
+            name="unidad_medida",
+            field=models.CharField(
+                default="unidad",
+                max_length=30,
+            ),
         ),
+
         migrations.AlterField(
-            model_name='articulo',
-            name='stock_fisico',
+            model_name="articulo",
+            name="stock_fisico",
             field=models.PositiveIntegerField(default=0),
         ),
+
+        # Crea la tabla de auditoría.
         migrations.CreateModel(
-            name='BitacoraAuditoria',
+            name="BitacoraAuditoria",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('accion', models.CharField(max_length=50)),
-                ('entidad', models.CharField(max_length=100)),
-                ('id_registro', models.PositiveBigIntegerField()),
-                ('valor_anterior', models.JSONField(blank=True, null=True)),
-                ('valor_nuevo', models.JSONField(blank=True, null=True)),
-                ('detalle', models.TextField(blank=True)),
-                ('fecha_hora', models.DateTimeField(auto_now_add=True)),
-                ('usuario', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to=settings.AUTH_USER_MODEL)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "accion",
+                    models.CharField(max_length=50),
+                ),
+                (
+                    "entidad",
+                    models.CharField(max_length=100),
+                ),
+                (
+                    "id_registro",
+                    models.PositiveBigIntegerField(),
+                ),
+                (
+                    "valor_anterior",
+                    models.JSONField(
+                        blank=True,
+                        null=True,
+                    ),
+                ),
+                (
+                    "valor_nuevo",
+                    models.JSONField(
+                        blank=True,
+                        null=True,
+                    ),
+                ),
+                (
+                    "detalle",
+                    models.TextField(blank=True),
+                ),
+                (
+                    "fecha_hora",
+                    models.DateTimeField(auto_now_add=True),
+                ),
+                (
+                    "usuario",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.PROTECT,
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
         ),
     ]
