@@ -14,7 +14,7 @@ from django.urls import reverse
 from django.views.decorators.http import require_http_methods
 
 from .decorators import rol_requerido
-from .forms import ArticuloForm, ArticuloCatalogoForm
+from .forms import AccesoRUTForm, ArticuloForm, ArticuloCatalogoForm
 from .models import (
     Articulo,
     BitacoraAuditoria,
@@ -22,14 +22,16 @@ from .models import (
     Despacho,
     Obra,
 )
-
+from .roles import ADMIN_BODEGA, rol_principal
 
 
 # AUTENTICACIÓN Y VISTAS GENERALES DE BODEGA
 
 class AccesoView(LoginView):
     """Vista de inicio de sesión que redirige según el dispositivo (Web o Mobile)."""
+
     template_name = "login.html"
+    authentication_form = AccesoRUTForm
 
     def get_success_url(self):
         siguiente = self.get_redirect_url()
@@ -52,12 +54,13 @@ def vista_bodega(request):
 
     return render(request, "bodega.html", {
         "articulos": articulos,
+        "rol_actual": rol_principal(request.user),
     })
 
 
 @rol_requerido(
     "Administrador General",
-    "Administrador de Bodega",
+    ADMIN_BODEGA,
 )
 def articulo_crear(request):
     """Creación rápida de artículos desde el panel de bodega con control RBAC por rol."""
@@ -110,9 +113,7 @@ def articulo_crear(request):
     return render(request, "articulo_form.html", {"form": form})
 
 
-
 # OPERACIÓN MÓVIL (TABLET) Y DESPACHOS A OBRA
-
 
 @login_required
 def vista_mobile(request):
@@ -120,6 +121,7 @@ def vista_mobile(request):
     return render(request, "Mobile.html", {
         "articulos": Articulo.objects.select_related("categoria").all(),
         "obras": Obra.objects.all(),
+        "rol_actual": rol_principal(request.user),
     })
 
 
@@ -191,6 +193,7 @@ def procesar_despacho(request):
     }
 
     mock_file = Path(__file__).resolve().parent.parent / "mock_mongodb_cardex.json"
+
     try:
         if mock_file.exists():
             with mock_file.open("r", encoding="utf-8") as archivo:
@@ -198,16 +201,22 @@ def procesar_despacho(request):
                     documentos = json.load(archivo)
                 except json.JSONDecodeError:
                     documentos = []
+
                 if not isinstance(documentos, list):
                     documentos = []
         else:
             documentos = []
 
         documentos.append(mongo_document)
+
         with mock_file.open("w", encoding="utf-8") as archivo:
             json.dump(documentos, archivo, ensure_ascii=False, indent=2)
+
     except OSError:
-        messages.error(request, "No se pudo registrar el despacho en el almacenamiento local.")
+        messages.error(
+            request,
+            "No se pudo registrar el despacho en el almacenamiento local.",
+        )
         return redirect("bodega_mobile")
 
     articulo.stock_fisico -= cantidad
@@ -236,9 +245,7 @@ def obras_buscar(request):
     return JsonResponse(list(obras), safe=False)
 
 
-
 # CRUD DE INSUMOS (CATÁLOGO) CON RBAC, FILTROS, AUDITORÍA Y BLOQUEO DE BORRADO
-
 
 def datos_articulo(articulo):
     """Función auxiliar: serializa los datos del insumo para la Bitácora de Auditoría."""
@@ -253,7 +260,6 @@ def datos_articulo(articulo):
         "stock_minimo": articulo.stock_minimo,
         "stock_critico": articulo.stock_critico,
     }
-
 
 
 # 1. READ (Leer / Listar del CRUD) + Búsqueda y Filtros Combinados + RBAC
@@ -294,7 +300,6 @@ def catalogo_listar(request):
         "q": busqueda,
         "categoria_seleccionada": categoria_id,
     })
-
 
 
 # 2. CREATE (Crear del CRUD) + Prevención de Duplicados + Auditoría + RBAC
@@ -341,7 +346,6 @@ def catalogo_crear(request):
         "form": form,
         "titulo": "Crear insumo",
     })
-
 
 
 # 3. UPDATE (Actualizar / Editar del CRUD) + Bloqueo de Concurrencia + RBAC
@@ -404,7 +408,6 @@ def catalogo_editar(request, pk):
         "form": form,
         "titulo": "Editar insumo",
     })
-
 
 
 # 4. DELETE (Eliminar del CRUD) + Bloqueo por Movimientos/Stock + RBAC

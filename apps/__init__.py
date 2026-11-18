@@ -1,0 +1,1 @@
+"""Aplicaciones del proyecto FYAG."""

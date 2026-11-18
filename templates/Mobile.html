@@ -198,7 +198,7 @@
               >
                 {{ request.user.get_full_name|default:request.user.username }}
               </p>
-              <p class="text-[10px] text-slate-400">Bodeguero Terreno</p>
+              <p class="text-[10px] text-slate-400">{{ rol_actual }}</p>
             </div>
           </div>
           <form method="post" action="{% url 'logout' %}">
@@ -299,7 +299,7 @@
                       class="fas fa-building absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
                     ></i>
 
-                    {% include "includes/obra_autocomplete.html" %}
+                    {% include "obra_auto.html" %}
                     
                   </div>
                 </div>
