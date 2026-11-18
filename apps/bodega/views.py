@@ -13,12 +13,14 @@ from django.http import JsonResponse
 
 from .models import Articulo, Despacho, Obra,BitacoraAuditoria
 from .decorators import rol_requerido
-from .forms import ArticuloForm
+from .forms import AccesoRUTForm, ArticuloForm
+from .roles import ADMIN_BODEGA, rol_principal
 
 
 
 class AccesoView(LoginView):
     template_name = "login.html"
+    authentication_form = AccesoRUTForm
 
     def get_success_url(self):
         siguiente = self.get_redirect_url()
@@ -40,12 +42,13 @@ def vista_bodega(request):
 
     return render(request, "bodega.html", {
         "articulos": articulos,
+        "rol_actual": rol_principal(request.user),
     })
 
 
 @rol_requerido(
     "Administrador General",
-    "Administrador de Bodega",
+    ADMIN_BODEGA,
 )
 def articulo_crear(request):
     form = ArticuloForm(
@@ -111,6 +114,7 @@ def vista_mobile(request):
     return render(request, 'Mobile.html', {
         'articulos': Articulo.objects.select_related('categoria').all(),
         'obras': Obra.objects.all(),
+        'rol_actual': rol_principal(request.user),
     })
 
 
