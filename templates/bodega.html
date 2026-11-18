@@ -154,13 +154,19 @@
             <i class="fas fa-boxes w-5 text-center"></i> Bodega y Despachos
           </button>
 
-          <button
-            onclick="cambiarPestana('tab-catalogo', this)"
-            class="menu-btn w-full flex items-center gap-3 text-slate-300 p-3 hover:bg-white/10 hover:text-white rounded-lg transition text-left"
-          >
-            <i class="fas fa-clipboard-list w-5 text-center"></i> Catálogo y
-            Auditoría
-          </button>
+                    <!-- Acceso al catálogo con permisos de lectura. -->
+          {% if perms.bodega.view_articulo %}
+            <a
+              href="{% url 'catalogo_listar' %}"
+              class="w-full flex items-center gap-3 text-slate-300 p-3 hover:bg-white/10 hover:text-white rounded-lg transition text-left"
+            >
+              <i
+                class="fas fa-clipboard-list w-5 text-center"
+                aria-hidden="true"
+              ></i>
+              Catálogo y Auditoría
+            </a>
+          {% endif %}
 
           <button
             onclick="cambiarPestana('tab-finanzas', this)"
