@@ -68,6 +68,7 @@ document.querySelectorAll("[data-obra-autocomplete]").forEach((root) => {
 
           boton.type = "button";
           boton.textContent = obra.nombre;
+          boton.className = "w-full px-4 py-3 text-left text-sm hover:bg-blue-50 focus:bg-blue-50";
 
           boton.addEventListener("click", () => {
             texto.value = obra.nombre;

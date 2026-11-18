@@ -156,29 +156,34 @@
             Módulos
           </p>
 
+          {% if mostrar_bodega %}
           <button
             onclick="cambiarPestana('tab-bodega', this)"
             class="menu-btn w-full flex items-center gap-4 bg-blue-600 text-white p-4 rounded-xl shadow-md transition text-left text-sm font-bold"
           >
-            <i class="fas fa-boxes w-6 text-center text-lg"></i> Bodega y
-            Despachos
+            <i class="fas fa-boxes w-6 text-center text-lg"></i> {% if recepcion %}Recepción de despachos{% else %}Bodega y Despachos{% endif %}
           </button>
+          {% endif %}
 
+          {% if mostrar_catalogo %}
           <button
             onclick="cambiarPestana('tab-catalogo', this)"
-            class="menu-btn w-full flex items-center gap-4 text-slate-300 p-4 hover:bg-white/10 hover:text-white rounded-xl transition text-left text-sm font-semibold"
+            class="menu-btn w-full flex items-center gap-4 {% if not mostrar_bodega %}bg-blue-600 text-white{% else %}text-slate-300{% endif %} p-4 hover:bg-white/10 hover:text-white rounded-xl transition text-left text-sm font-semibold"
           >
             <i class="fas fa-clipboard-list w-6 text-center text-lg"></i>
             Catálogo y Auditoría
           </button>
+          {% endif %}
 
+          {% if mostrar_finanzas %}
           <button
             onclick="cambiarPestana('tab-finanzas', this)"
-            class="menu-btn w-full flex items-center gap-4 text-slate-300 p-4 hover:bg-white/10 hover:text-white rounded-xl transition text-left text-sm font-semibold"
+            class="menu-btn w-full flex items-center gap-4 {% if not mostrar_bodega and not mostrar_catalogo %}bg-blue-600 text-white{% else %}text-slate-300{% endif %} p-4 hover:bg-white/10 hover:text-white rounded-xl transition text-left text-sm font-semibold"
           >
             <i class="fas fa-file-invoice-dollar w-6 text-center text-lg"></i>
             Compras y Finanzas
           </button>
+          {% endif %}
         </nav>
 
         <!-- Perfil Usuario -->
@@ -233,7 +238,7 @@
             id="titulo-header"
             class="text-lg md:text-xl font-bold text-slate-800 truncate"
           >
-            Bodega y Despachos
+            {% if recepcion %}Recepción de despachos{% elif mostrar_bodega %}Bodega y Despachos{% elif mostrar_catalogo %}Catálogo y Auditoría{% elif mostrar_finanzas %}Compras y Finanzas{% else %}Panel{% endif %}
           </h2>
         </div>
         <button class="text-slate-400 hover:text-blue-600 p-2 relative">
@@ -249,6 +254,7 @@
         class="p-4 md:p-6 flex-1 overflow-y-auto w-full max-w-6xl mx-auto pb-24"
       >
         <!-- TAB 1: BODEGA Y DESPACHOS -->
+        {% if mostrar_bodega %}
         <div id="tab-bodega" class="pestana-contenido block">
           {% if messages %}
           <div class="mb-4 space-y-2">
@@ -263,6 +269,13 @@
           {% endif %}
           <!-- Grid ajustado para Tablet (Se apilan en vertical si la pantalla es muy estrecha, 2 columnas si hay espacio) -->
           <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+            {% if recepcion %}
+            <div class="bg-white p-6 rounded-2xl shadow-sm">
+              <h3 class="text-lg font-bold">Recepción de despachos</h3>
+              <p class="mt-2 text-slate-600">La confirmación de recepción estará disponible cuando se incorpore la firma.</p>
+            </div>
+            {% endif %}
+            {% if perm.despachar %}
             <!-- Despacho -->
             <div
               class="bg-white p-5 md:p-6 rounded-2xl shadow-sm border border-slate-100"
@@ -290,19 +303,7 @@
                 class="space-y-5"
               >
                 {% csrf_token %}
-                <div>
-                  <label class="block text-sm font-bold text-slate-600 mb-1.5"
-                    >Obra de Destino</label
-                  >
-                  <div class="relative">
-                    <i
-                      class="fas fa-building absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
-                    ></i>
-
-                    {% include "obra_auto.html" %}
-                    
-                  </div>
-                </div>
+                    {% include "despachos/obra_auto.html" %}
                 <div>
                   <label class="block text-sm font-bold text-slate-600 mb-1.5"
                     >Artículo a despachar</label
@@ -349,7 +350,8 @@
                 </button>
               </form>
             </div>
-
+            {% endif %}
+            {% if perm.registrar_merma %}
             <!-- Mermas -->
             <div
               class="bg-white p-5 md:p-6 rounded-2xl shadow-sm border border-slate-100"
@@ -393,11 +395,14 @@
                 </button>
               </div>
             </div>
+            {% endif %}
           </div>
         </div>
+        {% endif %}
 
         <!-- TAB 2: CATÁLOGO -->
-        <div id="tab-catalogo" class="pestana-contenido hidden h-full">
+        {% if mostrar_catalogo %}
+        <div id="tab-catalogo" class="pestana-contenido {% if mostrar_bodega %}hidden{% endif %} h-full">
           <div
             class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col"
           >
@@ -410,11 +415,11 @@
                 ></i>
                 Cardex Central
               </h3>
-              <button
-                class="bg-indigo-600 text-white px-5 py-3 rounded-xl hover:bg-indigo-700 transition text-sm font-bold shadow-md shadow-indigo-200 flex items-center justify-center w-full sm:w-auto"
-              >
-                <i class="fas fa-plus mr-2 text-lg"></i> Nuevo
-              </button>
+              {% if perm.ingresar_articulo %}
+              <a href="{% url 'articulo_crear' %}" class="bg-indigo-600 text-white px-5 py-3 rounded-xl font-bold">
+                Nuevo Artículo
+              </a>
+              {% endif %}
             </div>
 
             <!-- Tabla responsiva (Se puede deslizar hacia el lado en tablet) -->
@@ -473,9 +478,11 @@
             </div>
           </div>
         </div>
+        {% endif %}
 
         <!-- TAB 3: FINANZAS -->
-        <div id="tab-finanzas" class="pestana-contenido hidden h-full">
+        {% if mostrar_finanzas %}
+        <div id="tab-finanzas" class="pestana-contenido {% if mostrar_bodega or mostrar_catalogo %}hidden{% endif %} h-full">
           <div
             class="max-w-2xl mx-auto bg-white p-5 md:p-8 rounded-2xl shadow-sm border border-slate-100"
           >
@@ -533,16 +540,16 @@
               </div>
             </div>
 
-            <button
-              onclick="calcularFinanzas()"
-              class="w-full bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl p-4 shadow-lg shadow-green-200 transition text-lg flex items-center justify-center"
-            >
-              <i class="fas fa-check-double mr-2"></i> Registrar Compra
-            </button>
+            <p class="mt-4 text-sm text-slate-600">Vista previa. El registro de facturas aún no está disponible.</p>
           </div>
         </div>
+        {% endif %}
+        {% if not mostrar_bodega and not mostrar_catalogo and not mostrar_finanzas %}
+        <p class="text-slate-600">Tu cuenta todavía no tiene módulos operativos disponibles.</p>
+        {% endif %}
       </div>
 
+      {% if perm.despachar %}
       <!-- Lector QR (Modal adaptado para pantalla táctil) -->
       <div
         id="modal-qr"
@@ -581,6 +588,7 @@
           </div>
         </div>
       </div>
+      {% endif %}
 
       <!-- Notificaciones Tipo App -->
       <div
@@ -627,12 +635,7 @@
           "menu-btn w-full flex items-center gap-4 bg-blue-600 text-white p-4 rounded-xl shadow-md transition text-left text-sm font-bold";
 
         // Cambiar título
-        const titulos = {
-          "tab-bodega": "Bodega y Despachos",
-          "tab-catalogo": "Cardex Central",
-          "tab-finanzas": "Ingreso de Compras",
-        };
-        document.getElementById("titulo-header").innerText = titulos[idTab];
+        document.getElementById("titulo-header").innerText = btnElement.textContent.trim().replace(/\s+/g, " ");
 
         // Autocerrar el menú si estamos en un dispositivo móvil/tablet
         if (window.innerWidth < 1024) {
@@ -640,7 +643,6 @@
         }
       }
 
-      // Resto de tus funciones originales intactas
       function mostrarMensaje(mensaje, tipo) {
         const toast = document.getElementById("toast");
         toast.className = `fixed bottom-6 left-1/2 -translate-x-1/2 w-11/12 max-w-sm px-5 py-4 rounded-2xl shadow-2xl flex items-center gap-3 z-50 text-white font-bold transition-all ${tipo === "error" ? "bg-red-600" : "bg-slate-800"}`;
@@ -651,21 +653,6 @@
         setTimeout(() => toast.classList.add("hidden"), 3000);
       }
 
-      function validarDespacho() {
-        const cant = document.getElementById("cant-despacho").value;
-        const obra = document.getElementById("obra-dest").value;
-        if (!obra.trim()) {
-          mostrarMensaje("Falta obra de destino.", "error");
-          return;
-        }
-        if (cant <= 0 || cant === "") {
-          mostrarMensaje("Cantidad inválida.", "error");
-          return;
-        }
-        mostrarMensaje("Despacho validado (ACID).", "exito");
-        document.getElementById("cant-despacho").value = "1";
-      }
-
       function validarMerma() {
         const motivo = document.getElementById("motivo-merma").value;
         if (motivo.trim() === "") {
@@ -674,10 +661,6 @@
         }
         mostrarMensaje("Merma inalterable guardada.", "exito");
         document.getElementById("motivo-merma").value = "";
-      }
-
-      function calcularFinanzas() {
-        mostrarMensaje("Compra y stock registrados.", "exito");
       }
 
       function abrirQR() {
@@ -715,6 +698,8 @@
       );
     </script>
     {% endfor %} {% endif %}
-    <script src="{% static 'bodega/obra_auto.js' %}" defer></script>
+    {% if perm.despachar %}
+    <script src="{% static 'js/obra_auto.js' %}" defer></script>
+    {% endif %}
   </body>
 </html>

@@ -8,6 +8,7 @@ BODEGUERO = "Bodeguero"
 FINANZAS = "Administrativo de Finanzas"
 SUPERVISOR = "Supervisor de Obra"
 AUDITOR = "Auditor"
+ADMIN_GENERAL_LEGADO = "Administrador General"
 
 ROLES = (GERENTE, ADMIN_TI, ADMIN_BODEGA, BODEGUERO, FINANZAS, SUPERVISOR, AUDITOR)
 SIN_ROL = "Sin rol"
@@ -26,21 +27,22 @@ MODULOS = {
 ACCESO = {
     GERENTE: ("panel", "catalogo", "cardex", "compras"),
     ADMIN_TI: ("panel", "usuarios"),
-    ADMIN_BODEGA: ("panel", "catalogo", "cardex", "compras"),
+    ADMIN_BODEGA: ("panel", "catalogo", "cardex", "despacho", "merma", "compras"),
     BODEGUERO: ("panel", "catalogo", "despacho", "merma", "compras"),
     FINANZAS: ("panel", "compras", "cardex"),
-    SUPERVISOR: ("panel", "catalogo", "despacho"),
+    SUPERVISOR: ("panel", "despacho"),
     AUDITOR: ("panel", "cardex", "catalogo"),
+    ADMIN_GENERAL_LEGADO: ("panel", "catalogo", "cardex"),
 }
 
 FACULTADES = {
     "emitir_oc": (FINANZAS,),
     "crear_presupuesto": (BODEGUERO, ADMIN_BODEGA),
     "registrar_merma": (BODEGUERO, ADMIN_BODEGA),
-    "ingresar_articulo": (ADMIN_BODEGA,),
+    "ingresar_articulo": (ADMIN_BODEGA, ADMIN_GENERAL_LEGADO),
     "gestionar_usuarios": (ADMIN_TI,),
     "ver_costos": (GERENTE, FINANZAS, ADMIN_BODEGA),
-    "despachar": (BODEGUERO, ADMIN_BODEGA, SUPERVISOR),
+    "despachar": (BODEGUERO, ADMIN_BODEGA),
 }
 
 
@@ -49,13 +51,15 @@ def rol_principal(user):
     if not user or not user.is_authenticated:
         return SIN_ROL
 
-    rol = (
-        user.groups.filter(name__in=ROLES)
+    grupos = (
+        user.groups.filter(name__in=(*ROLES, ADMIN_GENERAL_LEGADO))
         .order_by("pk")
         .values_list("name", flat=True)
-        .first()
     )
-    return rol or SIN_ROL
+    for grupo in grupos:
+        if grupo in ROLES:
+            return grupo
+    return ADMIN_GENERAL_LEGADO if ADMIN_GENERAL_LEGADO in grupos else SIN_ROL
 
 
 def claves_de(user):

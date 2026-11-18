@@ -2,7 +2,7 @@ from django import forms
 from django.contrib.auth import authenticate
 from django.contrib.auth.hashers import make_password
 
-from .models import Articulo, PerfilUsuario, normalizar_rut
+from apps.bodega.models import PerfilUsuario, normalizar_rut
 
 
 class AccesoRUTForm(forms.Form):
@@ -28,7 +28,6 @@ class AccesoRUTForm(forms.Form):
                 .first()
             )
             if identidad is None:
-                # Mantiene un costo de verificación similar para un RUT sin cuenta.
                 make_password(password)
             else:
                 usuario_id, username = identidad
@@ -41,47 +40,3 @@ class AccesoRUTForm(forms.Form):
 
     def get_user(self):
         return self.usuario
-
-
-class ArticuloForm(forms.ModelForm):
-    class Meta:
-        model = Articulo
-        fields = [
-            "sku",
-            "codigo_barras",
-            "descripcion",
-            "categoria",
-            "unidad_medida",
-            "stock_fisico",
-            "stock_minimo",
-            "stock_critico",
-        ]
-
-    def clean_sku(self):
-        sku = self.cleaned_data["sku"].strip()
-
-        existentes = Articulo.objects.filter(sku=sku)
-        if self.instance.pk:
-            existentes = existentes.exclude(pk=self.instance.pk)
-
-        if existentes.exists():
-            raise forms.ValidationError("Artículo ya registrado")
-
-        return sku
-
-    def clean_codigo_barras(self):
-        codigo = self.cleaned_data.get("codigo_barras")
-
-        # Los campos vacíos se guardan como NULL.
-        codigo = codigo.strip() if codigo else None
-        if not codigo:
-            return None
-
-        existentes = Articulo.objects.filter(codigo_barras=codigo)
-        if self.instance.pk:
-            existentes = existentes.exclude(pk=self.instance.pk)
-
-        if existentes.exists():
-            raise forms.ValidationError("Artículo ya registrado")
-
-        return codigo

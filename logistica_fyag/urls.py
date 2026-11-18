@@ -15,17 +15,25 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
+from django.conf import settings
 from django.contrib.auth.views import LogoutView
+from django.conf.urls.static import static
 from django.urls import path
-from apps.bodega import views
+from apps.bodega.views import vista_bodega
+from apps.cuentas.views import AccesoView
+from apps.catalogo.views import articulo_crear
+from apps.despachos.views import vista_mobile, obras_buscar, procesar_despacho
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('', views.AccesoView.as_view(), name='login'),
+    path('', AccesoView.as_view(), name='login'),
     path('logout/', LogoutView.as_view(), name='logout'),
-    path('bodega/', views.vista_bodega, name='bodega_web'),
-    path('articulos/nuevo/', views.articulo_crear, name = "articulo_crear"),
-    path('mobile/', views.vista_mobile, name='bodega_mobile'),
-    path('obras/buscar/', views.obras_buscar, name= "obras_buscar"),
-    path('despacho/procesar/', views.procesar_despacho, name='procesar_despacho'),
+    path('bodega/', vista_bodega, name='bodega_web'),
+    path('articulos/nuevo/', articulo_crear, name="articulo_crear"),
+    path('mobile/', vista_mobile, name='bodega_mobile'),
+    path('obras/buscar/', obras_buscar, name="obras_buscar"),
+    path('despacho/procesar/', procesar_despacho, name='procesar_despacho'),
 ]
+
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

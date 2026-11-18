@@ -147,28 +147,34 @@
             Módulos Operativos
           </p>
 
+          {% if mostrar_bodega %}
           <button
             onclick="cambiarPestana('tab-bodega', this)"
             class="menu-btn w-full flex items-center gap-3 bg-blue-600 text-white p-3 rounded-lg shadow transition text-left"
           >
-            <i class="fas fa-boxes w-5 text-center"></i> Bodega y Despachos
+            <i class="fas fa-boxes w-5 text-center"></i> {% if recepcion %}Recepción de despachos{% else %}Bodega y Despachos{% endif %}
           </button>
+          {% endif %}
 
+          {% if mostrar_catalogo %}
           <button
             onclick="cambiarPestana('tab-catalogo', this)"
-            class="menu-btn w-full flex items-center gap-3 text-slate-300 p-3 hover:bg-white/10 hover:text-white rounded-lg transition text-left"
+            class="menu-btn w-full flex items-center gap-3 {% if not mostrar_bodega %}bg-blue-600 text-white{% else %}text-slate-300{% endif %} p-3 hover:bg-white/10 hover:text-white rounded-lg transition text-left"
           >
             <i class="fas fa-clipboard-list w-5 text-center"></i> Catálogo y
             Auditoría
           </button>
+          {% endif %}
 
+          {% if mostrar_finanzas %}
           <button
             onclick="cambiarPestana('tab-finanzas', this)"
-            class="menu-btn w-full flex items-center gap-3 text-slate-300 p-3 hover:bg-white/10 hover:text-white rounded-lg transition text-left"
+            class="menu-btn w-full flex items-center gap-3 {% if not mostrar_bodega and not mostrar_catalogo %}bg-blue-600 text-white{% else %}text-slate-300{% endif %} p-3 hover:bg-white/10 hover:text-white rounded-lg transition text-left"
           >
             <i class="fas fa-file-invoice-dollar w-5 text-center"></i> Compras y
             Finanzas
           </button>
+          {% endif %}
         </nav>
 
         <div
@@ -213,7 +219,7 @@
         class="bg-white h-16 border-b border-gray-200 flex items-center justify-between px-8 shadow-sm z-10"
       >
         <h2 id="titulo-header" class="text-xl font-bold text-gray-800">
-          Módulo de Bodega y Despachos
+          {% if recepcion %}Recepción de despachos{% elif mostrar_bodega %}Módulo de Bodega y Despachos{% elif mostrar_catalogo %}Catálogo y Auditoría{% elif mostrar_finanzas %}Compras y Finanzas{% else %}Panel{% endif %}
         </h2>
         <div class="flex items-center gap-4 text-sm text-gray-500">
           <button
@@ -229,72 +235,24 @@
       <!-- Secciones -->
       <div class="p-8 h-full">
         <!-- Bodega y despachos -->
+        {% if mostrar_bodega %}
         <div id="tab-bodega" class="pestana-contenido block h-full">
           <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <!-- Despacho -->
-            <div
-              class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100"
-            >
-              <div class="flex justify-between items-center mb-6">
-                <h3 class="text-lg font-bold text-gray-800">
-                  <i class="fas fa-truck-fast text-blue-600 mr-2"></i> Nuevo
-                  Despacho a Obra
-                </h3>
-                <button
-                  onclick="abrirQR()"
-                  class="bg-blue-50 text-blue-600 px-4 py-2 rounded-lg hover:bg-blue-100 transition text-sm font-bold border border-blue-200 shadow-sm"
-                >
-                  <i class="fas fa-qrcode mr-2"></i> Escanear Artículo
-                </button>
-              </div>
-
-              <div class="space-y-5 text-sm">
-                <div>
-                  <label class="block font-semibold text-gray-600 mb-1"
-                    >Obra de Destino (Buscador Predictivo)</label
-                  >
-                  <input
-                    type="text"
-                    id="obra-dest"
-                    class="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 outline-none"
-                    placeholder="Escriba mínimo 3 letras (Ej: OBR)"
-                  />
-                </div>
-                <div>
-                  <label class="block font-semibold text-gray-600 mb-1"
-                    >Artículo a despachar</label
-                  >
-                  <input
-                    type="text"
-                    id="input-articulo"
-                    disabled
-                    value="Esperando escaneo de cámara..."
-                    class="w-full bg-gray-50 border border-gray-200 text-gray-500 rounded-lg p-3"
-                  />
-                </div>
-                <div class="flex gap-4">
-                  <div class="flex-1">
-                    <label class="block font-semibold text-gray-600 mb-1"
-                      >Cantidad</label
-                    >
-                    <input
-                      type="number"
-                      id="cant-despacho"
-                      min="1"
-                      value="1"
-                      class="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 outline-none"
-                    />
-                  </div>
-                </div>
-                <button
-                  onclick="validarDespacho()"
-                  class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg p-3 mt-2 shadow-md transition"
-                >
-                  <i class="fas fa-check-circle mr-2"></i> Confirmar Despacho
-                </button>
-              </div>
+            {% if recepcion %}
+            <div class="bg-white p-6 rounded-2xl shadow-sm">
+              <h3 class="text-lg font-bold">Recepción de despachos</h3>
+              <p class="mt-2 text-slate-600">La confirmación de recepción estará disponible cuando se incorpore la firma.</p>
             </div>
-
+            {% endif %}
+            {% if perm.despachar %}
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+              <h3 class="text-lg font-bold text-gray-800 mb-4">Despacho a obra</h3>
+              <a href="{% url 'bodega_mobile' %}" class="inline-block bg-blue-600 text-white px-4 py-3 rounded-lg font-bold">
+                Abrir formulario de despacho
+              </a>
+            </div>
+            {% endif %}
+            {% if perm.registrar_merma %}
             <!-- Mermas -->
             <div
               class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100"
@@ -334,11 +292,14 @@
                 </button>
               </div>
             </div>
+            {% endif %}
           </div>
         </div>
+        {% endif %}
 
         <!-- Catálogo y auditoría -->
-        <div id="tab-catalogo" class="pestana-contenido hidden h-full">
+        {% if mostrar_catalogo %}
+        <div id="tab-catalogo" class="pestana-contenido {% if mostrar_bodega %}hidden{% endif %} h-full">
           <div
             class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 h-full flex flex-col"
           >
@@ -353,13 +314,11 @@
                 >
                   <i class="fas fa-file-pdf text-red-500 mr-2"></i> Exportar PDF
                 </button>
-                <button
-                  class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition text-sm font-bold shadow-sm"
-                >
-                  <a href="{% url 'articulo_crear' %}">
-                      Nuevo Artículo
-                  </a>
-                </button>
+                {% if perm.ingresar_articulo %}
+                <a href="{% url 'articulo_crear' %}" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition text-sm font-bold">
+                  Nuevo Artículo
+                </a>
+                {% endif %}
               </div>
             </div>
 
@@ -440,9 +399,11 @@
             </div>
           </div>
         </div>
+        {% endif %}
 
         <!-- Compras y finanzas -->
-        <div id="tab-finanzas" class="pestana-contenido hidden h-full">
+        {% if mostrar_finanzas %}
+        <div id="tab-finanzas" class="pestana-contenido {% if mostrar_bodega or mostrar_catalogo %}hidden{% endif %} h-full">
           <div
             class="max-w-4xl mx-auto bg-white p-8 rounded-2xl shadow-sm border border-gray-100"
           >
@@ -542,54 +503,13 @@
               </div>
             </div>
 
-            <button
-              onclick="calcularFinanzas()"
-              class="w-full bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg p-4 shadow-lg transition text-lg"
-            >
-              <i class="fas fa-check-double mr-2"></i> Registrar Compra en
-              Sistema
-            </button>
+            <p class="mt-4 text-sm text-slate-600">Vista previa. El registro de facturas aún no está disponible.</p>
           </div>
         </div>
-      </div>
-
-      <!-- Lector QR -->
-      <div
-        id="modal-qr"
-        class="hidden fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-sm items-center justify-center"
-      >
-        <div
-          class="bg-white rounded-2xl shadow-2xl p-8 w-[400px] text-center border-t-4 border-blue-500"
-        >
-          <h3 class="text-xl font-bold text-slate-800 mb-2">
-            <i class="fas fa-camera text-blue-500 mr-2"></i> Lector Activo
-          </h3>
-          <p class="text-sm text-slate-500 mb-6">
-            Enfoque el código de barras o QR
-          </p>
-          <div
-            class="w-full h-48 bg-slate-100 border-2 border-dashed border-blue-300 rounded-xl flex items-center justify-center mb-8 relative overflow-hidden"
-          >
-            <i class="fas fa-qrcode text-6xl text-slate-300"></i>
-            <div
-              class="absolute w-full h-1 bg-blue-500 top-1/2 -translate-y-1/2 shadow-[0_0_15px_rgba(59,130,246,1)]"
-            ></div>
-          </div>
-          <div class="flex gap-3">
-            <button
-              onclick="cerrarQR()"
-              class="flex-1 border border-slate-300 text-slate-600 hover:bg-slate-100 font-bold py-3 rounded-xl transition"
-            >
-              Cancelar
-            </button>
-            <button
-              onclick="simularLectura()"
-              class="flex-1 bg-blue-600 text-white hover:bg-blue-700 font-bold py-3 rounded-xl shadow-md transition"
-            >
-              Simular Lectura
-            </button>
-          </div>
-        </div>
+        {% endif %}
+        {% if not mostrar_bodega and not mostrar_catalogo and not mostrar_finanzas %}
+        <p class="text-slate-600">Tu cuenta todavía no tiene módulos operativos disponibles.</p>
+        {% endif %}
       </div>
 
       <!-- Notificaciones -->
@@ -627,12 +547,7 @@
         btnElement.className =
           "menu-btn w-full flex items-center gap-3 bg-blue-600 text-white p-3 rounded-lg shadow transition text-left";
 
-        const titulos = {
-          "tab-bodega": "Módulo de Bodega y Despachos",
-          "tab-catalogo": "Auditoría y Catálogo Central",
-          "tab-finanzas": "Gestión de Abastecimiento y Finanzas",
-        };
-        document.getElementById("titulo-header").innerText = titulos[idTab];
+        document.getElementById("titulo-header").innerText = btnElement.textContent.trim().replace(/\s+/g, " ");
       }
 
       function mostrarMensaje(mensaje, tipo) {
@@ -643,27 +558,6 @@
             ? `<i class="fas fa-exclamation-triangle mr-2"></i>${mensaje}`
             : `<i class="fas fa-info-circle text-blue-400 mr-2"></i>${mensaje}`;
         setTimeout(() => toast.classList.add("hidden"), 3000);
-      }
-
-      function validarDespacho() {
-        const cant = document.getElementById("cant-despacho").value;
-        const obra = document.getElementById("obra-dest").value;
-        if (!obra.trim()) {
-          mostrarMensaje("Debe especificar la obra de destino.", "error");
-          return;
-        }
-        if (cant <= 0 || cant === "") {
-          mostrarMensaje(
-            "La cantidad a despachar debe ser mayor a cero.",
-            "error",
-          );
-          return;
-        }
-        mostrarMensaje(
-          "Despacho registrado correctamente y validado con bloqueo ACID.",
-          "exito",
-        );
-        document.getElementById("cant-despacho").value = "1";
       }
 
       function validarMerma() {
@@ -682,34 +576,6 @@
         document.getElementById("motivo-merma").value = "";
       }
 
-      function calcularFinanzas() {
-        mostrarMensaje(
-          "Factura procesada. Stock incrementado y precios actualizados en base de datos.",
-          "exito",
-        );
-      }
-
-      function abrirQR() {
-        document.getElementById("modal-qr").classList.remove("hidden");
-        document.getElementById("modal-qr").classList.add("flex");
-      }
-      function cerrarQR() {
-        document.getElementById("modal-qr").classList.add("hidden");
-        document.getElementById("modal-qr").classList.remove("flex");
-      }
-      function simularLectura() {
-        cerrarQR();
-        const input = document.getElementById("input-articulo");
-        input.value = "SKU-9901 | Filtro de Aceite Industrial";
-        input.classList.remove("text-gray-500", "bg-gray-50");
-        input.classList.add(
-          "text-blue-700",
-          "bg-blue-50",
-          "border-blue-300",
-          "font-bold",
-        );
-        mostrarMensaje("Código escaneado correctamente.", "exito");
-      }
       function alternarWireframe() {
         document.body.classList.toggle("modo-boceto");
       }

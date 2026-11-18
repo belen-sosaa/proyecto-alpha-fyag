@@ -1,13 +1,18 @@
+from pathlib import Path
+from tempfile import TemporaryDirectory
+from unittest.mock import patch
+
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AnonymousUser, Group
+from django.contrib.staticfiles import finders
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.http import HttpResponse
 from django.test import RequestFactory, TestCase
 from django.urls import reverse
 
-from .decorators import facultad_requerida, roles_validos
-from .models import Articulo, BitacoraAuditoria, Categoria, PerfilUsuario
-from .roles import (
+from apps.cuentas.decorators import facultad_requerida, roles_validos
+from .models import Articulo, BitacoraAuditoria, Categoria, Despacho, Obra, PerfilUsuario
+from apps.cuentas.roles import (
     ADMIN_BODEGA,
     ADMIN_TI,
     AUDITOR,
@@ -90,6 +95,67 @@ class RolesTests(TestCase):
         usuario.groups.add(grupo)
         self.client.force_login(usuario)
         self.assertEqual(self.client.get(url).status_code, 200)
+
+    def test_supervisor_solo_ve_recepcion_en_ambas_versiones(self):
+        self.client.force_login(self.usuarios[SUPERVISOR])
+        for ruta in ("bodega_web", "bodega_mobile"):
+            with self.subTest(ruta=ruta):
+                respuesta = self.client.get(reverse(ruta))
+                self.assertContains(respuesta, "Recepción de despachos")
+                self.assertNotContains(respuesta, 'id="tab-finanzas"')
+                self.assertNotContains(respuesta, 'id="tab-catalogo"')
+                self.assertNotContains(respuesta, reverse("procesar_despacho"))
+
+    def test_ti_no_recibe_modulos_operativos_y_finanzas_ve_su_modulo(self):
+        for rol in (ADMIN_TI, FINANZAS):
+            with self.subTest(rol=rol):
+                self.client.force_login(self.usuarios[rol])
+                respuesta = self.client.get(reverse("bodega_web"))
+                self.assertNotContains(respuesta, 'id="tab-bodega"')
+                self.assertNotContains(respuesta, 'href="' + reverse("articulo_crear") + '"')
+                if rol == FINANZAS:
+                    self.assertContains(respuesta, 'id="tab-finanzas"')
+                else:
+                    self.assertNotContains(respuesta, 'id="tab-finanzas"')
+                    self.assertNotContains(respuesta, 'id="tab-catalogo"')
+
+    def test_roles_ajenos_a_bodega_no_pueden_despachar_ni_buscar_obras(self):
+        for rol in (ADMIN_TI, SUPERVISOR, FINANZAS, GERENTE, AUDITOR):
+            with self.subTest(rol=rol):
+                self.client.force_login(self.usuarios[rol])
+                self.assertEqual(self.client.post(reverse("procesar_despacho")).status_code, 403)
+                self.assertEqual(self.client.get(reverse("obras_buscar"), {"q": "Edi"}).status_code, 403)
+
+    def test_bodega_puede_despachar_y_descontar_stock(self):
+        self.assertIsNotNone(finders.find("js/obra_auto.js"))
+        obra = Obra.objects.create(nombre="Edificio A")
+        categoria = Categoria.objects.create(nombre="Herramientas")
+        for rol in (BODEGUERO, ADMIN_BODEGA):
+            with self.subTest(rol=rol):
+                articulo = Articulo.objects.create(
+                    sku=rol, descripcion="Insumo de prueba", categoria=categoria, stock_fisico=10,
+                )
+                usuario = self.usuarios[rol]
+                self.client.force_login(usuario)
+                pagina = self.client.get(reverse("bodega_mobile"))
+                self.assertContains(pagina, 'action="' + reverse("procesar_despacho") + '"')
+                self.assertContains(pagina, "js/obra_auto.js")
+                self.assertEqual(self.client.get(reverse("obras_buscar"), {"q": "Ed"}).json(), [])
+                self.assertEqual(
+                    self.client.get(reverse("obras_buscar"), {"q": "Edi"}).json(),
+                    [{"id": obra.pk, "nombre": obra.nombre}],
+                )
+
+                with TemporaryDirectory() as carpeta, patch("apps.despachos.views.Path") as ruta:
+                    ruta.return_value.resolve.return_value = Path(carpeta) / "bodega" / "views.py"
+                    respuesta = self.client.post(reverse("procesar_despacho"), {
+                        "articulo": articulo.pk, "obra": obra.pk, "cantidad": 3,
+                    })
+
+                self.assertRedirects(respuesta, reverse("bodega_mobile"))
+                articulo.refresh_from_db()
+                self.assertEqual(articulo.stock_fisico, 7)
+                self.assertTrue(Despacho.objects.filter(articulo=articulo, usuario=usuario, cantidad=3).exists())
 
 
 class AccesoRUTTests(TestCase):
