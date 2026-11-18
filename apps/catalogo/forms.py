@@ -1,6 +1,7 @@
 from django import forms
 
 from apps.bodega.models import Articulo
+from apps.catalogo.especificaciones import validar_caracteristicas
 
 
 class ArticuloForm(forms.ModelForm):
@@ -8,7 +9,7 @@ class ArticuloForm(forms.ModelForm):
         model = Articulo
         fields = [
             "sku", "codigo_barras", "descripcion", "categoria", "unidad_medida",
-            "stock_fisico", "stock_minimo", "stock_critico",
+            "ubicacion_fisica", "stock_fisico", "stock_minimo", "stock_critico",
         ]
 
     def clean_sku(self):
@@ -31,3 +32,38 @@ class ArticuloForm(forms.ModelForm):
         if existentes.exists():
             raise forms.ValidationError("Artículo ya registrado")
         return codigo
+
+
+class ArticuloCatalogoForm(ArticuloForm):
+    especificaciones = forms.JSONField(
+        required=False,
+        label="Especificaciones técnicas",
+        widget=forms.Textarea(attrs={
+            "rows": 6,
+            "placeholder": '{"marca": "Ejemplo", "modelo": "ABC", "voltaje": 220}',
+        }),
+        help_text="Ingresa un objeto JSON con las características técnicas.",
+    )
+
+    class Meta(ArticuloForm.Meta):
+        fields = [
+            "sku", "codigo_barras", "descripcion", "categoria", "unidad_medida",
+            "ubicacion_fisica", "stock_minimo", "stock_critico",
+        ]
+
+    def clean_especificaciones(self):
+        datos = self.cleaned_data.get("especificaciones")
+        if datos is not None:
+            try:
+                validar_caracteristicas(datos)
+            except ValueError as error:
+                raise forms.ValidationError(str(error)) from error
+        return datos
+
+    def clean(self):
+        datos = super().clean()
+        minimo = datos.get("stock_minimo")
+        critico = datos.get("stock_critico")
+        if minimo is not None and critico is not None and critico > minimo:
+            self.add_error("stock_critico", "El stock crítico no puede superar al stock mínimo.")
+        return datos

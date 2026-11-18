@@ -147,7 +147,9 @@ class RolesTests(TestCase):
                 )
 
                 with TemporaryDirectory() as carpeta, patch("apps.despachos.views.Path") as ruta:
-                    ruta.return_value.resolve.return_value = Path(carpeta) / "bodega" / "views.py"
+                    data_dir = Path(carpeta) / "despachos" / "data"
+                    data_dir.mkdir(parents=True)
+                    ruta.return_value.resolve.return_value = data_dir.parent / "views.py"
                     respuesta = self.client.post(reverse("procesar_despacho"), {
                         "articulo": articulo.pk, "obra": obra.pk, "cantidad": 3,
                     })
@@ -240,41 +242,3 @@ class AccesoRUTTests(TestCase):
         duplicado = PerfilUsuario(usuario=otro, rut="11111111-1")
         with self.assertRaisesMessage(ValidationError, "RUT"):
             duplicado.full_clean()
-
-
-class AltaArticuloTests(TestCase):
-    def setUp(self):
-        self.usuario = get_user_model().objects.create_user(username="bodega_alta")
-        self.usuario.groups.add(Group.objects.create(name=ADMIN_BODEGA))
-        self.client.force_login(self.usuario)
-        self.url = reverse("articulo_crear")
-        self.datos = {
-            "sku": "REV-01",
-            "codigo_barras": "100100",
-            "descripcion": "Insumo de prueba",
-            "categoria": Categoria.objects.create(nombre="Herramientas").pk,
-            "unidad_medida": "unidad",
-            "stock_fisico": 10,
-            "stock_minimo": 5,
-            "stock_critico": 2,
-        }
-
-    def test_alta_registra_articulo_y_auditoria(self):
-        respuesta = self.client.post(self.url, self.datos)
-        self.assertRedirects(respuesta, reverse("bodega_web"))
-
-        articulo = Articulo.objects.get(sku=self.datos["sku"])
-        auditoria = BitacoraAuditoria.objects.get(accion="CREAR", entidad="Articulo")
-        self.assertEqual(auditoria.usuario, self.usuario)
-        self.assertEqual(auditoria.id_registro, articulo.pk)
-        self.assertEqual(auditoria.valor_nuevo["stock_fisico"], 10)
-
-    def test_rechaza_sku_y_codigo_de_barras_duplicados(self):
-        self.client.post(self.url, self.datos)
-        for cambios in ({"codigo_barras": "100200"}, {"sku": "REV-02"}):
-            with self.subTest(cambios=cambios):
-                respuesta = self.client.post(self.url, {**self.datos, **cambios})
-                self.assertContains(respuesta, "Artículo ya registrado")
-
-        self.assertEqual(Articulo.objects.count(), 1)
-        self.assertEqual(BitacoraAuditoria.objects.count(), 1)

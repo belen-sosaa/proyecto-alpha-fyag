@@ -36,10 +36,13 @@ ACCESO = {
 }
 
 FACULTADES = {
+    "ver_catalogo": (GERENTE, ADMIN_BODEGA, BODEGUERO, FINANZAS, AUDITOR, ADMIN_GENERAL_LEGADO),
     "emitir_oc": (FINANZAS,),
     "crear_presupuesto": (BODEGUERO, ADMIN_BODEGA),
     "registrar_merma": (BODEGUERO, ADMIN_BODEGA),
     "ingresar_articulo": (ADMIN_BODEGA, ADMIN_GENERAL_LEGADO),
+    "editar_articulo": (ADMIN_BODEGA, ADMIN_GENERAL_LEGADO),
+    "eliminar_articulo": (ADMIN_BODEGA, ADMIN_GENERAL_LEGADO),
     "gestionar_usuarios": (ADMIN_TI,),
     "ver_costos": (GERENTE, FINANZAS, ADMIN_BODEGA),
     "despachar": (BODEGUERO, ADMIN_BODEGA),

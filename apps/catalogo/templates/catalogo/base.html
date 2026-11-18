@@ -1,11 +1,354 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="es">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{% block title %}Catálogo{% endblock %}</title>
-  </head>
-  <body>
-    <main>{% block content %}{% endblock %}</main>
-  </body>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <title>{% block title %}FYAG{% endblock %}</title>
+
+  <!-- Estilos compartidos por las páginas que usan esta plantilla. -->
+  <style>
+    :root {
+      color-scheme: light;
+      --azul: #2563eb;
+      --azul-oscuro: #10224c;
+      --texto: #1e293b;
+      --secundario: #64748b;
+      --borde: #dce3ee;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: #f3f5f9;
+      color: var(--texto);
+      font-family: Arial, Helvetica, sans-serif;
+      line-height: 1.5;
+    }
+
+    /* Cabecera común del sistema. */
+    .cabecera {
+      min-height: 84px;
+      padding: 18px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      background: var(--azul-oscuro);
+      color: white;
+    }
+
+    .marca {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .marca-icono {
+      width: 48px;
+      height: 48px;
+      display: grid;
+      place-items: center;
+      border-radius: 14px;
+      background: var(--azul);
+      font-size: 22px;
+      font-weight: bold;
+    }
+
+    .marca strong {
+      display: block;
+      font-size: 20px;
+    }
+
+    .marca small {
+      color: #b6cdf5;
+    }
+
+    .usuario {
+      font-size: 14px;
+      overflow-wrap: anywhere;
+    }
+
+    .contenedor {
+      width: min(1440px, calc(100% - 48px));
+      margin: 32px auto;
+    }
+
+    /* Permite desplazarse horizontalmente en pantallas pequeñas. */
+    .contenido {
+      padding: 32px;
+      overflow-x: auto;
+      background: white;
+      border: 1px solid #e7ebf2;
+      border-radius: 20px;
+      box-shadow: 0 8px 30px rgb(15 23 42 / 4%);
+    }
+
+    h1 {
+      margin: 0 0 24px;
+      font-size: clamp(24px, 3vw, 32px);
+      line-height: 1.2;
+    }
+
+    a {
+      color: #1d4ed8;
+      text-underline-offset: 3px;
+    }
+
+    a:hover {
+      color: #1e40af;
+    }
+
+    /* Mensajes de éxito, advertencia y error enviados por Django. */
+    .mensaje {
+      margin: 0 0 16px;
+      padding: 14px 18px;
+      border: 1px solid #bfdbfe;
+      border-radius: 12px;
+      background: #eff6ff;
+      overflow-wrap: anywhere;
+    }
+
+    .mensaje.success {
+      color: #166534;
+      border-color: #bbf7d0;
+      background: #f0fdf4;
+    }
+
+    .mensaje.error {
+      color: #991b1b;
+      border-color: #fecaca;
+      background: #fef2f2;
+    }
+
+    .mensaje.warning {
+      color: #92400e;
+      border-color: #fde68a;
+      background: #fffbeb;
+    }
+
+    /* Formularios de creación y edición. */
+    form {
+      margin: 20px 0;
+    }
+
+    form[method="post"] {
+      max-width: 760px;
+    }
+
+    form p {
+      margin: 0 0 20px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 7px;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]),
+    select,
+    textarea {
+      width: 100%;
+      min-height: 44px;
+      padding: 10px 12px;
+      border: 1px solid var(--borde);
+      border-radius: 9px;
+      background: white;
+      color: var(--texto);
+      font: inherit;
+    }
+
+    textarea {
+      min-height: 140px;
+      resize: vertical;
+    }
+
+    :where(input, select, textarea, button, a):focus-visible {
+      outline: 3px solid #93c5fd;
+      outline-offset: 3px;
+    }
+
+    .helptext {
+      display: block;
+      margin-top: 6px;
+      color: var(--secundario);
+      font-size: 13px;
+    }
+
+    .errorlist {
+      padding-left: 22px;
+      color: #b91c1c;
+      font-size: 14px;
+    }
+
+    button {
+      min-height: 44px;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 9px;
+      background: var(--azul);
+      color: white;
+      font: inherit;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #1d4ed8;
+    }
+
+    form[method="post"] > a {
+      display: inline-block;
+      margin: 12px;
+    }
+
+    /* Distribución de los filtros del catálogo. */
+    form[method="get"] {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      padding: 18px;
+      border: 1px solid var(--borde);
+      border-radius: 12px;
+      background: #f8fafc;
+    }
+
+    form[method="get"] label {
+      margin: 0;
+    }
+
+    form[method="get"] input[type="search"] {
+      flex: 1 1 260px;
+      width: auto;
+      min-width: 0;
+    }
+
+    form[method="get"] select {
+      flex: 1 1 180px;
+      width: auto;
+      min-width: 0;
+    }
+
+    /* Tabla de insumos. */
+    table {
+      width: 100%;
+      margin-top: 24px;
+      border-spacing: 0;
+      border: 1px solid var(--borde);
+      border-radius: 12px;
+      font-size: 14px;
+    }
+
+    th,
+    td {
+      padding: 15px;
+      text-align: left;
+      vertical-align: middle;
+    }
+
+    th {
+      background: #f1f5f9;
+      color: #475569;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      white-space: nowrap;
+    }
+
+    td {
+      border-top: 1px solid var(--borde);
+    }
+
+    tbody tr:hover {
+      background: #f8faff;
+    }
+
+    td:first-child {
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    td:last-child a {
+      display: inline-block;
+      margin: 4px 8px 4px 0;
+    }
+
+    td a[href$="/eliminar/"] {
+      color: #b91c1c;
+    }
+
+    @media (max-width: 700px) {
+      .cabecera {
+        padding: 16px;
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      .contenedor {
+        width: calc(100% - 24px);
+        margin: 16px auto;
+      }
+
+      .contenido {
+        padding: 20px;
+        border-radius: 14px;
+      }
+
+      form[method="get"] {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      form[method="get"] input[type="search"],
+      form[method="get"] select {
+        flex: none;
+        width: 100%;
+      }
+    }
+  </style>
+
+  {% block extra_head %}{% endblock %}
+</head>
+
+<body>
+  <!-- Identidad visual y usuario autenticado. -->
+  <header class="cabecera">
+    <div class="marca">
+      <span class="marca-icono" aria-hidden="true">FY</span>
+      <div>
+        <strong>Logística FYAG</strong>
+        <small>Control Operativo</small>
+      </div>
+    </div>
+
+    {% if user.is_authenticated %}
+      <div class="usuario">
+        Usuario: <strong>{{ user.get_username }}</strong>
+      </div>
+    {% endif %}
+  </header>
+
+  <div class="contenedor">
+    <!-- Conserva los mensajes enviados por las vistas. -->
+    {% for message in messages %}
+      <p class="mensaje {{ message.tags }}" role="status">
+        {{ message }}
+      </p>
+    {% endfor %}
+
+    <!-- Contenido específico de cada página. -->
+    <main class="contenido">
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+
+  {% block extra_js %}{% endblock %}
+</body>
 </html>
