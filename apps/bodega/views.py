@@ -14,7 +14,7 @@ from django.http import JsonResponse
 from .models import Articulo, Despacho, Obra,BitacoraAuditoria
 from .decorators import rol_requerido
 from .forms import AccesoRUTForm, ArticuloForm
-from .roles import ADMIN_BODEGA, rol_principal
+from .roles import ADMIN_BODEGA, BODEGUERO, SUPERVISOR, rol_principal
 
 
 
@@ -22,18 +22,10 @@ class AccesoView(LoginView):
     template_name = "login.html"
     authentication_form = AccesoRUTForm
 
-    def get_success_url(self):
-        siguiente = self.get_redirect_url()
-        if siguiente:
-            return siguiente
-
-        destinos = {
-            "web": "bodega_web",
-            "mobile": "bodega_mobile",
-        }
-
-        destino = self.request.POST.get("destino", "web")
-        return reverse(destinos.get(destino, "bodega_web"))
+    def get_default_redirect_url(self):
+        if rol_principal(self.request.user) in (BODEGUERO, SUPERVISOR):
+            return reverse("bodega_mobile")
+        return super().get_default_redirect_url()
 
 
 @login_required

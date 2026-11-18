@@ -6,7 +6,7 @@ from django.test import RequestFactory, TestCase
 from django.urls import reverse
 
 from .decorators import facultad_requerida, roles_validos
-from .models import PerfilUsuario
+from .models import Articulo, BitacoraAuditoria, Categoria, PerfilUsuario
 from .roles import (
     ADMIN_BODEGA,
     ADMIN_TI,
@@ -103,7 +103,7 @@ class AccesoRUTTests(TestCase):
 
     def test_login_por_rut_muestra_nombre_y_rol_en_web(self):
         respuesta = self.client.post(reverse("login"), {
-            "rut": "11.111.111-1", "password": "clave-de-test", "destino": "web",
+            "rut": "11.111.111-1", "password": "clave-de-test",
         }, follow=True)
         self.assertRedirects(respuesta, reverse("bodega_web"))
         self.assertContains(respuesta, "Camila Fuentes")
@@ -111,13 +111,29 @@ class AccesoRUTTests(TestCase):
         self.assertNotContains(respuesta, "Usuario de Sistema")
         self.assertEqual(self.client.get(reverse("articulo_crear")).status_code, 200)
 
-    def test_login_por_rut_sin_puntos_muestra_rol_en_mobile(self):
+    def test_login_por_rut_sin_puntos_abre_mobile_segun_el_rol(self):
+        for rol in (BODEGUERO, SUPERVISOR):
+            with self.subTest(rol=rol):
+                self.usuario.groups.set([Group.objects.create(name=rol)])
+                respuesta = self.client.post(reverse("login"), {
+                    "rut": "11111111-1", "password": "clave-de-test",
+                }, follow=True)
+                self.assertRedirects(respuesta, reverse("bodega_mobile"))
+                self.assertContains(respuesta, "Camila Fuentes")
+                self.assertContains(respuesta, rol)
+                self.client.logout()
+
+    def test_login_no_pide_elegir_version(self):
+        respuesta = self.client.get(reverse("login"))
+        self.assertContains(respuesta, 'name="rut"')
+        self.assertNotContains(respuesta, 'name="destino"')
+
+    def test_login_respeta_el_destino_original_del_enlace(self):
+        url = reverse("articulo_crear")
         respuesta = self.client.post(reverse("login"), {
-            "rut": "11111111-1", "password": "clave-de-test", "destino": "mobile",
-        }, follow=True)
-        self.assertRedirects(respuesta, reverse("bodega_mobile"))
-        self.assertContains(respuesta, "Camila Fuentes")
-        self.assertContains(respuesta, ADMIN_BODEGA)
+            "rut": "11.111.111-1", "password": "clave-de-test", "next": url,
+        })
+        self.assertRedirects(respuesta, url)
 
     def test_acceso_por_rut_respeta_los_permisos_de_ti(self):
         usuario = get_user_model().objects.create_user(username="cuenta_ti", password="clave-de-test")
@@ -158,3 +174,41 @@ class AccesoRUTTests(TestCase):
         duplicado = PerfilUsuario(usuario=otro, rut="11111111-1")
         with self.assertRaisesMessage(ValidationError, "RUT"):
             duplicado.full_clean()
+
+
+class AltaArticuloTests(TestCase):
+    def setUp(self):
+        self.usuario = get_user_model().objects.create_user(username="bodega_alta")
+        self.usuario.groups.add(Group.objects.create(name=ADMIN_BODEGA))
+        self.client.force_login(self.usuario)
+        self.url = reverse("articulo_crear")
+        self.datos = {
+            "sku": "REV-01",
+            "codigo_barras": "100100",
+            "descripcion": "Insumo de prueba",
+            "categoria": Categoria.objects.create(nombre="Herramientas").pk,
+            "unidad_medida": "unidad",
+            "stock_fisico": 10,
+            "stock_minimo": 5,
+            "stock_critico": 2,
+        }
+
+    def test_alta_registra_articulo_y_auditoria(self):
+        respuesta = self.client.post(self.url, self.datos)
+        self.assertRedirects(respuesta, reverse("bodega_web"))
+
+        articulo = Articulo.objects.get(sku=self.datos["sku"])
+        auditoria = BitacoraAuditoria.objects.get(accion="CREAR", entidad="Articulo")
+        self.assertEqual(auditoria.usuario, self.usuario)
+        self.assertEqual(auditoria.id_registro, articulo.pk)
+        self.assertEqual(auditoria.valor_nuevo["stock_fisico"], 10)
+
+    def test_rechaza_sku_y_codigo_de_barras_duplicados(self):
+        self.client.post(self.url, self.datos)
+        for cambios in ({"codigo_barras": "100200"}, {"sku": "REV-02"}):
+            with self.subTest(cambios=cambios):
+                respuesta = self.client.post(self.url, {**self.datos, **cambios})
+                self.assertContains(respuesta, "Artículo ya registrado")
+
+        self.assertEqual(Articulo.objects.count(), 1)
+        self.assertEqual(BitacoraAuditoria.objects.count(), 1)
