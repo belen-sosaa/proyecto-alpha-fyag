@@ -3,6 +3,8 @@ from functools import wraps
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 
+from .roles import ROLES, puede
+
 
 def rol_requerido(*roles):
     def decorator(view):
@@ -23,3 +25,22 @@ def rol_requerido(*roles):
         return wrapper
 
     return decorator
+
+
+def facultad_requerida(facultad):
+    """Protege una vista con una facultad declarada en roles.py."""
+    def decorator(view):
+        @login_required
+        @wraps(view)
+        def wrapper(request, *args, **kwargs):
+            if not puede(request.user, facultad):
+                raise PermissionDenied("Tu rol no tiene permiso para esta acción.")
+            return view(request, *args, **kwargs)
+
+        return wrapper
+
+    return decorator
+
+
+def roles_validos():
+    return ROLES
