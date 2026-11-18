@@ -5,42 +5,88 @@ from django.conf import settings
 from django.db import migrations, models
 
 
-class Migration(migrations.Migration):
+class AdoptarEsquemaArticulo(migrations.SeparateDatabaseAndState):
+    """Reutiliza las columnas existentes en PostgreSQL."""
 
+    reversible = False
+
+    def database_forwards(self, app_label, schema_editor, from_state, to_state):
+        conexion = schema_editor.connection
+        if conexion.vendor != 'postgresql':
+            return super().database_forwards(app_label, schema_editor, from_state, to_state)
+
+        articulo = from_state.apps.get_model(app_label, 'Articulo')
+        tabla = articulo._meta.db_table
+        with conexion.cursor() as cursor:
+            columnas = {
+                columna.name
+                for columna in conexion.introspection.get_table_description(cursor, tabla)
+            }
+            nuevas = {'codigo_barras', 'stock_critico', 'stock_minimo', 'unidad_medida'}
+            if not nuevas & columnas:
+                return super().database_forwards(app_label, schema_editor, from_state, to_state)
+            if not (nuevas | {'estado'}) <= columnas:
+                raise RuntimeError('El esquema existente de artículos requiere revisión antes de migrar.')
+            restricciones = conexion.introspection.get_constraints(cursor, tabla)
+
+        if not any(
+            restriccion['unique'] and restriccion['columns'] == ['codigo_barras']
+            for restriccion in restricciones.values()
+        ):
+            raise RuntimeError('El código de barras debe ser único antes de adoptar el esquema.')
+
+        tabla_sql = schema_editor.quote_name(tabla)
+        # La aplicación calcula el estado actual. PostgreSQL conserva la columna histórica.
+        schema_editor.execute(f"ALTER TABLE {tabla_sql} ALTER COLUMN estado SET DEFAULT 'Stock Normal'")
+        schema_editor.execute(
+            f'ALTER TABLE {tabla_sql} ADD CHECK '
+            '(stock_fisico >= 0 AND stock_minimo >= 0 AND stock_critico >= 0)'
+        )
+
+
+operaciones_articulo = [
+    migrations.RemoveField(
+        model_name='articulo',
+        name='estado',
+    ),
+    migrations.AddField(
+        model_name='articulo',
+        name='codigo_barras',
+        field=models.CharField(blank=True, max_length=100, null=True, unique=True),
+    ),
+    migrations.AddField(
+        model_name='articulo',
+        name='stock_critico',
+        field=models.PositiveIntegerField(default=0),
+    ),
+    migrations.AddField(
+        model_name='articulo',
+        name='stock_minimo',
+        field=models.PositiveIntegerField(default=0),
+    ),
+    migrations.AddField(
+        model_name='articulo',
+        name='unidad_medida',
+        field=models.CharField(default='unidad', max_length=30),
+    ),
+    migrations.AlterField(
+        model_name='articulo',
+        name='stock_fisico',
+        field=models.PositiveIntegerField(default=0),
+    ),
+]
+
+
+class Migration(migrations.Migration):
     dependencies = [
         ('bodega', '0001_initial'),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
-        migrations.RemoveField(
-            model_name='articulo',
-            name='estado',
-        ),
-        migrations.AddField(
-            model_name='articulo',
-            name='codigo_barras',
-            field=models.CharField(blank=True, max_length=100, null=True, unique=True),
-        ),
-        migrations.AddField(
-            model_name='articulo',
-            name='stock_critico',
-            field=models.PositiveIntegerField(default=0),
-        ),
-        migrations.AddField(
-            model_name='articulo',
-            name='stock_minimo',
-            field=models.PositiveIntegerField(default=0),
-        ),
-        migrations.AddField(
-            model_name='articulo',
-            name='unidad_medida',
-            field=models.CharField(default='unidad', max_length=30),
-        ),
-        migrations.AlterField(
-            model_name='articulo',
-            name='stock_fisico',
-            field=models.PositiveIntegerField(default=0),
+        AdoptarEsquemaArticulo(
+            database_operations=operaciones_articulo,
+            state_operations=operaciones_articulo,
         ),
         migrations.CreateModel(
             name='BitacoraAuditoria',
