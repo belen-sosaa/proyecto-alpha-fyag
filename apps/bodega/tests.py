@@ -103,6 +103,7 @@ class RolesTests(TestCase):
             with self.subTest(ruta=ruta):
                 respuesta = self.client.get(reverse(ruta))
                 self.assertContains(respuesta, "Recepción de despachos")
+                self.assertContains(respuesta, 'class="icono-perfil"')
                 self.assertNotContains(respuesta, 'id="tab-finanzas"')
                 self.assertNotContains(respuesta, 'id="tab-catalogo"')
                 self.assertNotContains(respuesta, reverse("procesar_despacho"))

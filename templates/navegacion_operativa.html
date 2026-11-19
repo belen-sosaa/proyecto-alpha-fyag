@@ -33,9 +33,12 @@
   </nav>
 
   <div class="perfil-operativo">
-    <div>
-      <p id="nombre-usuario">{{ user.get_full_name|default:user.username }}</p>
-      <p>{{ rol_actual }}</p>
+    <div class="identidad-operativa">
+      <span class="icono-perfil" aria-hidden="true"><i class="fas fa-user"></i></span>
+      <div>
+        <p id="nombre-usuario">{{ user.get_full_name|default:user.username }}</p>
+        <p>{{ rol_actual }}</p>
+      </div>
     </div>
     <form method="post" action="{% url 'logout' %}">
       {% csrf_token %}
