@@ -19,6 +19,7 @@ from django.conf import settings
 from django.contrib.auth.views import LogoutView
 from django.conf.urls.static import static
 from django.urls import path
+from django.views.generic import RedirectView
 from apps.bodega.views import vista_bodega
 from apps.cuentas.views import AccesoView
 from apps.catalogo.views import (
@@ -28,7 +29,7 @@ from apps.catalogo.views import (
     catalogo_eliminar,
     catalogo_listar,
 )
-from apps.despachos.views import vista_mobile, obras_buscar, procesar_despacho
+from apps.despachos.views import obras_buscar, procesar_despacho, vista_operaciones
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -40,7 +41,8 @@ urlpatterns = [
     path('catalogo/nuevo/', catalogo_crear, name='catalogo_crear'),
     path('catalogo/<int:pk>/editar/', catalogo_editar, name='catalogo_editar'),
     path('catalogo/<int:pk>/eliminar/', catalogo_eliminar, name='catalogo_eliminar'),
-    path('mobile/', vista_mobile, name='bodega_mobile'),
+    path('operaciones/', vista_operaciones, name='operaciones'),
+    path('mobile/', RedirectView.as_view(pattern_name='operaciones', query_string=True)),
     path('obras/buscar/', obras_buscar, name="obras_buscar"),
     path('despacho/procesar/', procesar_despacho, name='procesar_despacho'),
 ]

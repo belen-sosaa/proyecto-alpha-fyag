@@ -1,0 +1,48 @@
+<div class="fondo-menu" data-cerrar-menu hidden></div>
+<aside id="menu-operativo" class="menu-operativo" aria-label="Menú operativo">
+  <div class="marca">
+    <span class="marca-icono" aria-hidden="true">FY</span>
+    <div>
+      <strong>Logística FYAG</strong>
+      <small>Control Operativo</small>
+    </div>
+  </div>
+  <button type="button" class="cerrar-menu" data-cerrar-menu aria-label="Cerrar menú">
+    <span aria-hidden="true">×</span>
+  </button>
+
+  <nav class="modulos-operativos" aria-label="Módulos">
+    {% if mostrar_bodega %}
+      <button type="button" data-panel="tab-bodega" aria-controls="tab-bodega" aria-current="true">
+        <i class="fas fa-boxes" aria-hidden="true"></i>
+        {% if recepcion %}Recepción de despachos{% else %}Bodega y Despachos{% endif %}
+      </button>
+    {% endif %}
+    {% if mostrar_catalogo %}
+      <button type="button" data-panel="tab-catalogo" aria-controls="tab-catalogo"{% if not mostrar_bodega %} aria-current="true"{% endif %}>
+        <i class="fas fa-clipboard-list" aria-hidden="true"></i>
+        Catálogo y Auditoría
+      </button>
+    {% endif %}
+    {% if mostrar_finanzas %}
+      <button type="button" data-panel="tab-finanzas" aria-controls="tab-finanzas"{% if not mostrar_bodega and not mostrar_catalogo %} aria-current="true"{% endif %}>
+        <i class="fas fa-file-invoice-dollar" aria-hidden="true"></i>
+        Compras y Finanzas
+      </button>
+    {% endif %}
+  </nav>
+
+  <div class="perfil-operativo">
+    <div>
+      <p id="nombre-usuario">{{ user.get_full_name|default:user.username }}</p>
+      <p>{{ rol_actual }}</p>
+    </div>
+    <form method="post" action="{% url 'logout' %}">
+      {% csrf_token %}
+      <button type="submit" aria-label="Cerrar sesión">
+        <i class="fas fa-sign-out-alt" aria-hidden="true"></i>
+        Salir
+      </button>
+    </form>
+  </div>
+</aside>

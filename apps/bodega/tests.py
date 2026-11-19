@@ -98,13 +98,23 @@ class RolesTests(TestCase):
 
     def test_supervisor_solo_ve_recepcion_en_ambas_versiones(self):
         self.client.force_login(self.usuarios[SUPERVISOR])
-        for ruta in ("bodega_web", "bodega_mobile"):
+        for ruta in ("bodega_web", "operaciones"):
             with self.subTest(ruta=ruta):
                 respuesta = self.client.get(reverse(ruta))
                 self.assertContains(respuesta, "Recepción de despachos")
                 self.assertNotContains(respuesta, 'id="tab-finanzas"')
                 self.assertNotContains(respuesta, 'id="tab-catalogo"')
                 self.assertNotContains(respuesta, reverse("procesar_despacho"))
+
+    def test_url_anterior_redirige_a_operaciones_con_los_mismos_permisos(self):
+        url = reverse("operaciones")
+        self.assertEqual(url, "/operaciones/")
+        self.assertRedirects(
+            self.client.get("/mobile/?origen=menu"),
+            f"{url}?origen=menu",
+            fetch_redirect_response=False,
+        )
+        self.assertRedirects(self.client.get(url), f"{reverse('login')}?next={url}")
 
     def test_ti_no_recibe_modulos_operativos_y_finanzas_ve_su_modulo(self):
         for rol in (ADMIN_TI, FINANZAS):
@@ -137,7 +147,9 @@ class RolesTests(TestCase):
                 )
                 usuario = self.usuarios[rol]
                 self.client.force_login(usuario)
-                pagina = self.client.get(reverse("bodega_mobile"))
+                pagina = self.client.get(reverse("operaciones"))
+                self.assertTemplateUsed(pagina, "despachos/operaciones.html")
+                self.assertTemplateUsed(pagina, "base.html")
                 self.assertContains(pagina, 'action="' + reverse("procesar_despacho") + '"')
                 self.assertContains(pagina, "js/obra_auto.js")
                 self.assertEqual(self.client.get(reverse("obras_buscar"), {"q": "Ed"}).json(), [])
@@ -154,7 +166,7 @@ class RolesTests(TestCase):
                         "articulo": articulo.pk, "obra": obra.pk, "cantidad": 3,
                     })
 
-                self.assertRedirects(respuesta, reverse("bodega_mobile"))
+                self.assertRedirects(respuesta, reverse("operaciones"))
                 articulo.refresh_from_db()
                 self.assertEqual(articulo.stock_fisico, 7)
                 self.assertTrue(Despacho.objects.filter(articulo=articulo, usuario=usuario, cantidad=3).exists())
@@ -179,14 +191,14 @@ class AccesoRUTTests(TestCase):
         self.assertNotContains(respuesta, "Usuario de Sistema")
         self.assertEqual(self.client.get(reverse("articulo_crear")).status_code, 200)
 
-    def test_login_por_rut_sin_puntos_abre_mobile_segun_el_rol(self):
+    def test_login_por_rut_sin_puntos_abre_operaciones_segun_el_rol(self):
         for rol in (BODEGUERO, SUPERVISOR):
             with self.subTest(rol=rol):
                 self.usuario.groups.set([Group.objects.create(name=rol)])
                 respuesta = self.client.post(reverse("login"), {
                     "rut": "11111111-1", "password": "clave-de-test",
                 }, follow=True)
-                self.assertRedirects(respuesta, reverse("bodega_mobile"))
+                self.assertRedirects(respuesta, reverse("operaciones"))
                 self.assertContains(respuesta, "Camila Fuentes")
                 self.assertContains(respuesta, rol)
                 self.client.logout()

@@ -14,6 +14,7 @@ def contexto_operativo(usuario):
     mostrar_catalogo = "catalogo" in modulos or "cardex" in modulos
     mostrar_finanzas = "compras" in modulos and permisos["ver_costos"]
     return {
+        "panel_operativo": True,
         "articulos": Articulo.objects.select_related("categoria").all()
         if mostrar_catalogo or permisos["despachar"] else (),
         "rol_actual": rol,

@@ -1,3 +1,4 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -5,6 +6,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   <title>{% block title %}FYAG{% endblock %}</title>
+
+  {% if panel_operativo or pagina_acceso %}
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+  {% endif %}
 
   <!-- Estilos compartidos por las páginas que usan esta plantilla. -->
   <style>
@@ -50,6 +56,7 @@
     .marca-icono {
       width: 48px;
       height: 48px;
+      flex: none;
       display: grid;
       place-items: center;
       border-radius: 14px;
@@ -77,28 +84,46 @@
       margin: 32px auto;
     }
 
-    /* Permite desplazarse horizontalmente en pantallas pequeñas. */
     .contenido {
       padding: 32px;
-      overflow-x: auto;
+      overflow-wrap: anywhere;
       background: white;
       border: 1px solid #e7ebf2;
       border-radius: 20px;
       box-shadow: 0 8px 30px rgb(15 23 42 / 4%);
     }
 
-    h1 {
+    /* El desplazamiento horizontal se limita a las tablas anchas. */
+    .tabla-desplazable {
+      min-width: 0;
+      max-width: 100%;
+      overflow-x: auto;
+    }
+
+    .contenido .tabla-desplazable {
+      margin-top: 24px;
+    }
+
+    .contenido .tabla-desplazable table {
+      margin-top: 0;
+    }
+
+    [hidden] {
+      display: none !important;
+    }
+
+    .contenido h1 {
       margin: 0 0 24px;
       font-size: clamp(24px, 3vw, 32px);
       line-height: 1.2;
     }
 
-    a {
+    .contenido a {
       color: #1d4ed8;
       text-underline-offset: 3px;
     }
 
-    a:hover {
+    .contenido a:hover {
       color: #1e40af;
     }
 
@@ -131,29 +156,30 @@
     }
 
     /* Formularios de creación y edición. */
-    form {
+    .contenido form {
       margin: 20px 0;
     }
 
-    form[method="post"] {
+    .contenido form[method="post"] {
       max-width: 760px;
     }
 
-    form p {
+    .contenido form p {
       margin: 0 0 20px;
     }
 
-    label {
+    .contenido label {
       display: block;
       margin-bottom: 7px;
       font-size: 14px;
       font-weight: 600;
     }
 
-    input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]),
-    select,
-    textarea {
+    .contenido input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]),
+    .contenido select,
+    .contenido textarea {
       width: 100%;
+      min-width: 0;
       min-height: 44px;
       padding: 10px 12px;
       border: 1px solid var(--borde);
@@ -163,7 +189,7 @@
       font: inherit;
     }
 
-    textarea {
+    .contenido textarea {
       min-height: 140px;
       resize: vertical;
     }
@@ -186,7 +212,7 @@
       font-size: 14px;
     }
 
-    button {
+    .contenido button {
       min-height: 44px;
       padding: 10px 20px;
       border: none;
@@ -198,20 +224,20 @@
       cursor: pointer;
     }
 
-    button:hover {
+    .contenido button:hover {
       background: #1d4ed8;
     }
 
-    form[method="post"] > a {
+    .contenido form[method="post"] > a {
       display: inline-block;
       margin: 12px;
     }
 
     /* Distribución de los filtros del catálogo. */
-    form[method="get"] {
-      display: flex;
-      align-items: center;
-      flex-wrap: wrap;
+    .contenido form[method="get"] {
+      display: grid;
+      grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) auto;
+      align-items: end;
       gap: 12px;
       padding: 18px;
       border: 1px solid var(--borde);
@@ -219,24 +245,15 @@
       background: #f8fafc;
     }
 
-    form[method="get"] label {
-      margin: 0;
-    }
-
-    form[method="get"] input[type="search"] {
-      flex: 1 1 260px;
-      width: auto;
-      min-width: 0;
-    }
-
-    form[method="get"] select {
-      flex: 1 1 180px;
-      width: auto;
-      min-width: 0;
+    .acciones-filtro {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 12px;
     }
 
     /* Tabla de insumos. */
-    table {
+    .contenido table {
       width: 100%;
       margin-top: 24px;
       border-spacing: 0;
@@ -245,14 +262,15 @@
       font-size: 14px;
     }
 
-    th,
-    td {
+    .contenido th,
+    .contenido td {
       padding: 15px;
       text-align: left;
       vertical-align: middle;
+      overflow-wrap: anywhere;
     }
 
-    th {
+    .contenido th {
       background: #f1f5f9;
       color: #475569;
       font-size: 12px;
@@ -261,25 +279,25 @@
       white-space: nowrap;
     }
 
-    td {
+    .contenido td {
       border-top: 1px solid var(--borde);
     }
 
-    tbody tr:hover {
+    .contenido tbody tr:hover {
       background: #f8faff;
     }
 
-    td:first-child {
+    .contenido td:first-child {
       font-weight: 600;
       white-space: nowrap;
     }
 
-    td:last-child a {
+    .contenido td:last-child a {
       display: inline-block;
       margin: 4px 8px 4px 0;
     }
 
-    td a[href$="/eliminar/"] {
+    .contenido td a[href$="/eliminar/"] {
       color: #b91c1c;
     }
 
@@ -301,54 +319,60 @@
         border-radius: 14px;
       }
 
-      form[method="get"] {
-        align-items: stretch;
-        flex-direction: column;
-      }
-
-      form[method="get"] input[type="search"],
-      form[method="get"] select {
-        flex: none;
-        width: 100%;
+      .contenido form[method="get"] {
+        grid-template-columns: minmax(0, 1fr);
       }
     }
   </style>
 
+  {% if panel_operativo %}
+    <link rel="stylesheet" href="{% static 'css/panel_operativo.css' %}">
+  {% endif %}
   {% block extra_head %}{% endblock %}
 </head>
 
-<body>
-  <!-- Identidad visual y usuario autenticado. -->
-  <header class="cabecera">
-    <div class="marca">
-      <span class="marca-icono" aria-hidden="true">FY</span>
-      <div>
-        <strong>Logística FYAG</strong>
-        <small>Control Operativo</small>
-      </div>
-    </div>
-
-    {% if user.is_authenticated %}
-      <div class="usuario">
-        Usuario: <strong>{{ user.get_username }}</strong>
-      </div>
+<body class="{% block body_class %}{% endblock %}">
+  <div{% if panel_operativo %} class="panel-operativo"{% endif %}>
+    {% if panel_operativo %}
+      {% include "navegacion_operativa.html" %}
     {% endif %}
-  </header>
+    <div{% if panel_operativo %} class="pagina-operativa"{% endif %}>
+      {% if panel_operativo %}
+        <header class="cabecera-operativa">
+          <button type="button" data-abrir-menu aria-controls="menu-operativo" aria-expanded="false">
+            <span aria-hidden="true">☰</span> Menú
+          </button>
+          <h1 id="titulo-header" tabindex="-1">
+            {% if recepcion %}Recepción de despachos{% elif mostrar_bodega %}Bodega y Despachos{% elif mostrar_catalogo %}Catálogo y Auditoría{% elif mostrar_finanzas %}Compras y Finanzas{% else %}Panel{% endif %}
+          </h1>
+        </header>
+      {% elif not pagina_acceso %}
+        <header class="cabecera">
+          <div class="marca">
+            <span class="marca-icono" aria-hidden="true">FY</span>
+            <div>
+              <strong>Logística FYAG</strong>
+              <small>Control Operativo</small>
+            </div>
+          </div>
+          {% if user.is_authenticated %}
+            <div class="usuario">Usuario: <strong>{{ user.get_username }}</strong></div>
+          {% endif %}
+        </header>
+      {% endif %}
 
-  <div class="contenedor">
-    <!-- Conserva los mensajes enviados por las vistas. -->
-    {% for message in messages %}
-      <p class="mensaje {{ message.tags }}" role="status">
-        {{ message }}
-      </p>
-    {% endfor %}
-
-    <!-- Contenido específico de cada página. -->
-    <main class="contenido">
-      {% block content %}{% endblock %}
-    </main>
+      <main class="{% if panel_operativo %}contenido-operativo{% elif pagina_acceso %}contenido-acceso{% else %}contenedor contenido{% endif %}">
+        {% for message in messages %}
+          <p class="mensaje {{ message.tags }}" role="status">{{ message }}</p>
+        {% endfor %}
+        {% block content %}{% endblock %}
+      </main>
+    </div>
   </div>
 
+  {% if panel_operativo %}
+    <script src="{% static 'js/navegacion_operativa.js' %}" defer></script>
+  {% endif %}
   {% block extra_js %}{% endblock %}
 </body>
 </html>

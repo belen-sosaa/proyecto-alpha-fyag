@@ -1,0 +1,196 @@
+.panel-operativo {
+  min-height: 100vh;
+}
+
+.pagina-operativa {
+  min-width: 0;
+}
+
+.cabecera-operativa {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem clamp(0.75rem, 3vw, 2rem);
+  background: white;
+  border-bottom: 1px solid var(--borde);
+}
+
+.cabecera-operativa h1 {
+  min-width: 0;
+  margin: 0;
+  font-size: clamp(1.125rem, 2.5vw, 1.5rem);
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.cabecera-operativa button {
+  flex: none;
+  padding-inline: 0.75rem;
+  background: #eaf1fd;
+  color: #10224c;
+}
+
+.contenido-operativo {
+  width: 100%;
+  max-width: 90rem;
+  margin-inline: auto;
+  padding: clamp(0.75rem, 3vw, 2rem);
+  padding-bottom: 5rem;
+}
+
+.contenido-operativo :where(section, form, input, select, textarea, .tabla-desplazable) {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.contenido-operativo :where(input:not([type="hidden"]), select, button) {
+  min-height: 44px;
+}
+
+.contenido-operativo [data-obra-resultados] button {
+  overflow-wrap: anywhere;
+}
+
+.menu-operativo {
+  position: fixed;
+  z-index: 60;
+  inset: 0 auto 0 0;
+  width: min(17rem, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 1rem;
+  background: linear-gradient(155deg, #132c63, #0b1734);
+  color: white;
+  visibility: hidden;
+  transform: translateX(-100%);
+  transition: transform 180ms ease, visibility 180ms;
+}
+
+.menu-operativo.menu-abierto {
+  visibility: visible;
+  transform: none;
+}
+
+.menu-operativo .marca {
+  padding-right: 2.75rem;
+}
+
+.menu-operativo .marca strong {
+  font-size: 1rem;
+}
+
+.fondo-menu {
+  position: fixed;
+  z-index: 55;
+  inset: 0;
+  background: rgb(15 23 42 / 60%);
+}
+
+.modulos-operativos {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.menu-operativo button,
+.cabecera-operativa button {
+  min-height: 44px;
+  border: 0;
+  border-radius: 0.6rem;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.modulos-operativos button {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  text-align: left;
+  color: #dbeafe;
+}
+
+.modulos-operativos button:hover,
+.modulos-operativos button[aria-current="true"] {
+  background: var(--azul);
+  color: white;
+}
+
+.menu-operativo .cerrar-menu {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  width: 44px;
+  font-size: 1.5rem;
+}
+
+.perfil-operativo {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: auto;
+  padding-top: 1rem;
+  border-top: 1px solid rgb(255 255 255 / 20%);
+  overflow-wrap: anywhere;
+}
+
+.perfil-operativo p:last-child {
+  color: #bfd2f5;
+  font-size: 0.875rem;
+}
+
+.perfil-operativo button {
+  padding-inline: 0.5rem;
+  white-space: nowrap;
+  color: #fecaca;
+}
+
+@media (min-width: 64rem) {
+  .panel-operativo {
+    display: grid;
+    grid-template-columns: 17rem minmax(0, 1fr);
+  }
+
+  .menu-operativo {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    height: 100dvh;
+    width: auto;
+    visibility: visible;
+    transform: none;
+  }
+
+  .menu-operativo .marca {
+    padding-right: 0;
+  }
+
+  .fondo-menu,
+  .menu-operativo .cerrar-menu,
+  .cabecera-operativa button {
+    display: none;
+  }
+}
+
+.parpadeo-rojo {
+  background: #fef2f2;
+  animation: alerta-stock 2s infinite alternate;
+}
+
+@keyframes alerta-stock {
+  to { background: #fee2e2; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .menu-operativo {
+    transition: none;
+  }
+
+  .parpadeo-rojo {
+    animation: none;
+  }
+}

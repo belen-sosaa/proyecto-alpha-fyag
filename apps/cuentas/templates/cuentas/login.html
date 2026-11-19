@@ -1,223 +1,224 @@
-<!doctype html>
-<html lang="es">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Acceso - ERP Sistema Logístico</title>
+{% extends "base.html" %}
 
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Iconos FontAwesome -->
-    <link
-      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
-      rel="stylesheet"
-    />
+{% block title %}Acceso | Logística FYAG{% endblock %}
+{% block body_class %}pantalla-acceso{% endblock %}
 
-    <style>
-      /* Fondo iluminado */
-      .bg-aurora {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100vw;
-        height: 100vh;
-        z-index: -1;
-        background-color: #020617; /* Fondo oscuro */
-        overflow: hidden;
-        pointer-events: none;
-      }
+{% block extra_head %}
+<style>
+  /* Fondo iluminado */
+  .pantalla-acceso {
+    isolation: isolate;
+    background: #020617;
+  }
 
-      .blob {
-        position: absolute;
-        filter: blur(90px);
-        border-radius: 50%;
-        opacity: 0.6;
-        animation: movimientoFluido 8s infinite alternate
-          cubic-bezier(0.4, 0, 0.2, 1);
-      }
+  .contenido-acceso {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    place-items: center;
+    min-height: 100vh;
+    min-height: 100dvh;
+    padding: clamp(0.75rem, 4vw, 2rem);
+  }
 
-      /* Luz azul */
-      .blob-1 {
-        top: -10%;
-        left: -10%;
-        width: 50vw;
-        height: 50vw;
-        background-color: #2563eb;
-        animation-duration: 12s;
-      }
+  .bg-aurora {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    background-color: #020617; /* Fondo oscuro */
+    overflow: hidden;
+    pointer-events: none;
+  }
 
-      /* Luz celeste */
-      .blob-2 {
-        bottom: -20%;
-        right: -10%;
-        width: 60vw;
-        height: 60vw;
-        background-color: #0ea5e9;
-        animation-duration: 15s;
-        animation-direction: alternate-reverse;
-      }
+  .blob {
+    position: absolute;
+    filter: blur(90px);
+    border-radius: 50%;
+    opacity: 0.6;
+    animation: movimientoFluido 8s infinite alternate
+      cubic-bezier(0.4, 0, 0.2, 1);
+  }
 
-      /* Luz índigo */
-      .blob-3 {
-        top: 20%;
-        left: 30%;
-        width: 40vw;
-        height: 40vw;
-        background-color: #4f46e5;
-        animation-duration: 10s;
-        animation-delay: -2s;
-      }
+  /* Luz azul */
+  .blob-1 {
+    top: -10%;
+    left: -10%;
+    width: 50vw;
+    height: 50vw;
+    background-color: #2563eb;
+    animation-duration: 12s;
+  }
 
-      /* Destello */
-      .blob-4 {
-        top: 15%;
-        left: 20%;
-        width: 60vw;
-        height: 60vw;
-        background-color: #ffffff;
-        opacity: 0;
-        filter: blur(120px);
-        animation: relampago 8s infinite;
-      }
+  /* Luz celeste */
+  .blob-2 {
+    bottom: -20%;
+    right: -10%;
+    width: 60vw;
+    height: 60vw;
+    background-color: #0ea5e9;
+    animation-duration: 15s;
+    animation-direction: alternate-reverse;
+  }
 
-      @keyframes movimientoFluido {
-        0% {
-          transform: translate(0, 0) scale(1);
-        }
-        50% {
-          transform: translate(15%, 20%) scale(1.15);
-        }
-        100% {
-          transform: translate(-10%, 15%) scale(0.9);
-        }
-      }
+  /* Luz índigo */
+  .blob-3 {
+    top: 20%;
+    left: 30%;
+    width: 40vw;
+    height: 40vw;
+    background-color: #4f46e5;
+    animation-duration: 10s;
+    animation-delay: -2s;
+  }
 
-      /* Destellos */
-      @keyframes relampago {
-        0%,
-        90%,
-        100% {
-          opacity: 0;
-          transform: scale(1);
-        }
-        92% {
-          opacity: 0.15;
-          transform: scale(1.05);
-        }
-        94% {
-          opacity: 0;
-        }
-        95% {
-          opacity: 0.25;
-          transform: scale(1.1);
-        }
-        97% {
-          opacity: 0;
-        }
-      }
+  /* Destello */
+  .blob-4 {
+    top: 15%;
+    left: 20%;
+    width: 60vw;
+    height: 60vw;
+    background-color: #ffffff;
+    opacity: 0;
+    filter: blur(120px);
+    animation: relampago 8s infinite;
+  }
 
-      /* Tarjeta translúcida */
-      .glass-card {
-        background: rgba(255, 255, 255, 0.95);
-        backdrop-filter: blur(16px);
-        -webkit-backdrop-filter: blur(16px);
-        border: 1px solid rgba(255, 255, 255, 0.5);
-      }
-    </style>
-  </head>
+  @keyframes movimientoFluido {
+    0% {
+      transform: translate(0, 0) scale(1);
+    }
+    50% {
+      transform: translate(15%, 20%) scale(1.15);
+    }
+    100% {
+      transform: translate(-10%, 15%) scale(0.9);
+    }
+  }
 
-  <body
-    class="min-h-screen w-full flex items-center justify-center font-sans relative m-0 py-6 px-2"
-  >
-    <!-- Fondo iluminado -->
-    <div class="bg-aurora">
-      <div class="blob blob-1"></div>
-      <div class="blob blob-2"></div>
-      <div class="blob blob-3"></div>
-      <div class="blob blob-4"></div>
-    </div>
+  /* Destellos */
+  @keyframes relampago {
+    0%,
+    90%,
+    100% {
+      opacity: 0;
+      transform: scale(1);
+    }
+    92% {
+      opacity: 0.15;
+      transform: scale(1.05);
+    }
+    94% {
+      opacity: 0;
+    }
+    95% {
+      opacity: 0.25;
+      transform: scale(1.1);
+    }
+    97% {
+      opacity: 0;
+    }
+  }
 
-    <!-- Acceso -->
+  /* Tarjeta translúcida */
+  .glass-card {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .blob { animation: none; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Fondo iluminado -->
+<div class="bg-aurora">
+  <div class="blob blob-1"></div>
+  <div class="blob blob-2"></div>
+  <div class="blob blob-3"></div>
+  <div class="blob blob-4"></div>
+</div>
+
+<!-- Acceso -->
+<div
+  class="glass-card p-4 sm:p-10 rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.3)] w-full max-w-md z-10 relative"
+>
+  <div class="text-center mb-8">
     <div
-      class="glass-card p-6 sm:p-10 rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.3)] w-full max-w-md z-10 mx-4 relative"
+      class="w-16 h-16 bg-blue-600 rounded-2xl mx-auto flex items-center justify-center text-white text-3xl shadow-[0_10px_20px_rgba(37,99,235,0.4)] mb-4 transition transform hover:scale-105"
     >
-      <div class="text-center mb-8">
+      <i class="fas fa-boxes"></i>
+    </div>
+    <h1 class="text-2xl font-extrabold text-slate-800 tracking-tight">
+      Logística FYAG
+    </h1>
+    <p class="text-slate-500 text-sm mt-1">
+      Ingrese sus credenciales operativas
+    </p>
+  </div>
+
+  <form id="form-login" method="post" action="{% url 'login' %}" class="space-y-5">
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ next|default:'' }}">
+    <div>
+      <label for="rut" class="block text-slate-700 font-bold mb-2 text-sm">RUT</label>
+      <div class="relative">
         <div
-          class="w-16 h-16 bg-blue-600 rounded-2xl mx-auto flex items-center justify-center text-white text-3xl shadow-[0_10px_20px_rgba(37,99,235,0.4)] mb-4 transition transform hover:scale-105"
+          class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"
         >
-          <i class="fas fa-boxes"></i>
+          <i class="fas fa-user text-slate-400"></i>
         </div>
-        <h1 class="text-2xl font-extrabold text-slate-800 tracking-tight">
-          Logística FYAG
-        </h1>
-        <p class="text-slate-500 text-sm mt-1">
-          Ingrese sus credenciales operativas
-        </p>
+        <input
+          type="text"
+          id="rut"
+          name="rut"
+          value="{{ form.rut.value|default:'' }}"
+          autocomplete="username"
+          maxlength="12"
+          class="w-full border border-slate-200 py-3 pr-3 pl-10 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-slate-50 text-slate-700 transition"
+          placeholder="11.111.111-1"
+          required
+        />
       </div>
-
-      <form id="form-login" method="post" action="{% url 'login' %}" class="space-y-5">
-        {% csrf_token %}
-        <input type="hidden" name="next" value="{{ next|default:'' }}">
-        <div>
-          <label for="rut" class="block text-slate-700 font-bold mb-2 text-sm">RUT</label>
-          <div class="relative">
-            <div
-              class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"
-            >
-              <i class="fas fa-user text-slate-400"></i>
-            </div>
-            <input
-              type="text"
-              id="rut"
-              name="rut"
-              value="{{ form.rut.value|default:'' }}"
-              autocomplete="username"
-              maxlength="12"
-              class="w-full border border-slate-200 pl-10 p-3 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-slate-50 text-slate-700 transition"
-              placeholder="11.111.111-1"
-              required
-            />
-          </div>
-        </div>
-
-        <div>
-          <label for="password" class="block text-slate-700 font-bold mb-2 text-sm"
-            >Contraseña</label
-          >
-          <div class="relative">
-            <div
-              class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"
-            >
-              <i class="fas fa-lock text-slate-400"></i>
-            </div>
-            <input
-              type="password"
-              id="password"
-              name="password"
-              autocomplete="current-password"
-              class="w-full border border-slate-200 pl-10 p-3 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-slate-50 text-slate-700 transition"
-              placeholder="••••••••"
-              required
-            />
-          </div>
-        </div>
-
-        {% if form.errors %}
-          <p role="alert" class="text-red-600">
-            RUT o contraseña incorrectos, o cuenta inactiva.
-          </p>
-        {% endif %}
-
-        <button
-          type="submit"
-          class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl transition shadow-[0_8px_15px_rgba(37,99,235,0.2)] hover:shadow-[0_12px_20px_rgba(37,99,235,0.3)]"
-        >
-          Ingresar
-        </button>
-
-      </form>
-
     </div>
 
-  </body>
-</html>
+    <div>
+      <label for="password" class="block text-slate-700 font-bold mb-2 text-sm"
+        >Contraseña</label
+      >
+      <div class="relative">
+        <div
+          class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"
+        >
+          <i class="fas fa-lock text-slate-400"></i>
+        </div>
+        <input
+          type="password"
+          id="password"
+          name="password"
+          autocomplete="current-password"
+          class="w-full border border-slate-200 py-3 pr-3 pl-10 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-slate-50 text-slate-700 transition"
+          placeholder="••••••••"
+          required
+        />
+      </div>
+    </div>
+
+    {% if form.errors %}
+      <p role="alert" class="text-red-600">
+        RUT o contraseña incorrectos, o cuenta inactiva.
+      </p>
+    {% endif %}
+
+    <button
+      type="submit"
+      class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl transition shadow-[0_8px_15px_rgba(37,99,235,0.2)] hover:shadow-[0_12px_20px_rgba(37,99,235,0.3)]"
+    >
+      Ingresar
+    </button>
+
+  </form>
+
+</div>
+{% endblock %}

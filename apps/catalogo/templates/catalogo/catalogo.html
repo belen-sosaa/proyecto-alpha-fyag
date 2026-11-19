@@ -48,35 +48,42 @@
     {% endif %}
 
     <form method="get">
-      <label for="q">Buscar</label>
-      <input
-        id="q"
-        type="search"
-        name="q"
-        value="{{ q }}"
-        placeholder="SKU, descripción o código de barras"
-      >
+      <div>
+        <label for="q">Buscar</label>
+        <input
+          id="q"
+          type="search"
+          name="q"
+          value="{{ q }}"
+          placeholder="SKU, descripción o código de barras"
+        >
+      </div>
 
-      <label for="categoria">Categoría</label>
-      <select id="categoria" name="categoria">
-        <option value="">Todas</option>
+      <div>
+        <label for="categoria">Categoría</label>
+        <select id="categoria" name="categoria">
+          <option value="">Todas</option>
 
-        {% for categoria in categorias %}
-          <option
-            value="{{ categoria.pk }}"
-            {% if categoria_seleccionada == categoria.pk|stringformat:"s" %}
-              selected
-            {% endif %}
-          >
-            {{ categoria.nombre }}
-          </option>
-        {% endfor %}
-      </select>
+          {% for categoria in categorias %}
+            <option
+              value="{{ categoria.pk }}"
+              {% if categoria_seleccionada == categoria.pk|stringformat:"s" %}
+                selected
+              {% endif %}
+            >
+              {{ categoria.nombre }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
 
-      <button type="submit">Filtrar</button>
-      <a href="{% url 'catalogo_listar' %}">Limpiar filtros</a>
+      <div class="acciones-filtro">
+        <button type="submit">Filtrar</button>
+        <a href="{% url 'catalogo_listar' %}">Limpiar filtros</a>
+      </div>
     </form>
 
+    <div class="tabla-desplazable" role="region" aria-label="Tabla de insumos" tabindex="0">
     <table>
       <thead>
         <tr>
@@ -120,6 +127,7 @@
         {% endfor %}
       </tbody>
     </table>
+    </div>
 
     <p>
       <a href="{% url 'bodega_web' %}">Volver a bodega</a>
