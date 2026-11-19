@@ -15,10 +15,10 @@ SIN_ROL = "Sin rol"
 
 # Cada módulo define su etiqueta, icono, ruta y descripción.
 MODULOS = {
-    "panel": ("Tablero", "fa-gauge-high", "panel", "Alertas y resumen de la sesión"),
-    "catalogo": ("Catálogo", "fa-boxes-stacked", "catalogo", "Consulta de existencias"),
+    "panel": ("Inicio", "fa-gauge-high", "inicio", "Alertas y resumen de la sesión"),
+    "catalogo": ("Catálogo", "fa-boxes-stacked", "catalogo_listar", "Consulta de existencias"),
     "cardex": ("Cardex", "fa-clipboard-check", "cardex", "Auditoría de movimientos"),
-    "despacho": ("Despachos", "fa-truck-fast", "operaciones", "Operaciones de bodega y recepción en obra"),
+    "despacho": ("Despachos", "fa-truck-fast", "bodega_web", "Operaciones de bodega y recepción en obra"),
     "merma": ("Mermas", "fa-triangle-exclamation", "merma_crear", "Bajas con justificación"),
     "compras": ("Compras", "fa-file-invoice-dollar", "compras", "Presupuestos y órdenes"),
     "usuarios": ("Usuarios", "fa-users-gear", "usuarios", "Gestión de cuentas"),

@@ -1,56 +1,62 @@
 const controlMenu = document.querySelector("[data-abrir-menu]");
 const menuOperativo = document.getElementById("menu-operativo");
+const cerrarMenu = menuOperativo.querySelector(".cerrar-menu");
 const fondoMenu = document.querySelector(".fondo-menu");
 const paginaOperativa = document.querySelector(".pagina-operativa");
+const panelInicio = document.querySelector(".panel-inicio");
 const pantallaAmplia = window.matchMedia("(min-width: 64rem)");
+const confirmacionSalida = document.getElementById("confirmacion-salida");
 
-function mostrarMenu(abierto, devolverFoco = true) {
-  menuOperativo.classList.toggle("menu-abierto", abierto);
+document.querySelector("[data-confirmar-salida]").addEventListener("click", () => {
+  confirmacionSalida.showModal();
+});
+confirmacionSalida.querySelector("[data-cancelar-salida]").addEventListener("click", () => {
+  confirmacionSalida.close();
+});
+
+function mostrarMenu(abierto) {
+  const menuFijo = panelInicio && pantallaAmplia.matches;
+  if (menuFijo) {
+    panelInicio.classList.toggle("menu-plegado", !abierto);
+  }
+
+  const desplegadoComoCajon = abierto && !menuFijo;
+  menuOperativo.classList.toggle("menu-abierto", desplegadoComoCajon);
   controlMenu.setAttribute("aria-expanded", String(abierto));
-  fondoMenu.hidden = !abierto;
-  paginaOperativa.inert = abierto;
+  fondoMenu.hidden = !desplegadoComoCajon;
+  paginaOperativa.inert = desplegadoComoCajon;
 
   if (abierto) {
-    menuOperativo.querySelector("button").focus();
-  } else if (devolverFoco) {
+    cerrarMenu.focus();
+  } else {
     controlMenu.focus();
   }
 }
 
-controlMenu.addEventListener("click", () => mostrarMenu(true));
+controlMenu.addEventListener("click", () => {
+  mostrarMenu(controlMenu.getAttribute("aria-expanded") !== "true");
+});
 document.querySelectorAll("[data-cerrar-menu]").forEach((elemento) => {
   elemento.addEventListener("click", () => mostrarMenu(false));
 });
 document.addEventListener("keydown", (evento) => {
-  if (evento.key === "Escape" && !fondoMenu.hidden) {
+  if (evento.key === "Escape" && !confirmacionSalida.open && !fondoMenu.hidden) {
     mostrarMenu(false);
   }
 });
-pantallaAmplia.addEventListener("change", (evento) => {
-  const focoEnMenu = menuOperativo.contains(document.activeElement);
-  mostrarMenu(false, !evento.matches && focoEnMenu);
-});
+function ajustarMenuAlAncho() {
+  const abierto = Boolean(pantallaAmplia.matches && panelInicio && !panelInicio.classList.contains("menu-plegado"));
+  const elementoActivo = document.activeElement;
+  menuOperativo.classList.remove("menu-abierto");
+  fondoMenu.hidden = true;
+  paginaOperativa.inert = false;
+  controlMenu.setAttribute("aria-expanded", String(abierto));
+  if (!abierto && menuOperativo.contains(elementoActivo)) {
+    controlMenu.focus();
+  } else if (abierto && elementoActivo === controlMenu) {
+    cerrarMenu.focus();
+  }
+}
 
-const botonesPanel = menuOperativo.querySelectorAll("[data-panel]");
-const tituloPanel = document.getElementById("titulo-header");
-
-botonesPanel.forEach((boton) => {
-  boton.addEventListener("click", () => {
-    botonesPanel.forEach((opcion) => {
-      const seleccionada = opcion === boton;
-      if (seleccionada) {
-        opcion.setAttribute("aria-current", "true");
-      } else {
-        opcion.removeAttribute("aria-current");
-      }
-      document.getElementById(opcion.dataset.panel).hidden = !seleccionada;
-    });
-    tituloPanel.textContent = boton.textContent.trim();
-    window.scrollTo(0, 0);
-
-    if (!fondoMenu.hidden) {
-      mostrarMenu(false, false);
-      tituloPanel.focus({preventScroll: true});
-    }
-  });
-});
+pantallaAmplia.addEventListener("change", ajustarMenuAlAncho);
+ajustarMenuAlAncho();

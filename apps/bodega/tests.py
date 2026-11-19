@@ -97,39 +97,80 @@ class RolesTests(TestCase):
         self.client.force_login(usuario)
         self.assertEqual(self.client.get(url).status_code, 200)
 
-    def test_supervisor_solo_ve_recepcion_en_ambas_versiones(self):
+    def test_supervisor_solo_ve_recepcion_en_bodega(self):
         self.client.force_login(self.usuarios[SUPERVISOR])
-        for ruta in ("bodega_web", "operaciones"):
-            with self.subTest(ruta=ruta):
-                respuesta = self.client.get(reverse(ruta))
-                self.assertContains(respuesta, "Recepción de despachos")
-                self.assertContains(respuesta, 'class="icono-perfil"')
-                self.assertNotContains(respuesta, 'id="tab-finanzas"')
-                self.assertNotContains(respuesta, 'id="tab-catalogo"')
-                self.assertNotContains(respuesta, reverse("procesar_despacho"))
+        respuesta = self.client.get(reverse("bodega_web"))
+        self.assertContains(respuesta, "Recepción de despachos")
+        self.assertContains(respuesta, 'class="icono-perfil"')
+        self.assertNotContains(respuesta, reverse("compras"))
+        self.assertNotContains(respuesta, reverse("inventario"))
+        self.assertNotContains(respuesta, reverse("procesar_despacho"))
+        self.assertNotContains(respuesta, 'id="modal-qr"')
 
-    def test_url_anterior_redirige_a_operaciones_con_los_mismos_permisos(self):
-        url = reverse("operaciones")
-        self.assertEqual(url, "/operaciones/")
-        self.assertRedirects(
-            self.client.get("/mobile/?origen=menu"),
-            f"{url}?origen=menu",
-            fetch_redirect_response=False,
+    def test_rutas_anteriores_redirigen_a_inicio(self):
+        inicio = reverse("inicio")
+        for anterior in ("/mobile/", "/operaciones/"):
+            self.assertRedirects(
+                self.client.get(f"{anterior}?origen=menu"),
+                f"{inicio}?origen=menu",
+                fetch_redirect_response=False,
+            )
+        for url in (inicio, reverse("bodega_web"), reverse("inventario"), reverse("compras")):
+            self.assertRedirects(self.client.get(url), f"{reverse('login')}?next={url}")
+
+    def test_inicio_del_bodeguero_muestra_inventario_y_despachos_recientes(self):
+        self.client.force_login(self.usuarios[BODEGUERO])
+        bodega = reverse("bodega_web")
+        categoria = Categoria.objects.create(nombre="Materiales")
+        articulo = Articulo.objects.create(
+            sku="INS-01", descripcion="Insumo de prueba", categoria=categoria,
+            stock_fisico=2, stock_critico=2,
         )
-        self.assertRedirects(self.client.get(url), f"{reverse('login')}?next={url}")
+        for numero in range(1, 7):
+            obra = Obra.objects.create(nombre=f"Obra {numero}")
+            Despacho.objects.create(
+                articulo=articulo, obra=obra, cantidad=1, usuario=self.usuarios[BODEGUERO],
+            )
+        respuesta = self.client.get(reverse("inicio"))
+        self.assertTemplateUsed(respuesta, "cuentas/inicio.html")
+        self.assertContains(respuesta, f'href="{bodega}"')
+        self.assertContains(respuesta, "Últimos despachos")
+        self.assertContains(respuesta, "Obra 6")
+        self.assertNotContains(respuesta, "Obra 1")
+        self.assertEqual(respuesta.context["resumen_stock"], {"total": 1, "criticos": 1})
+        self.assertContains(respuesta, 'class="icono-perfil"')
+        self.assertNotContains(respuesta, reverse("procesar_despacho"))
+
+        respuesta = self.client.get(bodega)
+        self.assertContains(respuesta, reverse("procesar_despacho"))
+        self.assertContains(respuesta, 'id="nuevo-despacho"')
+        self.assertNotContains(respuesta, "Últimos despachos")
 
     def test_ti_no_recibe_modulos_operativos_y_finanzas_ve_su_modulo(self):
         for rol in (ADMIN_TI, FINANZAS):
             with self.subTest(rol=rol):
                 self.client.force_login(self.usuarios[rol])
-                respuesta = self.client.get(reverse("bodega_web"))
-                self.assertNotContains(respuesta, 'id="tab-bodega"')
+                respuesta = self.client.get(reverse("inicio"))
+                self.assertNotContains(respuesta, f'href="{reverse("bodega_web")}"')
                 self.assertNotContains(respuesta, 'href="' + reverse("articulo_crear") + '"')
+                compras = reverse("compras")
                 if rol == FINANZAS:
-                    self.assertContains(respuesta, 'id="tab-finanzas"')
+                    self.assertContains(respuesta, compras)
+                    self.assertContains(self.client.get(compras), "Ingreso de Factura de Compra")
                 else:
-                    self.assertNotContains(respuesta, 'id="tab-finanzas"')
-                    self.assertNotContains(respuesta, 'id="tab-catalogo"')
+                    self.assertNotContains(respuesta, compras)
+                    self.assertNotContains(respuesta, reverse("inventario"))
+                    self.assertEqual(self.client.get(compras).status_code, 403)
+
+    def test_inicio_del_supervisor_solo_ofrece_recepcion(self):
+        self.client.force_login(self.usuarios[SUPERVISOR])
+        respuesta = self.client.get(reverse("inicio"))
+        self.assertContains(respuesta, "Recepción de despachos")
+        self.assertNotContains(respuesta, "Últimos despachos")
+        self.assertNotContains(respuesta, reverse("compras"))
+        self.assertNotContains(respuesta, reverse("inventario"))
+        self.assertEqual(self.client.get(reverse("compras")).status_code, 403)
+        self.assertEqual(self.client.get(reverse("inventario")).status_code, 403)
 
     def test_roles_ajenos_a_bodega_no_pueden_despachar_ni_buscar_obras(self):
         for rol in (ADMIN_TI, SUPERVISOR, FINANZAS, GERENTE, AUDITOR):
@@ -137,6 +178,34 @@ class RolesTests(TestCase):
                 self.client.force_login(self.usuarios[rol])
                 self.assertEqual(self.client.post(reverse("procesar_despacho")).status_code, 403)
                 self.assertEqual(self.client.get(reverse("obras_buscar"), {"q": "Edi"}).status_code, 403)
+
+    def test_inventario_real_y_alertas_de_stock_en_bodega(self):
+        self.client.force_login(self.usuarios[BODEGUERO])
+        url = reverse("inventario")
+        self.assertContains(self.client.get(url), "No hay insumos registrados.")
+
+        categoria = Categoria.objects.create(nombre="Herramientas")
+        for sku, stock in (("INS-BAJO", 0), ("INS-LIMITE", 2), ("INS-ALTO", 3)):
+            Articulo.objects.create(
+                sku=sku,
+                descripcion=f"Insumo de prueba {sku}",
+                categoria=categoria,
+                stock_fisico=stock,
+                stock_critico=2,
+            )
+
+        respuesta = self.client.get(url)
+        html = respuesta.content.decode()
+        for sku in ("INS-BAJO", "INS-LIMITE"):
+            self.assertRegex(html, rf'<tr class="bg-red-50 text-red-800">\s*<td[^>]*>{sku}</td>')
+        self.assertRegex(html, r'<tr class="text-slate-700 hover:bg-slate-50">\s*<td[^>]*>INS-ALTO</td>')
+        self.assertContains(respuesta, "Stock Crítico", count=2)
+        self.assertContains(respuesta, "Stock Normal", count=1)
+        for sku_demo in ("FIT-098", "REF-042", "ELE-112"):
+            self.assertNotContains(respuesta, sku_demo)
+
+        Articulo.objects.filter(sku="INS-ALTO").update(stock_fisico=2)
+        self.assertContains(self.client.get(url), "Stock Crítico", count=3)
 
     def test_bodega_puede_despachar_y_descontar_stock(self):
         self.assertIsNotNone(finders.find("js/obra_auto.js"))
@@ -149,11 +218,13 @@ class RolesTests(TestCase):
                 )
                 usuario = self.usuarios[rol]
                 self.client.force_login(usuario)
-                pagina = self.client.get(reverse("operaciones"))
-                self.assertTemplateUsed(pagina, "despachos/operaciones.html")
+                pagina = self.client.get(reverse("bodega_web"))
+                self.assertTemplateUsed(pagina, "bodega/bodega.html")
                 self.assertTemplateUsed(pagina, "base.html")
                 self.assertContains(pagina, 'action="' + reverse("procesar_despacho") + '"')
                 self.assertContains(pagina, "js/obra_auto.js")
+                self.assertContains(pagina, 'id="modal-qr"')
+                self.assertNotContains(pagina, "Abrir formulario de despacho")
                 self.assertEqual(self.client.get(reverse("obras_buscar"), {"q": "Ed"}).json(), [])
                 self.assertEqual(
                     self.client.get(reverse("obras_buscar"), {"q": "Edi"}).json(),
@@ -168,7 +239,7 @@ class RolesTests(TestCase):
                         "articulo": articulo.pk, "obra": obra.pk, "cantidad": 3,
                     })
 
-                self.assertRedirects(respuesta, reverse("operaciones"))
+                self.assertRedirects(respuesta, reverse("bodega_web"))
                 articulo.refresh_from_db()
                 self.assertEqual(articulo.stock_fisico, 7)
                 self.assertTrue(Despacho.objects.filter(articulo=articulo, usuario=usuario, cantidad=3).exists())
@@ -187,20 +258,20 @@ class AccesoRUTTests(TestCase):
         respuesta = self.client.post(reverse("login"), {
             "rut": "11.111.111-1", "password": "clave-de-test",
         }, follow=True)
-        self.assertRedirects(respuesta, reverse("bodega_web"))
+        self.assertRedirects(respuesta, reverse("inicio"))
         self.assertContains(respuesta, "Camila Fuentes")
         self.assertContains(respuesta, ADMIN_BODEGA)
         self.assertNotContains(respuesta, "Usuario de Sistema")
         self.assertEqual(self.client.get(reverse("articulo_crear")).status_code, 200)
 
-    def test_login_por_rut_sin_puntos_ni_guion_abre_operaciones_segun_el_rol(self):
-        for rol in (BODEGUERO, SUPERVISOR):
+    def test_login_por_rut_sin_puntos_ni_guion_abre_inicio(self):
+        for rol in (BODEGUERO, SUPERVISOR, FINANZAS):
             with self.subTest(rol=rol):
                 self.usuario.groups.set([Group.objects.create(name=rol)])
                 respuesta = self.client.post(reverse("login"), {
                     "rut": "111111111", "password": "clave-de-test",
                 }, follow=True)
-                self.assertRedirects(respuesta, reverse("operaciones"))
+                self.assertRedirects(respuesta, reverse("inicio"))
                 self.assertContains(respuesta, "Camila Fuentes")
                 self.assertContains(respuesta, rol)
                 self.client.logout()
@@ -225,7 +296,7 @@ class AccesoRUTTests(TestCase):
         respuesta = self.client.post(reverse("login"), {
             "rut": "22.222.222-2", "password": "clave-de-test",
         }, follow=True)
-        self.assertRedirects(respuesta, reverse("bodega_web"))
+        self.assertRedirects(respuesta, reverse("inicio"))
         self.assertContains(respuesta, "cuenta_ti")
         self.assertContains(respuesta, ADMIN_TI)
         self.assertEqual(self.client.get(reverse("articulo_crear")).status_code, 403)
@@ -276,7 +347,7 @@ class AccesoRUTTests(TestCase):
             self.assertEqual(perfil.bloqueado_hasta, vence)
 
             reloj.return_value = vence
-            self.assertRedirects(otro_cliente.post(url, credenciales), reverse("bodega_web"))
+            self.assertRedirects(otro_cliente.post(url, credenciales), reverse("inicio"))
 
         perfil.refresh_from_db()
         self.assertEqual(perfil.intentos_fallidos, 0)
@@ -290,7 +361,7 @@ class AccesoRUTTests(TestCase):
 
         self.assertRedirects(
             self.client.post(url, {"rut": rut, "password": "clave-de-test"}),
-            reverse("bodega_web"),
+            reverse("inicio"),
         )
         perfil = self.usuario.perfilusuario
         self.assertEqual(perfil.intentos_fallidos, 0)

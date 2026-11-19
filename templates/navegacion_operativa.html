@@ -11,26 +11,29 @@
     <span aria-hidden="true">×</span>
   </button>
 
-  <nav class="modulos-operativos" aria-label="Módulos">
-    {% if mostrar_bodega %}
-      <button type="button" data-panel="tab-bodega" aria-controls="tab-bodega" aria-current="true">
-        <i class="fas fa-boxes" aria-hidden="true"></i>
-        {% if recepcion %}Recepción de despachos{% else %}Bodega y Despachos{% endif %}
-      </button>
-    {% endif %}
-    {% if mostrar_catalogo %}
-      <button type="button" data-panel="tab-catalogo" aria-controls="tab-catalogo"{% if not mostrar_bodega %} aria-current="true"{% endif %}>
-        <i class="fas fa-clipboard-list" aria-hidden="true"></i>
-        Catálogo y Auditoría
-      </button>
-    {% endif %}
-    {% if mostrar_finanzas %}
-      <button type="button" data-panel="tab-finanzas" aria-controls="tab-finanzas"{% if not mostrar_bodega and not mostrar_catalogo %} aria-current="true"{% endif %}>
-        <i class="fas fa-file-invoice-dollar" aria-hidden="true"></i>
-        Compras y Finanzas
-      </button>
-    {% endif %}
-  </nav>
+  {% with pagina=request.resolver_match.url_name %}
+    <nav class="modulos-operativos" aria-label="Módulos">
+      <a href="{% url 'inicio' %}"{% if pagina == 'inicio' %} aria-current="page"{% endif %}>
+        <i class="fas fa-gauge-high" aria-hidden="true"></i> Inicio
+      </a>
+      {% if mostrar_bodega %}
+        <a href="{% url 'bodega_web' %}"{% if pagina == 'bodega_web' %} aria-current="page"{% endif %}>
+          <i class="fas fa-boxes" aria-hidden="true"></i>
+          {% if recepcion %}Recepción de despachos{% else %}Bodega y Despachos{% endif %}
+        </a>
+      {% endif %}
+      {% if mostrar_catalogo %}
+        <a href="{% url 'inventario' %}"{% if pagina == 'inventario' %} aria-current="page"{% endif %}>
+          <i class="fas fa-clipboard-list" aria-hidden="true"></i> Catálogo y Auditoría
+        </a>
+      {% endif %}
+      {% if mostrar_finanzas %}
+        <a href="{% url 'compras' %}"{% if pagina == 'compras' %} aria-current="page"{% endif %}>
+          <i class="fas fa-file-invoice-dollar" aria-hidden="true"></i> Compras y Finanzas
+        </a>
+      {% endif %}
+    </nav>
+  {% endwith %}
 
   <div class="perfil-operativo">
     <div class="identidad-operativa">
@@ -40,12 +43,18 @@
         <p>{{ rol_actual }}</p>
       </div>
     </div>
-    <form method="post" action="{% url 'logout' %}">
-      {% csrf_token %}
-      <button type="submit" aria-label="Cerrar sesión">
-        <i class="fas fa-sign-out-alt" aria-hidden="true"></i>
-        Salir
-      </button>
-    </form>
+    <button type="button" data-confirmar-salida aria-haspopup="dialog" aria-controls="confirmacion-salida">
+      <i class="fas fa-sign-out-alt" aria-hidden="true"></i>
+      Salir
+    </button>
   </div>
 </aside>
+
+<dialog id="confirmacion-salida" class="dialogo-salida" aria-labelledby="titulo-salida">
+  <h2 id="titulo-salida">¿Quieres cerrar sesión?</h2>
+  <form method="post" action="{% url 'logout' %}">
+    {% csrf_token %}
+    <button type="button" data-cancelar-salida autofocus>Cancelar</button>
+    <button type="submit">Cerrar sesión</button>
+  </form>
+</dialog>

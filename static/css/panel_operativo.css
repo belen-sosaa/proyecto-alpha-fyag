@@ -7,6 +7,9 @@
 }
 
 .cabecera-operativa {
+  position: sticky;
+  top: 0;
+  z-index: 20;
   display: flex;
   align-items: center;
   gap: 0.75rem;
@@ -28,6 +31,10 @@
   padding-inline: 0.75rem;
   background: #eaf1fd;
   color: #10224c;
+}
+
+.panel-inicio [data-abrir-menu][aria-expanded="true"] {
+  display: none;
 }
 
 .contenido-operativo {
@@ -104,17 +111,20 @@
   cursor: pointer;
 }
 
-.modulos-operativos button {
+.modulos-operativos a {
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  min-height: 44px;
   padding: 0.75rem;
+  border-radius: 0.6rem;
   text-align: left;
+  font-weight: 600;
   color: #dbeafe;
 }
 
-.modulos-operativos button:hover,
-.modulos-operativos button[aria-current="true"] {
+.modulos-operativos a:hover,
+.modulos-operativos a[aria-current="page"] {
   background: var(--azul);
   color: white;
 }
@@ -164,30 +174,77 @@
 }
 
 .perfil-operativo button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-height: 44px;
   padding-inline: 0.5rem;
   white-space: nowrap;
   color: #fecaca;
+  font-weight: 600;
+}
+
+.dialogo-salida {
+  width: min(24rem, calc(100% - 2rem));
+  margin: auto;
+  padding: 1.25rem;
+  border: 1px solid var(--borde);
+  border-radius: 1rem;
+  background: white;
+  color: var(--texto);
+  box-shadow: 0 12px 32px rgb(15 23 42 / 25%);
+}
+
+.dialogo-salida::backdrop {
+  background: rgb(15 23 42 / 55%);
+}
+
+.dialogo-salida h2 {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 700;
+}
+
+.dialogo-salida form {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1.25rem;
+}
+
+.dialogo-salida button {
+  min-height: 44px;
+  padding-inline: 0.875rem;
+  border: 1px solid var(--borde);
+  border-radius: 0.6rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.dialogo-salida button[type="submit"] {
+  border-color: transparent;
+  background: #b91c1c;
+  color: white;
+}
+
+.dialogo-salida button[type="submit"]:hover {
+  background: #991b1b;
 }
 
 @media (max-width: 47.999rem) {
-  .cabecera-operativa {
-    position: sticky;
-    top: 0;
-    z-index: 20;
-  }
-
   .contenido-operativo :is(input, select, textarea) {
     font-size: 1rem;
   }
 }
 
 @media (min-width: 64rem) {
-  .panel-operativo {
+  .panel-inicio:not(.menu-plegado) {
     display: grid;
     grid-template-columns: 17rem minmax(0, 1fr);
   }
 
-  .menu-operativo {
+  .panel-inicio:not(.menu-plegado) .menu-operativo {
     position: sticky;
     top: 0;
     height: 100vh;
@@ -196,33 +253,10 @@
     visibility: visible;
     transform: none;
   }
-
-  .menu-operativo .marca {
-    padding-right: 0;
-  }
-
-  .fondo-menu,
-  .menu-operativo .cerrar-menu,
-  .cabecera-operativa button {
-    display: none;
-  }
-}
-
-.parpadeo-rojo {
-  background: #fef2f2;
-  animation: alerta-stock 2s infinite alternate;
-}
-
-@keyframes alerta-stock {
-  to { background: #fee2e2; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .menu-operativo {
     transition: none;
-  }
-
-  .parpadeo-rojo {
-    animation: none;
   }
 }

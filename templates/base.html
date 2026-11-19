@@ -332,7 +332,7 @@
 </head>
 
 <body class="{% block body_class %}{% endblock %}">
-  <div{% if panel_operativo %} class="panel-operativo"{% endif %}>
+  <div{% if panel_operativo %} class="panel-operativo{% if request.resolver_match.url_name == 'inicio' %} panel-inicio{% endif %}"{% endif %}>
     {% if panel_operativo %}
       {% include "navegacion_operativa.html" %}
     {% endif %}
@@ -342,9 +342,7 @@
           <button type="button" data-abrir-menu aria-controls="menu-operativo" aria-expanded="false">
             <span aria-hidden="true">☰</span> Menú
           </button>
-          <h1 id="titulo-header" tabindex="-1">
-            {% if recepcion %}Recepción de despachos{% elif mostrar_bodega %}Bodega y Despachos{% elif mostrar_catalogo %}Catálogo y Auditoría{% elif mostrar_finanzas %}Compras y Finanzas{% else %}Panel{% endif %}
-          </h1>
+          <h1>{{ titulo_panel }}</h1>
         </header>
       {% elif not pagina_acceso %}
         <header class="cabecera">
