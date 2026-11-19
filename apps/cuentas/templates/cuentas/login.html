@@ -175,12 +175,18 @@
           name="rut"
           value="{{ form.rut.value|default:'' }}"
           autocomplete="username"
+          autocapitalize="characters"
+          spellcheck="false"
+          aria-describedby="formato-rut"
           maxlength="12"
           class="w-full border border-slate-200 py-3 pr-3 pl-10 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-slate-50 text-slate-700 transition"
-          placeholder="11.111.111-1"
+          placeholder="111111111"
           required
         />
       </div>
+      <p id="formato-rut" class="mt-2 text-sm text-slate-600">
+        Puedes escribir tu RUT sin puntos ni guion, con el dígito verificador.
+      </p>
     </div>
 
     <div>
