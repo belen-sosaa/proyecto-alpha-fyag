@@ -2,24 +2,6 @@
 
 {% block title %}Bodega | Logística FYAG{% endblock %}
 
-{% block extra_head %}
-<style>
-/* Modo boceto */
-body.modo-boceto * {
-  background-color: #f3f4f6 !important;
-  color: transparent !important;
-  border: 1px solid #9ca3af !important;
-  box-shadow: none !important;
-  border-radius: 4px !important;
-}
-body.modo-boceto i,
-body.modo-boceto img {
-  opacity: 0 !important;
-}
-
-</style>
-{% endblock %}
-
 {% block content %}
   <!-- Bodega y despachos -->
   {% if mostrar_bodega %}
@@ -315,14 +297,6 @@ body.modo-boceto img {
   <span id="toast-msg"></span>
 </div>
 
-<!-- Modo boceto -->
-<button
-  onclick="alternarWireframe()"
-  class="ml-auto mt-6 bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-900 w-12 h-12 rounded-full shadow-xl border border-slate-600 flex items-center justify-center transition hover:scale-110 z-40"
-  aria-label="Alternar modo boceto" title="Alternar modo boceto"
->
-  <i class="fas fa-pencil-ruler text-xl"></i>
-</button>
 {% endblock %}
 
 {% block extra_js %}
@@ -353,8 +327,5 @@ body.modo-boceto img {
     document.getElementById("motivo-merma").value = "";
   }
 
-  function alternarWireframe() {
-    document.body.classList.toggle("modo-boceto");
-  }
 </script>
 {% endblock %}
