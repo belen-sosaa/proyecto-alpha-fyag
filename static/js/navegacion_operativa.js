@@ -46,10 +46,11 @@ botonesPanel.forEach((boton) => {
       document.getElementById(opcion.dataset.panel).hidden = !seleccionada;
     });
     tituloPanel.textContent = boton.textContent.trim();
+    window.scrollTo(0, 0);
 
     if (!fondoMenu.hidden) {
       mostrarMenu(false, false);
-      tituloPanel.focus();
+      tituloPanel.focus({preventScroll: true});
     }
   });
 });

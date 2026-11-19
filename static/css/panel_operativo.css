@@ -149,6 +149,18 @@
   color: #fecaca;
 }
 
+@media (max-width: 47.999rem) {
+  .cabecera-operativa {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+  }
+
+  .contenido-operativo :is(input, select, textarea) {
+    font-size: 1rem;
+  }
+}
+
 @media (min-width: 64rem) {
   .panel-operativo {
     display: grid;
