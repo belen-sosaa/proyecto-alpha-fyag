@@ -45,6 +45,9 @@ class PerfilUsuario(models.Model):
         unique=True,
     )
 
+    intentos_fallidos = models.PositiveSmallIntegerField(default=0, editable=False)
+    bloqueado_hasta = models.DateTimeField(null=True, blank=True, editable=False)
+
     # Columna del esquema de Neon. Los permisos se consultan en los grupos de Django.
     rol = models.CharField(
         max_length=20,

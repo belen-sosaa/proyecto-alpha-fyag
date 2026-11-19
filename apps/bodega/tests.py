@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
@@ -7,7 +8,7 @@ from django.contrib.auth.models import AnonymousUser, Group
 from django.contrib.staticfiles import finders
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.http import HttpResponse
-from django.test import RequestFactory, TestCase
+from django.test import Client, RequestFactory, TestCase
 from django.urls import reverse
 
 from apps.cuentas.decorators import facultad_requerida, roles_validos
@@ -102,6 +103,7 @@ class RolesTests(TestCase):
             with self.subTest(ruta=ruta):
                 respuesta = self.client.get(reverse(ruta))
                 self.assertContains(respuesta, "Recepción de despachos")
+                self.assertContains(respuesta, 'class="icono-perfil"')
                 self.assertNotContains(respuesta, 'id="tab-finanzas"')
                 self.assertNotContains(respuesta, 'id="tab-catalogo"')
                 self.assertNotContains(respuesta, reverse("procesar_despacho"))
@@ -191,12 +193,12 @@ class AccesoRUTTests(TestCase):
         self.assertNotContains(respuesta, "Usuario de Sistema")
         self.assertEqual(self.client.get(reverse("articulo_crear")).status_code, 200)
 
-    def test_login_por_rut_sin_puntos_abre_operaciones_segun_el_rol(self):
+    def test_login_por_rut_sin_puntos_ni_guion_abre_operaciones_segun_el_rol(self):
         for rol in (BODEGUERO, SUPERVISOR):
             with self.subTest(rol=rol):
                 self.usuario.groups.set([Group.objects.create(name=rol)])
                 respuesta = self.client.post(reverse("login"), {
-                    "rut": "11111111-1", "password": "clave-de-test",
+                    "rut": "111111111", "password": "clave-de-test",
                 }, follow=True)
                 self.assertRedirects(respuesta, reverse("operaciones"))
                 self.assertContains(respuesta, "Camila Fuentes")
@@ -248,6 +250,51 @@ class AccesoRUTTests(TestCase):
         })
         self.assertContains(respuesta, "RUT o contraseña incorrectos")
         self.assertNotIn("_auth_user_id", self.client.session)
+
+    def test_bloqueo_por_rut_normalizado_vence_sin_prorroga_por_intentos(self):
+        url = reverse("login")
+        inicio = datetime(2026, 11, 19, 15, tzinfo=timezone.utc)
+        perfil = self.usuario.perfilusuario
+
+        with patch("apps.cuentas.forms.timezone.now", return_value=inicio) as reloj:
+            for rut in ("11.111.111-1", "11111111-1", "111111111", "11.111.111-1", "11111111-1"):
+                respuesta = self.client.post(url, {"rut": rut, "password": "clave-incorrecta"})
+                self.assertContains(respuesta, "RUT o contraseña incorrectos, o cuenta inactiva.")
+
+            perfil.refresh_from_db()
+            vence = inicio + timedelta(minutes=15)
+            self.assertEqual(perfil.intentos_fallidos, 5)
+            self.assertEqual(perfil.bloqueado_hasta, vence)
+
+            otro_cliente = Client()
+            credenciales = {"rut": "11.111.111-1", "password": "clave-de-test"}
+            reloj.return_value = vence - timedelta(seconds=1)
+            respuesta = otro_cliente.post(url, credenciales)
+            self.assertContains(respuesta, "RUT o contraseña incorrectos, o cuenta inactiva.")
+            self.assertNotIn("_auth_user_id", otro_cliente.session)
+            perfil.refresh_from_db()
+            self.assertEqual(perfil.bloqueado_hasta, vence)
+
+            reloj.return_value = vence
+            self.assertRedirects(otro_cliente.post(url, credenciales), reverse("bodega_web"))
+
+        perfil.refresh_from_db()
+        self.assertEqual(perfil.intentos_fallidos, 0)
+        self.assertIsNone(perfil.bloqueado_hasta)
+
+    def test_login_exitoso_antes_del_limite_reinicia_los_intentos(self):
+        url = reverse("login")
+        rut = "11.111.111-1"
+        for _ in range(4):
+            self.client.post(url, {"rut": rut, "password": "clave-incorrecta"})
+
+        self.assertRedirects(
+            self.client.post(url, {"rut": rut, "password": "clave-de-test"}),
+            reverse("bodega_web"),
+        )
+        perfil = self.usuario.perfilusuario
+        self.assertEqual(perfil.intentos_fallidos, 0)
+        self.assertIsNone(perfil.bloqueado_hasta)
 
     def test_rut_es_unico_independientemente_del_formato(self):
         otro = get_user_model().objects.create_user(username="otro_usuario")

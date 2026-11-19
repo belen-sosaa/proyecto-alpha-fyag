@@ -175,6 +175,8 @@
           name="rut"
           value="{{ form.rut.value|default:'' }}"
           autocomplete="username"
+          autocapitalize="characters"
+          spellcheck="false"
           maxlength="12"
           class="w-full border border-slate-200 py-3 pr-3 pl-10 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-slate-50 text-slate-700 transition"
           placeholder="11.111.111-1"
@@ -221,4 +223,50 @@
   </form>
 
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  const campoRut = document.getElementById("rut");
+
+  function caracteresRut(valor) {
+    return valor.toUpperCase().replace(/[^0-9K]/g, "");
+  }
+
+  function formatearRut() {
+    const caracteresAntes = caracteresRut(campoRut.value.slice(0, campoRut.selectionStart)).length;
+    const rut = caracteresRut(campoRut.value);
+    const cuerpo = rut.slice(0, -1).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    const formateado = rut.length > 1 ? cuerpo + "-" + rut.slice(-1) : rut;
+    if (formateado === campoRut.value) return;
+
+    campoRut.value = formateado;
+    const posiciones = Array.from(formateado.matchAll(/[0-9K]/g));
+    const anterior = posiciones[caracteresAntes - 1];
+    const cursor = anterior ? anterior.index + 1 : 0;
+    campoRut.setSelectionRange(cursor, cursor);
+  }
+
+  campoRut.addEventListener("beforeinput", (evento) => {
+    const {selectionStart, selectionEnd, value} = campoRut;
+    if (!evento.cancelable || selectionStart !== selectionEnd) return;
+
+    // Borra el carácter vecino al pulsar retroceso o suprimir junto a un separador.
+    if (evento.inputType === "deleteContentBackward" && /[.-]/.test(value.charAt(selectionStart - 1))) {
+      evento.preventDefault();
+      campoRut.setRangeText("", selectionStart - 2, selectionStart, "start");
+      formatearRut();
+    } else if (evento.inputType === "deleteContentForward" && /[.-]/.test(value.charAt(selectionStart))) {
+      evento.preventDefault();
+      campoRut.setRangeText("", selectionStart, selectionStart + 2, "start");
+      formatearRut();
+    }
+  });
+
+  campoRut.addEventListener("input", (evento) => {
+    if (!evento.isComposing) formatearRut();
+  });
+  campoRut.addEventListener("change", formatearRut);
+  formatearRut();
+</script>
 {% endblock %}
