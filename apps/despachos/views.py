@@ -3,48 +3,41 @@ import uuid
 from pathlib import Path
 
 from django.contrib import messages
-from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from django.http import JsonResponse
-from django.shortcuts import redirect, render
+from django.shortcuts import redirect
 
 from apps.bodega.models import Articulo, Despacho, Obra
-from apps.bodega.views import contexto_operativo
 from apps.cuentas.decorators import facultad_requerida
-
-
-@login_required
-def vista_operaciones(request):
-    return render(request, "despachos/operaciones.html", contexto_operativo(request.user))
 
 
 @facultad_requerida("despachar")
 @transaction.atomic
 def procesar_despacho(request):
     if request.method != "POST":
-        return redirect("operaciones")
+        return redirect("bodega_web")
     obra_id = request.POST.get("obra")
     articulo_id = request.POST.get("articulo")
     if not obra_id or not articulo_id:
         messages.error(request, "Debe seleccionar una obra y un artículo.")
-        return redirect("operaciones")
+        return redirect("bodega_web")
     try:
         cantidad = int(request.POST.get("cantidad", "0"))
     except (TypeError, ValueError):
         messages.error(request, "La cantidad ingresada no es válida.")
-        return redirect("operaciones")
+        return redirect("bodega_web")
     if cantidad <= 0:
         messages.error(request, "La cantidad debe ser mayor que cero.")
-        return redirect("operaciones")
+        return redirect("bodega_web")
     try:
         articulo = Articulo.objects.select_for_update().select_related("categoria").get(pk=int(articulo_id))
         obra = Obra.objects.get(pk=int(obra_id))
     except (Articulo.DoesNotExist, Obra.DoesNotExist, TypeError, ValueError):
         messages.error(request, "La obra o el artículo seleccionado no existe.")
-        return redirect("operaciones")
+        return redirect("bodega_web")
     if articulo.stock_fisico < cantidad:
         messages.error(request, "Stock insuficiente para realizar el despacho.")
-        return redirect("operaciones")
+        return redirect("bodega_web")
 
     despacho = Despacho(articulo=articulo, obra=obra, cantidad=cantidad, usuario=request.user)
     mongo_id = str(uuid.uuid4())
@@ -73,12 +66,12 @@ def procesar_despacho(request):
             json.dump(documentos, archivo, ensure_ascii=False, indent=2)
     except OSError:
         messages.error(request, "No se pudo registrar el despacho en el almacenamiento local.")
-        return redirect("operaciones")
+        return redirect("bodega_web")
     articulo.stock_fisico -= cantidad
     articulo.save(update_fields=["stock_fisico"])
     despacho.save()
     messages.success(request, "Despacho registrado correctamente.")
-    return redirect("operaciones")
+    return redirect("bodega_web")
 
 
 @facultad_requerida("despachar")

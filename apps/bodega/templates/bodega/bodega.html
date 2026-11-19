@@ -1,24 +1,7 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block title %}Bodega | Logística FYAG{% endblock %}
-
-{% block extra_head %}
-<style>
-/* Modo boceto */
-body.modo-boceto * {
-  background-color: #f3f4f6 !important;
-  color: transparent !important;
-  border: 1px solid #9ca3af !important;
-  box-shadow: none !important;
-  border-radius: 4px !important;
-}
-body.modo-boceto i,
-body.modo-boceto img {
-  opacity: 0 !important;
-}
-
-</style>
-{% endblock %}
 
 {% block content %}
   <!-- Bodega y despachos -->
@@ -32,17 +15,85 @@ body.modo-boceto img {
       </div>
       {% endif %}
       {% if perm.despachar %}
-      <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-        <h3 class="text-lg font-bold text-gray-800 mb-4">Despacho a obra</h3>
-        <a href="{% url 'operaciones' %}" class="inline-block bg-blue-600 text-white px-4 py-3 rounded-lg font-bold">
-          Abrir formulario de despacho
-        </a>
+      <!-- Despacho -->
+      <div id="nuevo-despacho"
+        class="scroll-mt-20 bg-white p-5 md:p-6 rounded-2xl shadow-sm border border-slate-100"
+      >
+        <div
+          class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6 pb-4 border-b border-slate-50"
+        >
+          <h3 class="text-lg font-bold text-slate-800">
+            <i
+              class="fas fa-truck-fast text-blue-600 mr-2 bg-blue-50 p-2 rounded-lg"
+            ></i>
+            Nuevo Despacho
+          </h3>
+          <button
+            onclick="abrirQR()"
+            class="bg-blue-600 text-white px-5 py-3 rounded-xl hover:bg-blue-700 transition text-sm font-bold shadow-md shadow-blue-200 flex items-center justify-center w-full sm:w-auto"
+          >
+            <i class="fas fa-camera mr-2 text-lg"></i> Escanear
+          </button>
+        </div>
+
+        <form
+          method="POST"
+          action="{% url 'procesar_despacho' %}"
+          class="space-y-5"
+        >
+          {% csrf_token %}
+          {% include "despachos/obra_auto.html" %}
+          <div>
+            <label for="input-articulo" class="block text-sm font-bold text-slate-600 mb-1.5"
+              >Artículo a despachar</label
+            >
+            <div class="relative">
+              <i
+                class="fas fa-box absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+              ></i>
+              <select
+                id="input-articulo"
+                name="articulo"
+                class="w-full border border-slate-200 text-slate-700 rounded-xl py-3.5 pl-11 pr-4 text-sm font-medium"
+                required
+              >
+                <option value="">Seleccione un artículo...</option>
+                {% for articulo in articulos %}
+                <option value="{{ articulo.id }}">
+                  {{ articulo.sku }} | {{ articulo.descripcion }}
+                </option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+          <div class="w-full sm:max-w-48">
+            <label for="cant-despacho" class="block text-sm font-bold text-slate-600 mb-1.5"
+              >Cantidad</label
+            >
+            <input
+              type="number"
+              id="cant-despacho"
+              name="cantidad"
+              min="1"
+              value="1"
+              class="w-full border border-slate-200 rounded-xl p-3.5 focus:ring-2 focus:ring-blue-500 outline-none text-lg font-bold text-center bg-slate-50 focus:bg-white"
+            />
+          </div>
+
+          <button
+            type="submit"
+            class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl py-4 mt-4 shadow-lg shadow-blue-200 transition flex items-center justify-center text-base"
+          >
+            <i class="fas fa-check-circle mr-2 text-lg"></i> Confirmar
+            Despacho
+          </button>
+        </form>
       </div>
       {% endif %}
       {% if perm.registrar_merma %}
       <!-- Mermas -->
-      <div
-        class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100"
+      <div id="registro-merma"
+        class="scroll-mt-20 bg-white p-6 rounded-2xl shadow-sm border border-gray-100"
       >
         <h3 class="text-lg font-bold text-gray-800 mb-6">
           <i class="fas fa-triangle-exclamation text-orange-500 mr-2"></i>
@@ -84,228 +135,46 @@ body.modo-boceto img {
   </div>
   {% endif %}
 
-  <!-- Catálogo y auditoría -->
-  {% if mostrar_catalogo %}
-  <div id="tab-catalogo" {% if mostrar_bodega %}hidden{% endif %}>
+{% if perm.despachar %}
+<!-- Lector QR (Modal de escaneo) -->
+<div
+  id="modal-qr"
+  class="hidden fixed inset-0 z-50 bg-slate-900/90 backdrop-blur-md items-center justify-center p-4"
+>
+  <div
+    class="bg-white rounded-3xl shadow-2xl p-4 sm:p-6 w-full max-w-sm max-h-[calc(100dvh-2rem)] overflow-y-auto text-center"
+  >
+    <h3 class="text-xl font-bold text-slate-800 mb-2">Escáner Activo</h3>
+    <p class="text-sm text-slate-500 mb-6">
+      Apunta la cámara al código
+    </p>
+
     <div
-      class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 h-full flex flex-col"
+      class="w-full aspect-square max-h-[32dvh] bg-slate-100 border-4 border-dashed border-blue-300 rounded-2xl flex items-center justify-center mb-6 relative overflow-hidden"
     >
-      <div class="flex flex-wrap justify-between items-center gap-4 mb-6">
-        <h3 class="text-lg font-bold text-gray-800">
-          <i class="fas fa-table-list text-indigo-600 mr-2"></i> Cardex de
-          Inventario Central
-        </h3>
-        <div class="flex flex-wrap gap-3">
-            <a href="{% url 'catalogo_listar' %}" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition text-sm font-bold">Administrar catálogo</a>
-          <button
-            class="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition text-sm font-bold shadow-sm"
-          >
-            <i class="fas fa-file-pdf text-red-500 mr-2"></i> Exportar PDF
-          </button>
-          {% if perm.ingresar_articulo %}
-          <a href="{% url 'articulo_crear' %}" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition text-sm font-bold">
-            Nuevo Artículo
-          </a>
-          {% endif %}
-        </div>
-      </div>
-
+      <i class="fas fa-qrcode text-6xl text-slate-300"></i>
       <div
-        class="tabla-desplazable border border-gray-200 rounded-xl"
-        role="region" aria-label="Tabla del inventario" tabindex="0"
-      >
-        <table class="w-full text-left text-sm whitespace-nowrap">
-          <thead
-            class="bg-slate-50 text-slate-600 border-b border-gray-200"
-          >
-            <tr>
-              <th scope="col" class="p-4">SKU</th>
-              <th scope="col" class="p-4">Descripción</th>
-              <th scope="col" class="p-4">Categoría</th>
-              <th scope="col" class="p-4">Stock</th>
-              <th scope="col" class="p-4">Estado</th>
-            </tr>
-          </thead>
-            <tbody class="divide-y divide-gray-100">
-              {% for articulo in articulos %}
-                <tr>
-                  <td class="p-4">{{ articulo.sku }}</td>
-                  <td class="p-4">{{ articulo.descripcion }}</td>
-                  <td class="p-4">{{ articulo.categoria.nombre }}</td>
-                  <td class="p-4">{{ articulo.stock_fisico }}</td>
-                  <td class="p-4">{{ articulo.estado }}</td>
-                </tr>
-              {% empty %}
-                <tr>
-                  <td colspan="5" class="p-4">No hay artículos registrados.</td>
-                </tr>
-              {% endfor %}
+        class="absolute w-full h-1 bg-blue-500 top-1/2 -translate-y-1/2 shadow-[0_0_20px_rgba(59,130,246,1)]"
+      ></div>
+    </div>
 
-            <tr class="hover:bg-slate-50 transition">
-              <td class="p-4 font-semibold text-slate-700">FIT-098</td>
-              <td class="p-4 text-slate-600">Válvula de bola 2"</td>
-              <td class="p-4 text-slate-500">Fitting</td>
-              <td
-                class="p-4 font-bold text-slate-800 text-center text-lg"
-              >
-                45
-              </td>
-              <td class="p-4">
-                <span
-                  class="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-bold border border-green-200"
-                  >Stock Normal</span
-                >
-              </td>
-            </tr>
-            <tr class="parpadeo-rojo border-y border-red-200">
-              <td class="p-4 font-bold text-red-700">REF-042</td>
-              <td class="p-4 text-red-800 font-bold">
-                Gas Refrigerante R410A
-              </td>
-              <td class="p-4 text-red-600">Refrigeración</td>
-              <td class="p-4 font-bold text-red-700 text-center text-lg">
-                2
-              </td>
-              <td class="p-4">
-                <span
-                  class="bg-red-600 text-white px-3 py-1 rounded-full text-xs font-bold shadow-sm"
-                  ><i class="fas fa-triangle-exclamation mr-1"></i> Stock
-                  Crítico</span
-                >
-              </td>
-            </tr>
-            <tr class="hover:bg-slate-50 transition">
-              <td class="p-4 font-semibold text-slate-700">ELE-112</td>
-              <td class="p-4 text-slate-600">Cable Eléctrico 12 AWG</td>
-              <td class="p-4 text-slate-500">Electricidad</td>
-              <td
-                class="p-4 font-bold text-slate-800 text-center text-lg"
-              >
-                120
-              </td>
-              <td class="p-4">
-                <span
-                  class="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-bold border border-green-200"
-                  >Stock Normal</span
-                >
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+    <div class="flex flex-col gap-3">
+      <button
+        onclick="simularLectura()"
+        class="w-full bg-blue-600 text-white font-bold py-4 rounded-xl shadow-lg shadow-blue-200 active:scale-95 transition text-lg"
+      >
+        Simular Lectura Exitosa
+      </button>
+      <button
+        onclick="cerrarQR()"
+        class="w-full bg-slate-100 text-slate-600 font-bold py-4 rounded-xl active:scale-95 transition"
+      >
+        Cancelar
+      </button>
     </div>
   </div>
-  {% endif %}
-
-  <!-- Compras y finanzas -->
-  {% if mostrar_finanzas %}
-  <div id="tab-finanzas" {% if mostrar_bodega or mostrar_catalogo %}hidden{% endif %}>
-    <div
-      class="max-w-4xl mx-auto bg-white p-4 sm:p-6 lg:p-8 rounded-2xl shadow-sm border border-gray-100"
-    >
-      <h3 class="text-xl font-bold text-gray-800 mb-2">
-        <i class="fas fa-file-invoice-dollar text-green-600 mr-2"></i>
-        Ingreso de Factura de Compra
-      </h3>
-      <p class="text-gray-500 text-sm mb-8">
-        Calculadora automática de descuentos en cascada e impuestos.
-      </p>
-
-      <div
-        class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 text-sm mb-6 pb-6 border-b border-gray-100"
-      >
-        <div>
-          <label class="block font-semibold text-gray-600 mb-1"
-            >Nº de Factura</label
-          >
-          <input
-            type="text"
-            class="w-full border border-gray-300 rounded-lg p-3 bg-gray-50"
-            value="FAC-99201"
-          />
-        </div>
-        <div>
-          <label class="block font-semibold text-gray-600 mb-1"
-            >Proveedor (RUT Validado)</label
-          >
-          <input
-            type="text"
-            class="w-full border border-gray-300 rounded-lg p-3 bg-gray-50"
-            value="Importadora Industrial SPA"
-          />
-        </div>
-      </div>
-
-      <h4 class="font-bold text-gray-700 mb-4">
-        Detalle del Artículo (Ejemplo)
-      </h4>
-      <div class="grid grid-cols-4 gap-4 text-sm mb-6">
-        <div class="col-span-4 xl:col-span-1">
-          <label class="block text-gray-500 mb-1"
-            >Valor Neto Unitario</label
-          >
-          <input
-            type="text"
-            class="w-full border border-gray-300 rounded-lg p-3"
-            value="$100.000"
-          />
-        </div>
-        <div class="col-span-4 xl:col-span-3 grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div>
-            <label class="block text-gray-500 mb-1"
-              >Descuento 1 (%)</label
-            >
-            <input
-              type="number"
-              class="w-full border border-gray-300 rounded-lg p-3 text-center"
-              value="10"
-            />
-          </div>
-          <div>
-            <label class="block text-gray-500 mb-1"
-              >Descuento 2 (%)</label
-            >
-            <input
-              type="number"
-              class="w-full border border-gray-300 rounded-lg p-3 text-center"
-              value="5"
-            />
-          </div>
-          <div>
-            <label class="block text-gray-500 mb-1"
-              >Descuento 3 (%)</label
-            >
-            <input
-              type="number"
-              class="w-full border border-gray-300 rounded-lg p-3 text-center"
-              value="2"
-            />
-          </div>
-        </div>
-      </div>
-
-      <div
-        class="bg-slate-800 text-white p-6 rounded-xl shadow-inner mb-6"
-      >
-        <div class="flex flex-wrap justify-between items-center gap-x-3 text-lg">
-          <span class="text-slate-300"
-            >Costo Neto Final (Con 3 Dsctos):</span
-          >
-          <span class="font-bold">$83.790</span>
-        </div>
-        <div class="flex flex-wrap justify-between items-center gap-x-3 text-lg mt-2">
-          <span class="text-slate-300">Total con IVA (19%):</span>
-          <span class="font-bold text-green-400">$99.710</span>
-        </div>
-      </div>
-
-      <p class="mt-4 text-sm text-slate-600">Vista previa. El registro de facturas aún no está disponible.</p>
-    </div>
-  </div>
-  {% endif %}
-  {% if not mostrar_bodega and not mostrar_catalogo and not mostrar_finanzas %}
-  <p class="text-slate-600">Tu cuenta todavía no tiene módulos operativos disponibles.</p>
-  {% endif %}
+</div>
+{% endif %}
 
 <!-- Notificaciones -->
 <div
@@ -315,14 +184,6 @@ body.modo-boceto img {
   <span id="toast-msg"></span>
 </div>
 
-<!-- Modo boceto -->
-<button
-  onclick="alternarWireframe()"
-  class="ml-auto mt-6 bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-900 w-12 h-12 rounded-full shadow-xl border border-slate-600 flex items-center justify-center transition hover:scale-110 z-40"
-  aria-label="Alternar modo boceto" title="Alternar modo boceto"
->
-  <i class="fas fa-pencil-ruler text-xl"></i>
-</button>
 {% endblock %}
 
 {% block extra_js %}
@@ -353,8 +214,36 @@ body.modo-boceto img {
     document.getElementById("motivo-merma").value = "";
   }
 
-  function alternarWireframe() {
-    document.body.classList.toggle("modo-boceto");
+  {% if perm.despachar %}
+  function abrirQR() {
+    document.getElementById("modal-qr").classList.remove("hidden");
+    document.getElementById("modal-qr").classList.add("flex");
   }
+  function cerrarQR() {
+    document.getElementById("modal-qr").classList.add("hidden");
+    document.getElementById("modal-qr").classList.remove("flex");
+  }
+  function simularLectura() {
+    cerrarQR();
+    const select = document.getElementById("input-articulo");
+    const opcion = Array.from(select.options).find((item) =>
+      item.text.includes("SKU-9901"),
+    );
+    if (opcion) {
+      select.value = opcion.value;
+    }
+    select.classList.remove("text-slate-500", "bg-slate-100");
+    select.classList.add(
+      "text-blue-700",
+      "bg-blue-50",
+      "border-blue-400",
+      "font-bold",
+    );
+    mostrarMensaje("Código escaneado.", "exito");
+  }
+  {% endif %}
 </script>
+{% if perm.despachar %}
+<script src="{% static 'js/obra_auto.js' %}" defer></script>
+{% endif %}
 {% endblock %}
