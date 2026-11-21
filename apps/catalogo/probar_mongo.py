@@ -8,7 +8,7 @@ from pymongo.errors import PyMongoError
 
 def main():
     load_dotenv(
-        Path(__file__).resolve().parent / ".env",
+        Path(__file__).resolve().parents[2] / ".env",
         override=True,
     )
 

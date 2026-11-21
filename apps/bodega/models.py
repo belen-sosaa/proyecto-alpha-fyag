@@ -197,38 +197,6 @@ class Obra(models.Model):
         return self.nombre
 
 
-class Despacho(models.Model):
-    articulo = models.ForeignKey(
-        "Articulo",
-        on_delete=models.PROTECT,
-    )
-
-    obra = models.ForeignKey(
-        "Obra",
-        on_delete=models.PROTECT,
-    )
-
-    cantidad = models.IntegerField()
-
-    fecha_despacho = models.DateTimeField(
-        auto_now_add=True,
-    )
-
-    usuario = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.PROTECT,
-    )
-
-    mongodb_id = models.CharField(
-        max_length=100,
-        blank=True,
-        null=True,
-    )
-
-    def __str__(self):
-        return f"Despacho {self.pk} - {self.articulo.sku}"
-
-
 class RegistroInalterable(models.Model):
     # Cardex y bitácora comparten esta protección en los métodos de instancia.
     # Los triggers de la migración 0006 también protegen las escrituras directas en SQL.

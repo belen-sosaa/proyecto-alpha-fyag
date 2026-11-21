@@ -186,10 +186,11 @@
       font-size: 14px;
     }
 
-    button {
+    button,
+    a.boton {
       min-height: 44px;
       padding: 10px 20px;
-      border: none;
+      border: 1px solid transparent;
       border-radius: 9px;
       background: var(--azul);
       color: white;
@@ -198,11 +199,49 @@
       cursor: pointer;
     }
 
-    button:hover {
-      background: #1d4ed8;
+    a.boton {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      text-decoration: none;
     }
 
-    form[method="post"] > a {
+    button:hover,
+    a.boton:hover {
+      background: #1d4ed8;
+      color: white;
+    }
+
+    a.boton.boton-secundario {
+      color: #1e40af;
+      background: #eff6ff;
+      border-color: #bfdbfe;
+    }
+
+    a.boton.boton-secundario:hover {
+      background: #dbeafe;
+    }
+
+    button.boton-peligro {
+      background: #b91c1c;
+    }
+
+    button.boton-peligro:hover {
+      background: #991b1b;
+    }
+
+    a.boton.boton-peligro {
+      color: #991b1b;
+      background: #fef2f2;
+      border-color: #fecaca;
+    }
+
+    a.boton.boton-peligro:hover {
+      background: #fee2e2;
+    }
+
+    :where(form[method="post"]) > a {
       display: inline-block;
       margin: 12px;
     }
@@ -274,7 +313,7 @@
       white-space: nowrap;
     }
 
-    td:last-child a {
+    :where(td:last-child) a {
       display: inline-block;
       margin: 4px 8px 4px 0;
     }
@@ -330,7 +369,7 @@
 
     {% if user.is_authenticated %}
       <div class="usuario">
-        Usuario: <strong>{{ user.get_username }}</strong>
+        {% block datos_usuario %}Usuario: <strong>{{ user.get_username }}</strong>{% endblock %}
       </div>
     {% endif %}
   </header>

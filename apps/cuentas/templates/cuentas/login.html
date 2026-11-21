@@ -159,9 +159,7 @@
         {% csrf_token %}
         <input type="hidden" name="next" value="{{ next|default:'' }}">
         <div>
-          <label class="block text-slate-700 font-bold mb-2 text-sm"
-            >Nombre de usuario</label
-          >
+          <label for="rut" class="block text-slate-700 font-bold mb-2 text-sm">RUT</label>
           <div class="relative">
             <div
               class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"
@@ -170,19 +168,20 @@
             </div>
             <input
               type="text"
-              id="username"
-              name="username"
-              value="{{ form.username.value|default:'' }}"
+              id="rut"
+              name="rut"
+              value="{{ form.rut.value|default:'' }}"
               autocomplete="username"
+              maxlength="12"
               class="w-full border border-slate-200 pl-10 p-3 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-slate-50 text-slate-700 transition"
-              placeholder="Nombre de usuario"
+              placeholder="11.111.111-1"
               required
             />
           </div>
         </div>
 
         <div>
-          <label class="block text-slate-700 font-bold mb-2 text-sm"
+          <label for="password" class="block text-slate-700 font-bold mb-2 text-sm"
             >Contraseña</label
           >
           <div class="relative">
@@ -205,7 +204,7 @@
 
         {% if form.errors %}
           <p role="alert" class="text-red-600">
-            Usuario o contraseña incorrectos, o cuenta inactiva.
+            RUT o contraseña incorrectos, o cuenta inactiva.
           </p>
         {% endif %}
 
@@ -213,45 +212,9 @@
           type="submit"
           class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl transition shadow-[0_8px_15px_rgba(37,99,235,0.2)] hover:shadow-[0_12px_20px_rgba(37,99,235,0.3)]"
         >
-          Entrar al sistema
+          Ingresar
         </button>
 
-        <fieldset class="pt-2">
-          <legend class="block text-slate-700 font-bold mb-3 text-sm">
-            ¿A qué versión quieres ingresar?
-          </legend>
-          <div class="grid grid-cols-2 gap-3">
-            <label
-              class="flex items-center gap-2 p-3 rounded-xl border border-slate-200 bg-white cursor-pointer hover:border-blue-500 has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50"
-            >
-              <input
-                type="radio"
-                name="destino"
-                value="web"
-                checked
-                class="accent-blue-600"
-              />
-              <span>
-                <span class="block font-bold text-slate-800">Web</span>
-                <span class="block text-xs text-slate-500">Bodega</span>
-              </span>
-            </label>
-            <label
-              class="flex items-center gap-2 p-3 rounded-xl border border-slate-200 bg-white cursor-pointer hover:border-blue-500 has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50"
-            >
-              <input
-                type="radio"
-                name="destino"
-                value="mobile"
-                class="accent-blue-600"
-              />
-              <span>
-                <span class="block font-bold text-slate-800">Mobile</span>
-                <span class="block text-xs text-slate-500">Celular/tablet</span>
-              </span>
-            </label>
-          </div>
-        </fieldset>
       </form>
 
     </div>

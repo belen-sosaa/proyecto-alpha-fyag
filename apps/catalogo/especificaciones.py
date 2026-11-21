@@ -1,8 +1,8 @@
 from datetime import datetime, timezone
 from math import isfinite
 
-from .models import Articulo
-from .mongo import obtener_base
+from apps.bodega.models import Articulo
+from apps.catalogo.mongo import obtener_base
 
 
 def validar_id(articulo_id):

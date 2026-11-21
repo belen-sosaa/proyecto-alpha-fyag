@@ -13,7 +13,7 @@
       {{ form.as_p }}
 
       <button type="submit">Guardar</button>
-      <a href="{% url 'catalogo_listar' %}">Cancelar</a>
+      <a class="boton boton-secundario" href="{% url 'catalogo_listar' %}">Cancelar</a>
     </form>
 
   {% elif articulo %}
@@ -33,17 +33,17 @@
     <form method="post">
       {% csrf_token %}
 
-      <button type="submit">Confirmar eliminación</button>
-      <a href="{% url 'catalogo_listar' %}">Cancelar</a>
+      <button type="submit" class="boton-peligro">Confirmar eliminación</button>
+      <a class="boton boton-secundario" href="{% url 'catalogo_listar' %}">Cancelar</a>
     </form>
 
   {% else %}
     <!-- Listado y filtros -->
     <h1>Catálogo de insumos</h1>
 
-    {% if perms.bodega.add_articulo %}
+    {% if perm.ingresar_articulo %}
       <p>
-        <a href="{% url 'catalogo_crear' %}">Crear insumo</a>
+        <a class="boton" href="{% url 'catalogo_crear' %}">Crear insumo</a>
       </p>
     {% endif %}
 
@@ -74,7 +74,7 @@
       </select>
 
       <button type="submit">Filtrar</button>
-      <a href="{% url 'catalogo_listar' %}">Limpiar filtros</a>
+      <a class="boton boton-secundario" href="{% url 'catalogo_listar' %}">Limpiar filtros</a>
     </form>
 
     <table>
@@ -100,14 +100,14 @@
             <td>{{ articulo.unidad_medida }}</td>
             <td>{{ articulo.stock_fisico }}</td>
             <td>
-              {% if perms.bodega.change_articulo %}
-                <a href="{% url 'catalogo_editar' articulo.pk %}">
+              {% if perm.editar_articulo %}
+                <a class="boton boton-secundario" href="{% url 'catalogo_editar' articulo.pk %}">
                   Editar
                 </a>
               {% endif %}
 
-              {% if perms.bodega.delete_articulo %}
-                <a href="{% url 'catalogo_eliminar' articulo.pk %}">
+              {% if perm.eliminar_articulo %}
+                <a class="boton boton-peligro" href="{% url 'catalogo_eliminar' articulo.pk %}">
                   Eliminar
                 </a>
               {% endif %}
@@ -122,7 +122,7 @@
     </table>
 
     <p>
-      <a href="{% url 'bodega_web' %}">Volver a bodega</a>
+      <a class="boton boton-secundario" href="{% url 'bodega_web' %}">Volver a bodega</a>
     </p>
   {% endif %}
 

@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% load static tz %}
+
+{% block title %}Despachos · FYAG{% endblock %}
+
+{% block datos_usuario %}
+  <strong>{{ user.get_full_name|default:user.get_username }}</strong> · {{ rol_actual }}
+{% endblock %}
+
+{% block extra_head %}
+  <style>
+    .despacho-cabecera { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 20px; margin-bottom: 24px; }
+    .despacho-cabecera h1, .despacho-panel h2 { margin: 0; }
+    .despacho-panel h2 { font-size: 19px; }
+    .despacho-grid { display: grid; gap: 24px; }
+    .despacho-panel { min-width: 0; }
+    .despacho-formulario { display: grid; gap: 16px; }
+    .despacho-formulario :is(input, select, button) { min-height: 48px; }
+    .despacho-ayuda { margin: 4px 0 0; color: var(--secundario); font-size: 14px; }
+    .despacho-resultados { margin: 4px 0 0; padding: 0; list-style: none; }
+    .despacho-resultados button { width: 100%; margin-top: 4px; background: #eff6ff; color: #1e40af; text-align: left; }
+    .despacho-resultados button:hover { background: #dbeafe; }
+    .despacho-registros { display: grid; gap: 12px; margin: 16px 0 0; padding: 0; list-style: none; }
+    .despacho-registro { padding: 14px; border: 1px solid var(--borde); border-radius: 12px; background: #f8fafc; overflow-wrap: anywhere; }
+    .despacho-registro p { margin: 5px 0; }
+    .despacho-registro time { color: var(--secundario); font-size: 14px; }
+    .despacho-registro dl { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 10px; margin: 10px 0 0; font-size: 14px; }
+    .despacho-registro dt { font-weight: 600; }
+    .despacho-registro dd { margin: 0; }
+    .despacho-qr { margin: 16px 0; }
+    .despacho-qr summary { padding: 8px 0; color: #1d4ed8; cursor: pointer; }
+    @media (min-width: 900px) {
+      .despacho-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 32px; }
+    }
+  </style>
+{% endblock %}
+
+{% block content %}
+  <div class="despacho-cabecera">
+    <h1>{% if recepcion %}Recepción de despachos{% else %}Despachos{% endif %}</h1>
+    <a class="boton boton-secundario" href="{% url 'bodega_web' %}">Volver a bodega</a>
+  </div>
+
+  {% if recepcion %}
+    <p>La confirmación de recepción estará disponible cuando se incorpore la firma.</p>
+  {% else %}
+    <div class="despacho-grid">
+      <section class="despacho-panel" aria-labelledby="nuevo-despacho">
+        <h2 id="nuevo-despacho">Nuevo despacho</h2>
+        <form method="post" action="{% url 'procesar_despacho' %}" class="despacho-formulario">
+          {% csrf_token %}
+          <div data-obra-autocomplete data-url="{% url 'obras_buscar' %}">
+            <label for="obra-destino">Obra de destino</label>
+            <input id="obra-destino" type="text" data-obra-texto autocomplete="off"
+                   placeholder="Escribe al menos 3 letras" aria-describedby="obra-mensaje" required>
+            <input type="hidden" name="obra" data-obra-id>
+            <ul data-obra-resultados class="despacho-resultados" hidden></ul>
+            <p id="obra-mensaje" class="despacho-ayuda" data-obra-mensaje role="status"></p>
+          </div>
+          <div>
+            <label for="input-articulo">Artículo</label>
+            <select id="input-articulo" name="articulo" required>
+              <option value="">Selecciona un artículo</option>
+              {% for articulo in articulos %}
+                <option value="{{ articulo.pk }}" data-sku="{{ articulo.sku }}">{{ articulo.sku }} · {{ articulo.descripcion }} ({{ articulo.stock_fisico }} disponibles)</option>
+              {% endfor %}
+            </select>
+            <details class="despacho-qr">
+              <summary>Simular lectura de QR</summary>
+              <button type="button" id="simular-qr">Usar artículo de prueba</button>
+              <p id="mensaje-qr" class="despacho-ayuda" role="status"></p>
+            </details>
+          </div>
+          <div>
+            <label for="cant-despacho">Cantidad</label>
+            <input id="cant-despacho" name="cantidad" type="number" min="1" step="1" value="1" inputmode="numeric" required>
+          </div>
+          <button type="submit">Confirmar despacho</button>
+        </form>
+      </section>
+
+      <section class="despacho-panel" aria-labelledby="despachos-recientes">
+        <h2 id="despachos-recientes">Despachos recientes</h2>
+        {% timezone "America/Santiago" %}
+          <ul class="despacho-registros">
+            {% for despacho in despachos_recientes %}
+              <li class="despacho-registro">
+                <strong>Despacho #{{ despacho.pk }}</strong>
+                <p><time datetime="{{ despacho.fecha_despacho|date:'c' }}">{{ despacho.fecha_despacho|date:'d/m/Y H:i' }}</time></p>
+                <p>{{ despacho.articulo.sku }} · {{ despacho.articulo.descripcion }}</p>
+                <dl>
+                  <dt>Obra</dt><dd>{{ despacho.obra.nombre|default:"Sin obra registrada" }}</dd>
+                  <dt>Cantidad</dt><dd>{{ despacho.cantidad }} {{ despacho.articulo.unidad_medida }}</dd>
+                  <dt>Responsable</dt><dd>{{ despacho.usuario.get_full_name|default:despacho.usuario.username }}</dd>
+                </dl>
+              </li>
+            {% empty %}
+              <li class="despacho-ayuda">Aún no hay despachos registrados.</li>
+            {% endfor %}
+          </ul>
+        {% endtimezone %}
+      </section>
+    </div>
+  {% endif %}
+{% endblock %}
+
+{% block extra_js %}
+  {% if perm.despachar %}
+    <script src="{% static 'js/obra_auto.js' %}" defer></script>
+    <script>
+      document.getElementById("simular-qr").addEventListener("click", () => {
+        const articulo = document.getElementById("input-articulo");
+        const mensaje = document.getElementById("mensaje-qr");
+        const prueba = articulo.querySelector('[data-sku="SKU-9901"]');
+        if (prueba) articulo.value = prueba.value;
+        mensaje.textContent = prueba
+          ? "Artículo de prueba seleccionado."
+          : "No hay un artículo de prueba con SKU-9901.";
+      });
+    </script>
+  {% endif %}
+{% endblock %}
