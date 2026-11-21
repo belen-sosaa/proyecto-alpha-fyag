@@ -15,6 +15,13 @@
         </h3>
         <div class="flex flex-wrap gap-3">
             <a href="{% url 'catalogo_listar' %}" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition text-sm font-bold">Administrar catálogo</a>
+          <a href="{% url 'cardex' %}" class="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition text-sm font-bold shadow-sm">Ver movimientos</a>
+          {% if perm.ingresar_articulo %}
+          <a href="{% url 'conteo_crear' %}" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition text-sm font-bold">Conteo físico</a>
+          {% endif %}
+          {% if perm.ver_catalogo %}
+          <a href="{% url 'conteo_discrepancias' %}" class="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition text-sm font-bold shadow-sm">Discrepancias</a>
+          {% endif %}
           <button
             class="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition text-sm font-bold shadow-sm"
           >

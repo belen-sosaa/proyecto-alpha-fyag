@@ -91,6 +91,11 @@
       </div>
       {% endif %}
       {% if perm.registrar_merma %}
+      <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex items-center">
+        <a href="{% url 'devolucion_crear' %}" class="text-orange-600 font-bold">
+          <i class="fas fa-arrow-rotate-left mr-2"></i> Devolución a proveedor
+        </a>
+      </div>
       <!-- Mermas -->
       <div id="registro-merma"
         class="scroll-mt-20 bg-white p-6 rounded-2xl shadow-sm border border-gray-100"
@@ -99,36 +104,14 @@
           <i class="fas fa-triangle-exclamation text-orange-500 mr-2"></i>
           Registro de Merma
         </h3>
-        <div class="space-y-5 text-sm">
-          <div>
-            <label class="block font-semibold text-gray-600 mb-1"
-              >Artículo Dañado</label
-            >
-            <select
-              class="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-orange-500 outline-none bg-white"
-            >
-              <option>Seleccione artículo del catálogo...</option>
-              <option>Compresor 5HP Inverter</option>
-            </select>
-          </div>
-          <div>
-            <label class="block font-semibold text-gray-600 mb-1"
-              >Motivo / Justificación (Obligatorio)</label
-            >
-            <textarea
-              id="motivo-merma"
-              rows="3"
-              class="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-orange-500 outline-none"
-              placeholder="Describa por qué se da de baja el producto..."
-            ></textarea>
-          </div>
-          <button
-            onclick="validarMerma()"
-            class="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-lg p-3 mt-2 shadow-md transition"
-          >
+        <form method="post" action="{% url 'merma_crear' %}" class="space-y-5 text-sm">
+          {% csrf_token %}
+          {{ merma_form.as_p }}
+          <button id="guardar-merma" type="submit" disabled
+            class="w-full bg-orange-500 hover:bg-orange-600 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold rounded-lg p-3 mt-2 shadow-md transition">
             <i class="fas fa-save mr-2"></i> Guardar Merma
           </button>
-        </div>
+        </form>
       </div>
       {% endif %}
     </div>
@@ -198,24 +181,6 @@
     setTimeout(() => toast.classList.add("hidden"), 3000);
   }
 
-  function validarMerma() {
-    const motivo = document.getElementById("motivo-merma").value;
-    if (motivo.trim() === "") {
-      mostrarMensaje(
-        "La justificación de la merma es obligatoria.",
-        "error",
-      );
-      return;
-    }
-    mostrarMensaje(
-      "Merma registrada y guardada en el Cardex de forma inalterable.",
-      "exito",
-    );
-    document.getElementById("motivo-merma").value = "";
-  }
-
-<<<<<<< HEAD
-=======
   {% if perm.despachar %}
   function abrirQR() {
     document.getElementById("modal-qr").classList.remove("hidden");
@@ -244,7 +209,16 @@
     mostrarMensaje("Código escaneado.", "exito");
   }
   {% endif %}
->>>>>>> Alertas
+
+  const motivoMerma = document.querySelector("#registro-merma textarea[name='motivo']");
+  const guardarMerma = document.getElementById("guardar-merma");
+  if (motivoMerma && guardarMerma) {
+    function actualizarMerma() {
+      guardarMerma.disabled = motivoMerma.value.trim() === "";
+    }
+    motivoMerma.addEventListener("input", actualizarMerma);
+    actualizarMerma();
+  }
 </script>
 {% if perm.despachar %}
 <script src="{% static 'js/obra_auto.js' %}" defer></script>

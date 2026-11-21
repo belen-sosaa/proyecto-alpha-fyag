@@ -268,3 +268,73 @@ class BitacoraAuditoria(models.Model):
         raise ValueError(
             "La bitácora no permite eliminaciones."
         )
+
+
+class Merma(models.Model):
+    articulo = models.ForeignKey(Articulo, on_delete=models.PROTECT)
+    cantidad = models.PositiveIntegerField()
+    motivo = models.TextField()
+    usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    fecha = models.DateTimeField(auto_now_add=True)
+
+
+class Proveedor(models.Model):
+    nombre = models.CharField(max_length=150)
+    rut = models.CharField(max_length=20, blank=True)
+    contacto = models.CharField(max_length=150, blank=True)
+
+    def __str__(self):
+        return self.nombre
+
+
+class FacturaCompra(models.Model):
+    numero_factura = models.CharField(max_length=50)
+    proveedor = models.ForeignKey(Proveedor, on_delete=models.PROTECT)
+    fecha = models.DateTimeField(auto_now_add=True)
+    usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    total_neto = models.DecimalField(max_digits=12, decimal_places=2)
+
+
+class DetalleFacturaCompra(models.Model):
+    factura = models.ForeignKey(
+        FacturaCompra,
+        on_delete=models.PROTECT,
+        related_name="detalles",
+    )
+    articulo = models.ForeignKey(Articulo, on_delete=models.PROTECT)
+    cantidad = models.PositiveIntegerField()
+    precio_unitario = models.DecimalField(max_digits=12, decimal_places=2)
+    descuento_1 = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    descuento_2 = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    descuento_3 = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    subtotal_neto = models.DecimalField(max_digits=12, decimal_places=2)
+
+
+class DevolucionProveedor(models.Model):
+    proveedor = models.ForeignKey(Proveedor, on_delete=models.PROTECT)
+    articulo = models.ForeignKey(Articulo, on_delete=models.PROTECT)
+    cantidad = models.PositiveIntegerField()
+    motivo = models.TextField()
+    usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    fecha = models.DateTimeField(auto_now_add=True)
+
+
+class ConteoFisico(models.Model):
+    usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    fecha = models.DateTimeField(auto_now_add=True)
+    observacion = models.TextField(blank=True)
+
+
+class DetalleConteoFisico(models.Model):
+    conteo = models.ForeignKey(
+        ConteoFisico,
+        on_delete=models.CASCADE,
+        related_name="detalles",
+    )
+    articulo = models.ForeignKey(Articulo, on_delete=models.PROTECT)
+    stock_sistema = models.PositiveIntegerField()
+    stock_contado = models.PositiveIntegerField()
+
+    @property
+    def diferencia(self):
+        return self.stock_contado - self.stock_sistema

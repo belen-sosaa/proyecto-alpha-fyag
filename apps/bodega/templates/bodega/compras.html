@@ -3,108 +3,50 @@
 {% block title %}Compras y Finanzas | Logística FYAG{% endblock %}
 
 {% block content %}
-  <!-- Compras y finanzas -->
-  <div>
-    <div
-      class="max-w-4xl mx-auto bg-white p-4 sm:p-6 lg:p-8 rounded-2xl shadow-sm border border-gray-100"
-    >
-      <h3 class="text-xl font-bold text-gray-800 mb-2">
-        <i class="fas fa-file-invoice-dollar text-green-600 mr-2"></i>
-        Ingreso de Factura de Compra
-      </h3>
-      <p class="text-gray-500 text-sm mb-8">
-        Calculadora automática de descuentos en cascada e impuestos.
-      </p>
+<div class="grid grid-cols-1 xl:grid-cols-2 gap-4 md:gap-8">
+  <div class="bg-white p-4 sm:p-6 lg:p-8 rounded-2xl shadow-sm border border-gray-100">
+    <h3 class="text-xl font-bold text-gray-800 mb-2">
+      <i class="fas fa-file-invoice-dollar text-green-600 mr-2"></i>
+      Ingreso de Factura de Compra
+    </h3>
+    <p class="text-gray-500 text-sm mb-8">
+      Calculadora automática de descuentos en cascada e impuestos.
+    </p>
+    <form method="post" class="space-y-5 text-sm">
+      {% csrf_token %}
+      {{ form.as_p }}
+      <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg p-3">
+        Registrar factura
+      </button>
+    </form>
+  </div>
 
-      <div
-        class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 text-sm mb-6 pb-6 border-b border-gray-100"
-      >
-        <div>
-          <label class="block font-semibold text-gray-600 mb-1"
-            >Nº de Factura</label
-          >
-          <input
-            type="text"
-            class="w-full border border-gray-300 rounded-lg p-3 bg-gray-50"
-            value="FAC-99201"
-          />
-        </div>
-        <div>
-          <label class="block font-semibold text-gray-600 mb-1"
-            >Proveedor (RUT Validado)</label
-          >
-          <input
-            type="text"
-            class="w-full border border-gray-300 rounded-lg p-3 bg-gray-50"
-            value="Importadora Industrial SPA"
-          />
-        </div>
-      </div>
-
-      <h4 class="font-bold text-gray-700 mb-4">
-        Detalle del Artículo (Ejemplo)
-      </h4>
-      <div class="grid grid-cols-4 gap-4 text-sm mb-6">
-        <div class="col-span-4 xl:col-span-1">
-          <label class="block text-gray-500 mb-1"
-            >Valor Neto Unitario</label
-          >
-          <input
-            type="text"
-            class="w-full border border-gray-300 rounded-lg p-3"
-            value="$100.000"
-          />
-        </div>
-        <div class="col-span-4 xl:col-span-3 grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div>
-            <label class="block text-gray-500 mb-1"
-              >Descuento 1 (%)</label
-            >
-            <input
-              type="number"
-              class="w-full border border-gray-300 rounded-lg p-3 text-center"
-              value="10"
-            />
-          </div>
-          <div>
-            <label class="block text-gray-500 mb-1"
-              >Descuento 2 (%)</label
-            >
-            <input
-              type="number"
-              class="w-full border border-gray-300 rounded-lg p-3 text-center"
-              value="5"
-            />
-          </div>
-          <div>
-            <label class="block text-gray-500 mb-1"
-              >Descuento 3 (%)</label
-            >
-            <input
-              type="number"
-              class="w-full border border-gray-300 rounded-lg p-3 text-center"
-              value="2"
-            />
-          </div>
-        </div>
-      </div>
-
-      <div
-        class="bg-slate-800 text-white p-6 rounded-xl shadow-inner mb-6"
-      >
-        <div class="flex flex-wrap justify-between items-center gap-x-3 text-lg">
-          <span class="text-slate-300"
-            >Costo Neto Final (Con 3 Dsctos):</span
-          >
-          <span class="font-bold">$83.790</span>
-        </div>
-        <div class="flex flex-wrap justify-between items-center gap-x-3 text-lg mt-2">
-          <span class="text-slate-300">Total con IVA (19%):</span>
-          <span class="font-bold text-green-400">$99.710</span>
-        </div>
-      </div>
-
-      <p class="mt-4 text-sm text-slate-600">Vista previa. El registro de facturas aún no está disponible.</p>
+  <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+    <h3 class="text-lg font-bold text-gray-800 mb-6">Facturas registradas</h3>
+    <div class="tabla-desplazable border border-gray-200 rounded-xl">
+      <table class="w-full text-left text-sm">
+        <thead class="bg-slate-50 text-slate-600 border-b border-gray-200">
+          <tr>
+            <th class="p-4">Fecha</th>
+            <th class="p-4">Factura</th>
+            <th class="p-4">Proveedor</th>
+            <th class="p-4">Total neto</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          {% for factura in facturas %}
+          <tr class="text-slate-700 hover:bg-slate-50">
+            <td class="p-4">{{ factura.fecha|date:"d-m-Y H:i" }}</td>
+            <td class="p-4 font-bold">{{ factura.numero_factura }}</td>
+            <td class="p-4">{{ factura.proveedor.nombre }}</td>
+            <td class="p-4 font-bold">${{ factura.total_neto }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="4" class="p-4 text-slate-600">No hay facturas registradas.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
     </div>
   </div>
+</div>
 {% endblock %}

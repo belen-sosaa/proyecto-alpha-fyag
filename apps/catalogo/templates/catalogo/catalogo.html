@@ -107,6 +107,11 @@
             <td>{{ articulo.unidad_medida }}</td>
             <td>{{ articulo.stock_fisico }}</td>
             <td>
+              {% if perm.ver_catalogo %}
+                <a href="{% url 'articulo_detalle' articulo.pk %}">
+                  Ver precios / Detalle
+                </a>
+              {% endif %}
               {% if perm.editar_articulo %}
                 <a href="{% url 'catalogo_editar' articulo.pk %}">
                   Editar

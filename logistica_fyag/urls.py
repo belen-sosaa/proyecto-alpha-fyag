@@ -20,10 +20,22 @@ from django.contrib.auth.views import LogoutView
 from django.conf.urls.static import static
 from django.urls import path
 from django.views.generic import RedirectView
-from apps.bodega.views import vista_bodega, vista_compras, vista_inicio, vista_inventario
+from apps.bodega.views import (
+    conteo_crear,
+    conteo_discrepancias,
+    devolucion_crear,
+    merma_crear,
+    vista_bodega,
+    vista_cardex,
+    vista_compras,
+    vista_inicio,
+    vista_inventario,
+)
 from apps.cuentas.views import AccesoView
 from apps.catalogo.views import (
     articulo_crear,
+    articulo_detalle,
+    articulo_exportar_precios_excel,
     catalogo_crear,
     catalogo_editar,
     catalogo_eliminar,
@@ -40,12 +52,23 @@ urlpatterns = [
     path('inicio/', vista_inicio, name='inicio'),
     path('bodega/', vista_bodega, name='bodega_web'),
     path('bodega/inventario/', vista_inventario, name='inventario'),
+    path('bodega/cardex/', vista_cardex, name='cardex'),
     path('compras/', vista_compras, name='compras'),
+    path('bodega/mermas/nueva/', merma_crear, name='merma_crear'),
+    path('bodega/devoluciones/nueva/', devolucion_crear, name='devolucion_crear'),
+    path('bodega/conteo/nuevo/', conteo_crear, name='conteo_crear'),
+    path('bodega/conteo/discrepancias/', conteo_discrepancias, name='conteo_discrepancias'),
     path('articulos/nuevo/', articulo_crear, name="articulo_crear"),
     path('catalogo/', catalogo_listar, name='catalogo_listar'),
     path('catalogo/nuevo/', catalogo_crear, name='catalogo_crear'),
     path('catalogo/<int:pk>/editar/', catalogo_editar, name='catalogo_editar'),
     path('catalogo/<int:pk>/eliminar/', catalogo_eliminar, name='catalogo_eliminar'),
+    path('catalogo/<int:pk>/detalle/', articulo_detalle, name='articulo_detalle'),
+    path(
+        'catalogo/<int:pk>/precios/excel/',
+        articulo_exportar_precios_excel,
+        name='articulo_exportar_precios_excel',
+    ),
     path('operaciones/', redirigir_a_inicio),
     path('mobile/', redirigir_a_inicio),
     path('obras/buscar/', obras_buscar, name="obras_buscar"),
