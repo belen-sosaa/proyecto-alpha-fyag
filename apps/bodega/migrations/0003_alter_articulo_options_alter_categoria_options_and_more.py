@@ -31,7 +31,7 @@ def asegurar_nombre_categoria_unico(apps, schema_editor):
 
     # Permite crear la restricción en una base nueva.
     campo_nuevo = campo_actual.clone()
-    campo_nuevo.unique = True
+    campo_nuevo._unique = True
     campo_nuevo.set_attributes_from_name(campo_actual.name)
     campo_nuevo.model = Categoria
 

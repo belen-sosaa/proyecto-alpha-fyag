@@ -11,7 +11,10 @@ Las rutas de escritura usan sesión y CSRF. Si no hay sesión, Django redirige a
 | `PerfilUsuario` | `usuario_id` y `rut` único. `normalizar_rut()` valida el RUT y `permisos_de()` obtiene las facultades desde los grupos. |
 | `Categoria` y `Articulo` | Categoría con nombre único. Artículo con `sku` único, `codigo_barras` opcional y único, `descripcion`, `categoria_id`, `unidad_medida`, `ubicacion_fisica`, `stock_fisico`, `stock_minimo` y `stock_critico`. El estado es crítico cuando el stock físico alcanza o baja del umbral crítico. |
 | `Obra` y `Despacho` | Obra con `nombre` y coordenadas opcionales. Despacho con `articulo_id`, `obra_id`, `cantidad`, `usuario_id`, `fecha_despacho` y `mongodb_id` opcional. El respaldo del despacho se simula con un JSON local. |
-| `BitacoraAuditoria` | `usuario_id`, `accion`, `entidad`, `id_registro`, `valor_anterior`, `valor_nuevo`, `detalle` y `fecha_hora`. Los métodos de instancia bloquean edición y borrado. La protección en base de datos está pendiente. |
+| `BitacoraAuditoria` | `usuario_id`, `accion`, `entidad`, `id_registro`, `valor_anterior`, `valor_nuevo`, `detalle` y `fecha_hora`. |
+| `MovimientoCardex` | `tipo`, `cantidad`, `articulo_id`, `usuario_id`, `obra_id` opcional, `fecha_hora`, `stock_resultante` y `justificacion` opcional. Los flujos de inventario incorporarán estos movimientos al integrar sus transacciones. |
+
+La migración `0006` incorpora `MovimientoCardex` y bloquea las actualizaciones y eliminaciones de filas en Cardex y bitácora. Los dos modelos permiten crear registros nuevos para conservar el historial de correcciones.
 
 | Método y ruta | Vista | Entrada o resultado |
 |---|---|---|
@@ -25,7 +28,7 @@ Las rutas de escritura usan sesión y CSRF. Si no hay sesión, Django redirige a
 | `GET /obras/buscar/?q=norte` | `obras_buscar` | Requiere `despachar`. Con tres caracteres o más, devuelve hasta diez obras ordenadas por nombre e ID, con `id` y `nombre`. |
 | `POST /despacho/procesar/` | `procesar_despacho` | Requiere `despachar`. Recibe `obra`, `articulo` y `cantidad` positiva, con `dispositivo` y `tag_iot` opcionales. Valida stock y redirige a `/mobile/` con un mensaje. |
 
-`datos_articulo()` prepara los campos para auditoría. `guardar_especificaciones()` y `obtener_especificaciones()` manejan la ficha técnica en MongoDB. La colección `especificaciones_insumos` usa el ID del artículo para `_id` e `id_articulo`, guarda `caracteristicas` con valores escalares y registra `creado_en` y `actualizado_en`. Ver [modelos](../../apps/bodega/models.py), [formularios](../../apps/catalogo/forms.py) y [rutas](../../logistica_fyag/urls.py).
+`datos_articulo()` prepara los campos para auditoría. `guardar_especificaciones()` y `obtener_especificaciones()` manejan la ficha técnica en MongoDB. La colección `especificaciones_insumos` usa el ID del artículo para `_id` e `id_articulo`, guarda `caracteristicas` con valores escalares y registra `creado_en` y `actualizado_en`. Ver [modelos](../../apps/bodega/models.py) y [rutas](../../logistica_fyag/urls.py).
 
 ## API propuesta para frontend
 

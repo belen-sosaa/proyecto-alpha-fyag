@@ -4,132 +4,99 @@ import django.db.models.deletion
 from django.conf import settings
 from django.db import migrations, models
 
-from apps.bodega.migration_operations import AddFieldIfMissing
+
+class AdoptarEsquemaArticulo(migrations.SeparateDatabaseAndState):
+    """Reutiliza las columnas existentes en PostgreSQL."""
+
+    reversible = False
+
+    def database_forwards(self, app_label, schema_editor, from_state, to_state):
+        conexion = schema_editor.connection
+        if conexion.vendor != 'postgresql':
+            return super().database_forwards(app_label, schema_editor, from_state, to_state)
+
+        articulo = from_state.apps.get_model(app_label, 'Articulo')
+        tabla = articulo._meta.db_table
+        with conexion.cursor() as cursor:
+            columnas = {
+                columna.name
+                for columna in conexion.introspection.get_table_description(cursor, tabla)
+            }
+            nuevas = {'codigo_barras', 'stock_critico', 'stock_minimo', 'unidad_medida'}
+            if not nuevas & columnas:
+                return super().database_forwards(app_label, schema_editor, from_state, to_state)
+            if not (nuevas | {'estado'}) <= columnas:
+                raise RuntimeError('El esquema existente de artículos requiere revisión antes de migrar.')
+            restricciones = conexion.introspection.get_constraints(cursor, tabla)
+
+        if not any(
+            restriccion['unique'] and restriccion['columns'] == ['codigo_barras']
+            for restriccion in restricciones.values()
+        ):
+            raise RuntimeError('El código de barras debe ser único antes de adoptar el esquema.')
+
+        tabla_sql = schema_editor.quote_name(tabla)
+        # La aplicación calcula el estado actual. PostgreSQL conserva la columna histórica.
+        schema_editor.execute(f"ALTER TABLE {tabla_sql} ALTER COLUMN estado SET DEFAULT 'Stock Normal'")
+        schema_editor.execute(
+            f'ALTER TABLE {tabla_sql} ADD CHECK '
+            '(stock_fisico >= 0 AND stock_minimo >= 0 AND stock_critico >= 0)'
+        )
+
+
+operaciones_articulo = [
+    # Conserva la columna y sus valores hasta que la migración 0005 renombre el campo de Django.
+    migrations.AddField(
+        model_name='articulo',
+        name='codigo_barras',
+        field=models.CharField(blank=True, max_length=100, null=True, unique=True),
+    ),
+    migrations.AddField(
+        model_name='articulo',
+        name='stock_critico',
+        field=models.PositiveIntegerField(default=0),
+    ),
+    migrations.AddField(
+        model_name='articulo',
+        name='stock_minimo',
+        field=models.PositiveIntegerField(default=0),
+    ),
+    migrations.AddField(
+        model_name='articulo',
+        name='unidad_medida',
+        field=models.CharField(default='unidad', max_length=30),
+    ),
+    migrations.AlterField(
+        model_name='articulo',
+        name='stock_fisico',
+        field=models.PositiveIntegerField(default=0),
+    ),
+]
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ("bodega", "0001_initial"),
+        ('bodega', '0001_initial'),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
-        # Cambia el nombre del campo en el historial de Django.
-        # Conserva la columna "estado" y sus valores en PostgreSQL.
-        migrations.SeparateDatabaseAndState(
-            database_operations=[],
-            state_operations=[
-                migrations.RenameField(
-                    model_name="articulo",
-                    old_name="estado",
-                    new_name="estado_registrado",
-                ),
-                migrations.AlterField(
-                    model_name="articulo",
-                    name="estado_registrado",
-                    field=models.CharField(
-                        max_length=50,
-                        db_column="estado",
-                        editable=False,
-                    ),
-                ),
-            ],
+        AdoptarEsquemaArticulo(
+            database_operations=operaciones_articulo,
+            state_operations=operaciones_articulo,
         ),
-
-        # Agrega estas columnas únicamente si no existen.
-        AddFieldIfMissing(
-            model_name="articulo",
-            name="codigo_barras",
-            field=models.CharField(
-                blank=True,
-                max_length=100,
-                null=True,
-                unique=True,
-            ),
-        ),
-
-        AddFieldIfMissing(
-            model_name="articulo",
-            name="stock_critico",
-            field=models.PositiveIntegerField(default=0),
-        ),
-
-        AddFieldIfMissing(
-            model_name="articulo",
-            name="stock_minimo",
-            field=models.PositiveIntegerField(default=0),
-        ),
-
-        AddFieldIfMissing(
-            model_name="articulo",
-            name="unidad_medida",
-            field=models.CharField(
-                default="unidad",
-                max_length=30,
-            ),
-        ),
-
-        migrations.AlterField(
-            model_name="articulo",
-            name="stock_fisico",
-            field=models.PositiveIntegerField(default=0),
-        ),
-
-        # Crea la tabla de auditoría.
         migrations.CreateModel(
-            name="BitacoraAuditoria",
+            name='BitacoraAuditoria',
             fields=[
-                (
-                    "id",
-                    models.BigAutoField(
-                        auto_created=True,
-                        primary_key=True,
-                        serialize=False,
-                        verbose_name="ID",
-                    ),
-                ),
-                (
-                    "accion",
-                    models.CharField(max_length=50),
-                ),
-                (
-                    "entidad",
-                    models.CharField(max_length=100),
-                ),
-                (
-                    "id_registro",
-                    models.PositiveBigIntegerField(),
-                ),
-                (
-                    "valor_anterior",
-                    models.JSONField(
-                        blank=True,
-                        null=True,
-                    ),
-                ),
-                (
-                    "valor_nuevo",
-                    models.JSONField(
-                        blank=True,
-                        null=True,
-                    ),
-                ),
-                (
-                    "detalle",
-                    models.TextField(blank=True),
-                ),
-                (
-                    "fecha_hora",
-                    models.DateTimeField(auto_now_add=True),
-                ),
-                (
-                    "usuario",
-                    models.ForeignKey(
-                        on_delete=django.db.models.deletion.PROTECT,
-                        to=settings.AUTH_USER_MODEL,
-                    ),
-                ),
+                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('accion', models.CharField(max_length=50)),
+                ('entidad', models.CharField(max_length=100)),
+                ('id_registro', models.PositiveBigIntegerField()),
+                ('valor_anterior', models.JSONField(blank=True, null=True)),
+                ('valor_nuevo', models.JSONField(blank=True, null=True)),
+                ('detalle', models.TextField(blank=True)),
+                ('fecha_hora', models.DateTimeField(auto_now_add=True)),
+                ('usuario', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to=settings.AUTH_USER_MODEL)),
             ],
         ),
     ]
