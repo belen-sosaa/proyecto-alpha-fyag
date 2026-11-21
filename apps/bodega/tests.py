@@ -30,6 +30,7 @@ from apps.cuentas.roles import (
 
 
 class RolesTests(TestCase):
+    # Cada grupo se prueba por separado para distinguir qué se muestra y qué permite el servidor.
     @classmethod
     def setUpTestData(cls):
         cls.usuarios = {}
@@ -97,15 +98,18 @@ class RolesTests(TestCase):
         self.client.force_login(usuario)
         self.assertEqual(self.client.get(url).status_code, 200)
 
-    def test_supervisor_solo_ve_recepcion_en_bodega(self):
+    def test_supervisor_solo_ve_recepcion_en_despachos(self):
         self.client.force_login(self.usuarios[SUPERVISOR])
-        respuesta = self.client.get(reverse("bodega_web"))
+        url_despachos = reverse("despachos_web")
+        self.assertRedirects(self.client.get(reverse("bodega_web")), url_despachos)
+        respuesta = self.client.get(url_despachos)
         self.assertContains(respuesta, "Recepción de despachos")
         self.assertContains(respuesta, 'class="icono-perfil"')
         self.assertNotContains(respuesta, reverse("compras"))
         self.assertNotContains(respuesta, reverse("inventario"))
+        self.assertNotContains(respuesta, reverse("auditoria"))
         self.assertNotContains(respuesta, reverse("procesar_despacho"))
-        self.assertNotContains(respuesta, 'id="modal-qr"')
+        self.assertNotContains(respuesta, 'id="lector-codigo"')
 
     def test_rutas_anteriores_redirigen_a_inicio(self):
         inicio = reverse("inicio")
@@ -115,7 +119,8 @@ class RolesTests(TestCase):
                 f"{inicio}?origen=menu",
                 fetch_redirect_response=False,
             )
-        for url in (inicio, reverse("bodega_web"), reverse("inventario"), reverse("compras")):
+        for ruta in ("inicio", "bodega_web", "despachos_web", "inventario", "auditoria", "compras"):
+            url = reverse(ruta)
             self.assertRedirects(self.client.get(url), f"{reverse('login')}?next={url}")
 
     def test_inicio_del_bodeguero_muestra_inventario_y_despachos_recientes(self):
@@ -134,6 +139,12 @@ class RolesTests(TestCase):
         respuesta = self.client.get(reverse("inicio"))
         self.assertTemplateUsed(respuesta, "cuentas/inicio.html")
         self.assertContains(respuesta, f'href="{bodega}"')
+        self.assertContains(respuesta, f'href="{reverse("despachos_web")}"')
+        self.assertContains(respuesta, f'href="{reverse("inventario")}"')
+        self.assertNotContains(respuesta, "Bodega y Despachos")
+        self.assertNotContains(respuesta, "Catálogo y Auditoría")
+        self.assertNotContains(respuesta, reverse("auditoria"))
+        self.assertEqual(self.client.get(reverse("auditoria")).status_code, 403)
         self.assertContains(respuesta, "Últimos despachos")
         self.assertContains(respuesta, "Obra 6")
         self.assertNotContains(respuesta, "Obra 1")
@@ -142,9 +153,20 @@ class RolesTests(TestCase):
         self.assertNotContains(respuesta, reverse("procesar_despacho"))
 
         respuesta = self.client.get(bodega)
-        self.assertContains(respuesta, reverse("procesar_despacho"))
-        self.assertContains(respuesta, 'id="nuevo-despacho"')
+        self.assertContains(respuesta, 'id="registro-merma"')
+        self.assertNotContains(respuesta, reverse("procesar_despacho"))
+        self.assertNotContains(respuesta, reverse("articulo_crear"))
+        self.assertNotContains(respuesta, 'id="lector-codigo"')
         self.assertNotContains(respuesta, "Últimos despachos")
+
+    def test_auditoria_tiene_su_vista_y_su_permiso(self):
+        auditoria = reverse("auditoria")
+        self.client.force_login(self.usuarios[AUDITOR])
+        respuesta = self.client.get(reverse("inicio"))
+        self.assertContains(respuesta, f'href="{auditoria}"')
+        self.assertNotContains(respuesta, reverse("despachos_web"))
+        self.assertContains(self.client.get(auditoria), "Cardex de movimientos")
+        self.assertEqual(self.client.get(reverse("despachos_web")).status_code, 403)
 
     def test_ti_no_recibe_modulos_operativos_y_finanzas_ve_su_modulo(self):
         for rol in (ADMIN_TI, FINANZAS):
@@ -218,12 +240,16 @@ class RolesTests(TestCase):
                 )
                 usuario = self.usuarios[rol]
                 self.client.force_login(usuario)
-                pagina = self.client.get(reverse("bodega_web"))
-                self.assertTemplateUsed(pagina, "bodega/bodega.html")
+                pagina = self.client.get(reverse("despachos_web"))
+                self.assertTemplateUsed(pagina, "despachos/despachos.html")
                 self.assertTemplateUsed(pagina, "base.html")
                 self.assertContains(pagina, 'action="' + reverse("procesar_despacho") + '"')
                 self.assertContains(pagina, "js/obra_auto.js")
-                self.assertContains(pagina, 'id="modal-qr"')
+                self.assertContains(pagina, 'id="lector-codigo"')
+                self.assertContains(pagina, "js/lector_codigo.js")
+                self.assertContains(pagina, "vendor/zxing/zxing-browser-0.2.1.min.js")
+                self.assertNotContains(pagina, "simularLectura")
+                self.assertNotContains(pagina, "<<<<<<< HEAD")
                 self.assertNotContains(pagina, "Abrir formulario de despacho")
                 self.assertEqual(self.client.get(reverse("obras_buscar"), {"q": "Ed"}).json(), [])
                 self.assertEqual(
@@ -239,13 +265,14 @@ class RolesTests(TestCase):
                         "articulo": articulo.pk, "obra": obra.pk, "cantidad": 3,
                     })
 
-                self.assertRedirects(respuesta, reverse("bodega_web"))
+                self.assertRedirects(respuesta, reverse("despachos_web"))
                 articulo.refresh_from_db()
                 self.assertEqual(articulo.stock_fisico, 7)
                 self.assertTrue(Despacho.objects.filter(articulo=articulo, usuario=usuario, cantidad=3).exists())
 
 
 class AccesoRUTTests(TestCase):
+    # Estos casos cubren el flujo por RUT desde el formulario hasta la sesión y la redirección.
     @classmethod
     def setUpTestData(cls):
         cls.usuario = get_user_model().objects.create_user(
@@ -327,6 +354,7 @@ class AccesoRUTTests(TestCase):
         inicio = datetime(2026, 11, 19, 15, tzinfo=timezone.utc)
         perfil = self.usuario.perfilusuario
 
+        # Se adelanta el reloj de la prueba para comprobar el vencimiento sin esperar quince minutos.
         with patch("apps.cuentas.forms.timezone.now", return_value=inicio) as reloj:
             for rut in ("11.111.111-1", "11111111-1", "111111111", "11.111.111-1", "11111111-1"):
                 respuesta = self.client.post(url, {"rut": rut, "password": "clave-incorrecta"})

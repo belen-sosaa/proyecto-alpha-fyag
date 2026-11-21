@@ -7,6 +7,7 @@ from pymongo import MongoClient
 @lru_cache(maxsize=1)
 def obtener_cliente():
     """Reutiliza un cliente de MongoDB por proceso."""
+    # El cliente se inicializa al consultar una ficha. Las credenciales vienen de la configuración.
     return MongoClient(
         settings.MONGO_URI,
         serverSelectionTimeoutMS=10000,

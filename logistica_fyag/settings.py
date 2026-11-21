@@ -48,6 +48,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    # Sirve CSS y JavaScript desde STATIC_ROOT cuando la aplicación corre en Render.
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -141,6 +142,7 @@ USE_TZ = True
 # ARCHIVOS ESTÁTICOS
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
+# collectstatic reúne los archivos estáticos de proyecto y aplicaciones en esta carpeta.
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 MEDIA_URL = '/media/'

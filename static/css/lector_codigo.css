@@ -1,0 +1,116 @@
+/* El lector también se abre en los formularios de catálogo que usan los estilos de base.html. */
+.lector-codigo {
+  width: min(28rem, calc(100% - 2rem));
+  max-height: calc(100dvh - 2rem);
+  margin: auto;
+  overflow-y: auto;
+  padding: clamp(1rem, 4vw, 1.5rem);
+  border: 1px solid var(--borde);
+  border-radius: 1rem;
+  background: white;
+  color: var(--texto);
+  box-shadow: 0 16px 40px rgb(15 23 42 / 25%);
+}
+
+.lector-codigo::backdrop {
+  background: rgb(15 23 42 / 60%);
+}
+
+.lector-cabecera,
+.lector-entrada {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.lector-cabecera {
+  justify-content: space-between;
+}
+
+.lector-cabecera h2 {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 700;
+}
+
+.lector-codigo button {
+  min-height: 44px;
+  padding: 0.5rem 0.875rem;
+  border: 0;
+  border-radius: 0.6rem;
+  background: #edf2f7;
+  color: var(--texto);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.lector-codigo button:hover {
+  background: #e2e8f0;
+}
+
+.lector-codigo [data-activar-camara] {
+  margin-top: 0.75rem;
+  background: var(--azul);
+  color: white;
+}
+
+.lector-codigo [data-activar-camara]:hover {
+  background: #1d4ed8;
+}
+
+.lector-codigo [data-activar-camara]:disabled {
+  opacity: 0.6;
+}
+
+.lector-codigo video {
+  display: block;
+  width: 100%;
+  max-height: 36dvh;
+  margin-top: 0.75rem;
+  border-radius: 0.6rem;
+  background: #0f172a;
+  object-fit: contain;
+}
+
+.lector-codigo form {
+  margin: 1rem 0 0;
+}
+
+.lector-codigo label {
+  display: block;
+  margin-bottom: 0.375rem;
+  font-weight: 600;
+}
+
+.lector-codigo .lector-entrada input {
+  flex: 1 1 10rem;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--borde);
+  border-radius: 0.6rem;
+  font: inherit;
+}
+
+.lector-codigo [data-mensaje-lector]:not(:empty) {
+  margin-top: 0.75rem;
+}
+
+.campo-alta-articulo {
+  margin-bottom: 1.25rem;
+}
+
+.campo-alta-articulo .boton-escanear-alta {
+  margin-top: 0.5rem;
+}
+
+.campo-alta-articulo .mensaje-codigo-alta {
+  margin: 0.5rem 0 0;
+  color: #475569;
+}
+
+.campo-alta-articulo .mensaje-codigo-alta:empty {
+  margin: 0;
+}

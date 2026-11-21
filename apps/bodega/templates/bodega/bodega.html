@@ -1,180 +1,68 @@
 {% extends "base.html" %}
-{% load static %}
 
 {% block title %}Bodega | Logística FYAG{% endblock %}
 
 {% block content %}
-  <!-- Bodega y despachos -->
-  {% if mostrar_bodega %}
-  <div id="tab-bodega">
-    <div class="grid grid-cols-1 xl:grid-cols-2 gap-4 md:gap-8">
-      {% if recepcion %}
-      <div class="bg-white p-6 rounded-2xl shadow-sm">
-        <h3 class="text-lg font-bold">Recepción de despachos</h3>
-        <p class="mt-2 text-slate-600">La confirmación de recepción estará disponible cuando se incorpore la firma.</p>
+  <div class="grid grid-cols-1 items-start gap-4 lg:grid-cols-2 md:gap-8">
+    <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <h2 class="text-lg font-bold text-slate-800">Existencias e insumos</h2>
+      <div class="mt-4 flex flex-wrap gap-3">
+        {% if mostrar_catalogo %}
+          <a href="{% url 'inventario' %}" class="rounded-lg bg-blue-50 px-4 py-3 font-semibold text-blue-700 hover:bg-blue-100">
+            Ver existencias
+          </a>
+        {% endif %}
+        {% if perm.ingresar_articulo %}
+          <a href="{% url 'articulo_crear' %}" class="rounded-lg bg-blue-600 px-4 py-3 font-semibold text-white hover:bg-blue-700">
+            Nuevo artículo
+          </a>
+        {% endif %}
       </div>
-      {% endif %}
-      {% if perm.despachar %}
-      <!-- Despacho -->
-      <div id="nuevo-despacho"
-        class="scroll-mt-20 bg-white p-5 md:p-6 rounded-2xl shadow-sm border border-slate-100"
-      >
-        <div
-          class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6 pb-4 border-b border-slate-50"
-        >
-          <h3 class="text-lg font-bold text-slate-800">
-            <i
-              class="fas fa-truck-fast text-blue-600 mr-2 bg-blue-50 p-2 rounded-lg"
-            ></i>
-            Nuevo Despacho
-          </h3>
-          <button
-            onclick="abrirQR()"
-            class="bg-blue-600 text-white px-5 py-3 rounded-xl hover:bg-blue-700 transition text-sm font-bold shadow-md shadow-blue-200 flex items-center justify-center w-full sm:w-auto"
-          >
-            <i class="fas fa-camera mr-2 text-lg"></i> Escanear
-          </button>
-        </div>
-
-        <form
-          method="POST"
-          action="{% url 'procesar_despacho' %}"
-          class="space-y-5"
-        >
-          {% csrf_token %}
-          {% include "despachos/obra_auto.html" %}
-          <div>
-            <label for="input-articulo" class="block text-sm font-bold text-slate-600 mb-1.5"
-              >Artículo a despachar</label
-            >
-            <div class="relative">
-              <i
-                class="fas fa-box absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
-              ></i>
-              <select
-                id="input-articulo"
-                name="articulo"
-                class="w-full border border-slate-200 text-slate-700 rounded-xl py-3.5 pl-11 pr-4 text-sm font-medium"
-                required
-              >
-                <option value="">Seleccione un artículo...</option>
-                {% for articulo in articulos %}
-                <option value="{{ articulo.id }}">
-                  {{ articulo.sku }} | {{ articulo.descripcion }}
-                </option>
-                {% endfor %}
-              </select>
-            </div>
-          </div>
-          <div class="w-full sm:max-w-48">
-            <label for="cant-despacho" class="block text-sm font-bold text-slate-600 mb-1.5"
-              >Cantidad</label
-            >
-            <input
-              type="number"
-              id="cant-despacho"
-              name="cantidad"
-              min="1"
-              value="1"
-              class="w-full border border-slate-200 rounded-xl p-3.5 focus:ring-2 focus:ring-blue-500 outline-none text-lg font-bold text-center bg-slate-50 focus:bg-white"
-            />
-          </div>
-
-          <button
-            type="submit"
-            class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl py-4 mt-4 shadow-lg shadow-blue-200 transition flex items-center justify-center text-base"
-          >
-            <i class="fas fa-check-circle mr-2 text-lg"></i> Confirmar
-            Despacho
-          </button>
-        </form>
-      </div>
-      {% endif %}
-      {% if perm.registrar_merma %}
-      <!-- Mermas -->
-      <div id="registro-merma"
-        class="scroll-mt-20 bg-white p-6 rounded-2xl shadow-sm border border-gray-100"
-      >
-        <h3 class="text-lg font-bold text-gray-800 mb-6">
-          <i class="fas fa-triangle-exclamation text-orange-500 mr-2"></i>
-          Registro de Merma
-        </h3>
-        <div class="space-y-5 text-sm">
-          <div>
-            <label class="block font-semibold text-gray-600 mb-1"
-              >Artículo Dañado</label
-            >
-            <select
-              class="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-orange-500 outline-none bg-white"
-            >
-              <option>Seleccione artículo del catálogo...</option>
-              <option>Compresor 5HP Inverter</option>
-            </select>
-          </div>
-          <div>
-            <label class="block font-semibold text-gray-600 mb-1"
-              >Motivo / Justificación (Obligatorio)</label
-            >
-            <textarea
-              id="motivo-merma"
-              rows="3"
-              class="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-orange-500 outline-none"
-              placeholder="Describa por qué se da de baja el producto..."
-            ></textarea>
-          </div>
-          <button
-            onclick="validarMerma()"
-            class="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-lg p-3 mt-2 shadow-md transition"
-          >
-            <i class="fas fa-save mr-2"></i> Guardar Merma
-          </button>
-        </div>
-      </div>
-      {% endif %}
-    </div>
-  </div>
-  {% endif %}
-
-{% if perm.despachar %}
-<!-- Lector QR (Modal de escaneo) -->
-<div
-  id="modal-qr"
-  class="hidden fixed inset-0 z-50 bg-slate-900/90 backdrop-blur-md items-center justify-center p-4"
->
-  <div
-    class="bg-white rounded-3xl shadow-2xl p-4 sm:p-6 w-full max-w-sm max-h-[calc(100dvh-2rem)] overflow-y-auto text-center"
-  >
-    <h3 class="text-xl font-bold text-slate-800 mb-2">Escáner Activo</h3>
-    <p class="text-sm text-slate-500 mb-6">
-      Apunta la cámara al código
-    </p>
-
-    <div
-      class="w-full aspect-square max-h-[32dvh] bg-slate-100 border-4 border-dashed border-blue-300 rounded-2xl flex items-center justify-center mb-6 relative overflow-hidden"
+    </section>
+    {% if perm.registrar_merma %}
+    <!-- Mermas -->
+    {# Esta maqueta valida la justificación en pantalla. Todavía no registra mermas ni cambia el stock. #}
+    <div id="registro-merma"
+      class="scroll-mt-20 bg-white p-6 rounded-2xl shadow-sm border border-gray-100"
     >
-      <i class="fas fa-qrcode text-6xl text-slate-300"></i>
-      <div
-        class="absolute w-full h-1 bg-blue-500 top-1/2 -translate-y-1/2 shadow-[0_0_20px_rgba(59,130,246,1)]"
-      ></div>
+      <h3 class="text-lg font-bold text-gray-800 mb-6">
+        <i class="fas fa-triangle-exclamation text-orange-500 mr-2"></i>
+        Registro de Merma
+      </h3>
+      <p class="mb-4 text-sm text-slate-600">Vista previa del registro de mermas.</p>
+      <div class="space-y-5 text-sm">
+        <div>
+          <label class="block font-semibold text-gray-600 mb-1"
+            >Artículo Dañado</label
+          >
+          <select
+            class="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-orange-500 outline-none bg-white"
+          >
+            <option>Seleccione artículo del catálogo...</option>
+            <option>Compresor 5HP Inverter</option>
+          </select>
+        </div>
+        <div>
+          <label class="block font-semibold text-gray-600 mb-1"
+            >Motivo / Justificación (Obligatorio)</label
+          >
+          <textarea
+            id="motivo-merma"
+            rows="3"
+            class="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-orange-500 outline-none"
+            placeholder="Describa por qué se da de baja el producto..."
+          ></textarea>
+        </div>
+        <button
+          onclick="validarMerma()"
+          class="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-lg p-3 mt-2 shadow-md transition"
+        >
+          <i class="fas fa-save mr-2"></i> Validar justificación
+        </button>
+      </div>
     </div>
-
-    <div class="flex flex-col gap-3">
-      <button
-        onclick="simularLectura()"
-        class="w-full bg-blue-600 text-white font-bold py-4 rounded-xl shadow-lg shadow-blue-200 active:scale-95 transition text-lg"
-      >
-        Simular Lectura Exitosa
-      </button>
-      <button
-        onclick="cerrarQR()"
-        class="w-full bg-slate-100 text-slate-600 font-bold py-4 rounded-xl active:scale-95 transition"
-      >
-        Cancelar
-      </button>
-    </div>
+    {% endif %}
   </div>
-</div>
-{% endif %}
 
 <!-- Notificaciones -->
 <div
@@ -208,45 +96,11 @@
       return;
     }
     mostrarMensaje(
-      "Merma registrada y guardada en el Cardex de forma inalterable.",
+      "Justificación válida. El registro de mermas aún no está conectado.",
       "exito",
     );
     document.getElementById("motivo-merma").value = "";
   }
 
-<<<<<<< HEAD
-=======
-  {% if perm.despachar %}
-  function abrirQR() {
-    document.getElementById("modal-qr").classList.remove("hidden");
-    document.getElementById("modal-qr").classList.add("flex");
-  }
-  function cerrarQR() {
-    document.getElementById("modal-qr").classList.add("hidden");
-    document.getElementById("modal-qr").classList.remove("flex");
-  }
-  function simularLectura() {
-    cerrarQR();
-    const select = document.getElementById("input-articulo");
-    const opcion = Array.from(select.options).find((item) =>
-      item.text.includes("SKU-9901"),
-    );
-    if (opcion) {
-      select.value = opcion.value;
-    }
-    select.classList.remove("text-slate-500", "bg-slate-100");
-    select.classList.add(
-      "text-blue-700",
-      "bg-blue-50",
-      "border-blue-400",
-      "font-bold",
-    );
-    mostrarMensaje("Código escaneado.", "exito");
-  }
-  {% endif %}
->>>>>>> Alertas
 </script>
-{% if perm.despachar %}
-<script src="{% static 'js/obra_auto.js' %}" defer></script>
-{% endif %}
 {% endblock %}

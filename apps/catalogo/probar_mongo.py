@@ -7,6 +7,7 @@ from pymongo.errors import PyMongoError
 
 
 def main():
+    # Este diagnóstico puede ejecutarse por separado para comprobar la conexión sin cargar Django.
     load_dotenv(
         Path(__file__).resolve().parents[2] / ".env",
         override=True,
@@ -24,6 +25,7 @@ def main():
             serverSelectionTimeoutMS=10000,
             connectTimeoutMS=10000,
         ) as cliente:
+            # El ping comprueba la conexión sin escribir datos ni imprimir la URI.
             cliente.admin.command("ping")
             print("Conexión con MongoDB Atlas exitosa.")
 

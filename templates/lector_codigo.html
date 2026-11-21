@@ -1,0 +1,36 @@
+{% load static %}
+<link rel="stylesheet" href="{% static 'css/lector_codigo.css' %}">
+
+{# Alta entrega el ID de su campo. En Despacho se consulta el catálogo por código. #}
+<dialog
+  id="lector-codigo"
+  {% if campo_destino %}data-campo-destino="{{ campo_destino }}"{% else %}data-url="{% url 'articulo_por_codigo' %}"{% endif %}
+  aria-labelledby="titulo-lector"
+  class="lector-codigo"
+>
+  <div class="lector-cabecera">
+    <h2 id="titulo-lector">{% if campo_destino %}Agregar código de barras{% else %}Buscar por código de barras{% endif %}</h2>
+    <button type="button" data-cerrar-lector autofocus>Cerrar</button>
+  </div>
+  <div data-vista-camara></div>
+  {# Se crea una vista previa nueva por intento para poder liberar el video anterior al cerrar. #}
+  <template data-plantilla-video>
+    <video muted playsinline></video>
+  </template>
+  <button type="button" data-activar-camara>
+    Usar cámara
+  </button>
+  {# La entrada manual usa el mismo flujo que una lectura exitosa de la cámara. #}
+  <form method="dialog" data-enviar-codigo>
+    <label for="codigo-manual">Código de barras</label>
+    <div class="lector-entrada">
+      <input id="codigo-manual" type="text" required maxlength="100" autocomplete="off">
+      <button type="submit">{% if campo_destino %}Usar código{% else %}Buscar{% endif %}</button>
+    </div>
+  </form>
+  <p data-mensaje-lector role="status"></p>
+</dialog>
+
+{# El mismo lector y la misma biblioteca se cargan en las pantallas que incluyen esta ventana. #}
+<script src="{% static 'vendor/zxing/zxing-browser-0.2.1.min.js' %}" defer></script>
+<script src="{% static 'js/lector_codigo.js' %}" type="module"></script>

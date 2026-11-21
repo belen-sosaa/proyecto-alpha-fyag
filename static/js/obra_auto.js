@@ -1,4 +1,5 @@
 document.querySelectorAll("[data-obra-autocomplete]").forEach((root) => {
+  // El usuario ve el nombre, mientras que el formulario envía el ID de la obra seleccionada.
   const texto = root.querySelector("[data-obra-texto]");
   const id = root.querySelector("[data-obra-id]");
   const lista = root.querySelector("[data-obra-resultados]");
@@ -14,6 +15,7 @@ document.querySelectorAll("[data-obra-autocomplete]").forEach((root) => {
   }
 
   texto.addEventListener("input", () => {
+    // Cada edición invalida la selección anterior y cancela las consultas que todavía estén pendientes.
     clearTimeout(timer);
     controller?.abort();
 
@@ -31,6 +33,7 @@ document.querySelectorAll("[data-obra-autocomplete]").forEach((root) => {
       return;
     }
 
+    // Esperar una pausa breve evita consultar el servidor por cada tecla pulsada.
     timer = setTimeout(async () => {
       controller = new AbortController();
 
@@ -43,6 +46,7 @@ document.querySelectorAll("[data-obra-autocomplete]").forEach((root) => {
           headers: { Accept: "application/json" },
         });
 
+        // Una sesión vencida devuelve el login en lugar de la lista JSON.
         if (response.redirected) {
           window.location.assign(response.url);
           return;
@@ -71,6 +75,7 @@ document.querySelectorAll("[data-obra-autocomplete]").forEach((root) => {
           boton.className = "w-full px-4 py-3 text-left text-sm hover:bg-blue-50 focus:bg-blue-50";
 
           boton.addEventListener("click", () => {
+            // Elegir un resultado llena el ID y vuelve a habilitar el envío del formulario.
             texto.value = obra.nombre;
             id.value = obra.id;
             texto.setCustomValidity("");

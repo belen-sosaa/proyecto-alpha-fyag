@@ -17,13 +17,14 @@ SIN_ROL = "Sin rol"
 MODULOS = {
     "panel": ("Inicio", "fa-gauge-high", "inicio", "Alertas y resumen de la sesión"),
     "catalogo": ("Catálogo", "fa-boxes-stacked", "catalogo_listar", "Consulta de existencias"),
-    "cardex": ("Cardex", "fa-clipboard-check", "cardex", "Auditoría de movimientos"),
-    "despacho": ("Despachos", "fa-truck-fast", "bodega_web", "Operaciones de bodega y recepción en obra"),
+    "cardex": ("Auditoría", "fa-clipboard-check", "auditoria", "Auditoría de movimientos"),
+    "despacho": ("Despachos", "fa-truck-fast", "despachos_web", "Despachos de materiales y recepción en obra"),
     "merma": ("Mermas", "fa-triangle-exclamation", "merma_crear", "Bajas con justificación"),
     "compras": ("Compras", "fa-file-invoice-dollar", "compras", "Presupuestos y órdenes"),
     "usuarios": ("Usuarios", "fa-users-gear", "usuarios", "Gestión de cuentas"),
 }
 
+# Módulos asociados a cada rol. Las vistas usan esta lista para construir la navegación.
 ACCESO = {
     GERENTE: ("panel", "catalogo", "cardex", "compras"),
     ADMIN_TI: ("panel", "usuarios"),
@@ -35,6 +36,7 @@ ACCESO = {
     ADMIN_GENERAL_LEGADO: ("panel", "catalogo", "cardex"),
 }
 
+# Acciones que el servidor permite a cada rol, incluso al acceder a una ruta directamente.
 FACULTADES = {
     "ver_catalogo": (GERENTE, ADMIN_BODEGA, BODEGUERO, FINANZAS, AUDITOR, ADMIN_GENERAL_LEGADO),
     "emitir_oc": (FINANZAS,),
@@ -62,6 +64,7 @@ def rol_principal(user):
     for grupo in grupos:
         if grupo in ROLES:
             return grupo
+    # El grupo antiguo se toma como respaldo cuando la cuenta aún no tiene un rol actual.
     return ADMIN_GENERAL_LEGADO if ADMIN_GENERAL_LEGADO in grupos else SIN_ROL
 
 

@@ -7,6 +7,7 @@ from .roles import ROLES, puede
 
 
 def rol_requerido(*roles):
+    # Esta variante compara los grupos de la cuenta directamente.
     def decorator(view):
         @login_required
         @wraps(view)
@@ -33,6 +34,7 @@ def facultad_requerida(facultad):
         @login_required
         @wraps(view)
         def wrapper(request, *args, **kwargs):
+            # login_required lleva al login sin sesión. Con sesión y sin facultad, Django responde 403.
             if not puede(request.user, facultad):
                 raise PermissionDenied("Tu rol no tiene permiso para esta acción.")
             return view(request, *args, **kwargs)

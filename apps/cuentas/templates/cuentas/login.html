@@ -160,6 +160,7 @@
 
   <form id="form-login" method="post" action="{% url 'login' %}" class="space-y-5">
     {% csrf_token %}
+    {# next conserva el destino si el usuario llegó al login desde una página protegida. #}
     <input type="hidden" name="next" value="{{ next|default:'' }}">
     <div>
       <label for="rut" class="block text-slate-700 font-bold mb-2 text-sm">RUT</label>
@@ -234,8 +235,10 @@
   }
 
   function formatearRut() {
+    // Se cuenta la posición sin separadores para conservar el cursor al editar en medio del RUT.
     const caracteresAntes = caracteresRut(campoRut.value.slice(0, campoRut.selectionStart)).length;
     const rut = caracteresRut(campoRut.value);
+    // El último carácter es el dígito verificador. Django comprueba su validez al iniciar sesión.
     const cuerpo = rut.slice(0, -1).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
     const formateado = rut.length > 1 ? cuerpo + "-" + rut.slice(-1) : rut;
     if (formateado === campoRut.value) return;

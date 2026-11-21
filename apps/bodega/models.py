@@ -4,9 +4,8 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
 
-
+# Rut ingresado de forma commoda para el usuario
 def normalizar_rut(valor):
-    """Valida el dígito verificador y devuelve el RUT sin puntos."""
     valor = valor.strip().upper()
 
     if re.fullmatch(
@@ -22,6 +21,7 @@ def normalizar_rut(valor):
 
     if partes:
         numero, digito = partes.groups()
+        # El dígito verificador se calcula con módulo 11, ponderando el número de derecha a izquierda.
         suma = sum(
             int(cifra) * (indice % 6 + 2)
             for indice, cifra in enumerate(reversed(numero))
@@ -34,6 +34,7 @@ def normalizar_rut(valor):
 
 
 class PerfilUsuario(models.Model):
+    # El perfil agrega RUT y estado de bloqueo a la cuenta de autenticación que administra Django.
     usuario = models.OneToOneField(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -46,6 +47,7 @@ class PerfilUsuario(models.Model):
     )
 
     intentos_fallidos = models.PositiveSmallIntegerField(default=0, editable=False)
+    # El login consulta esta fecha para saber si el bloqueo venció sin depender de una tarea programada.
     bloqueado_hasta = models.DateTimeField(null=True, blank=True, editable=False)
 
     # Columna del esquema de Neon. Los permisos se consultan en los grupos de Django.
@@ -89,6 +91,7 @@ class Categoria(models.Model):
 
 
 class Articulo(models.Model):
+    # El SKU identifica el insumo dentro de la bodega. El código de barras puede quedar vacío.
     sku = models.CharField(
         max_length=50,
         unique=True,
@@ -149,6 +152,7 @@ class Articulo(models.Model):
         editable=False,
     )
 
+    # Este identificador vincula el insumo de PostgreSQL con su ficha técnica en MongoDB.
     mongodb_especificaciones_id = models.CharField(
         max_length=100,
         null=True,
@@ -163,6 +167,7 @@ class Articulo(models.Model):
 
     @property
     def es_stock_critico(self):
+        # Llegar exactamente al umbral ya activa la alerta de stock.
         return self.stock_fisico <= self.stock_critico
 
     @property
@@ -172,6 +177,7 @@ class Articulo(models.Model):
         return "Stock Normal"
 
     def save(self, *args, **kwargs):
+        # Mantiene la columna histórica sincronizada, incluso cuando el despacho guarda solo el stock.
         self.estado_registrado = self.estado
 
         campos = kwargs.get("update_fields")
@@ -190,6 +196,7 @@ class Articulo(models.Model):
 
 
 class Obra(models.Model):
+    # Es el destino del despacho. Las coordenadas son opcionales y alimentan el registro del movimiento.
     nombre = models.CharField(max_length=200)
     latitud = models.FloatField(null=True, blank=True)
     longitud = models.FloatField(null=True, blank=True)
@@ -199,6 +206,7 @@ class Obra(models.Model):
 
 
 class Despacho(models.Model):
+    # Se conservan el insumo, la obra, la cantidad y el usuario responsable de cada salida.
     articulo = models.ForeignKey(
         "Articulo",
         on_delete=models.PROTECT,
@@ -231,6 +239,7 @@ class Despacho(models.Model):
 
 
 class BitacoraAuditoria(models.Model):
+    # Guarda la acción y los valores antes y después para poder revisar los cambios del catálogo.
     usuario = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,

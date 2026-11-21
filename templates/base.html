@@ -332,6 +332,7 @@
 </head>
 
 <body class="{% block body_class %}{% endblock %}">
+  {# Las vistas con panel_operativo comparten navegación. El login y el catálogo usan su propia presentación. #}
   <div{% if panel_operativo %} class="panel-operativo{% if request.resolver_match.url_name == 'inicio' %} panel-inicio{% endif %}"{% endif %}>
     {% if panel_operativo %}
       {% include "navegacion_operativa.html" %}
@@ -360,6 +361,7 @@
       {% endif %}
 
       <main class="{% if panel_operativo %}contenido-operativo{% elif pagina_acceso %}contenido-acceso{% else %}contenedor contenido{% endif %}">
+        {# Las vistas envían estos mensajes antes de redirigir, por ejemplo al confirmar un despacho. #}
         {% for message in messages %}
           <p class="mensaje {{ message.tags }}" role="status">{{ message }}</p>
         {% endfor %}

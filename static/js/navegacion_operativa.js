@@ -7,6 +7,7 @@ const panelInicio = document.querySelector(".panel-inicio");
 const pantallaAmplia = window.matchMedia("(min-width: 64rem)");
 const confirmacionSalida = document.getElementById("confirmacion-salida");
 
+// Abrir o cancelar el diálogo conserva la sesión. Solo el botón de confirmación envía el formulario.
 document.querySelector("[data-confirmar-salida]").addEventListener("click", () => {
   confirmacionSalida.showModal();
 });
@@ -15,6 +16,7 @@ confirmacionSalida.querySelector("[data-cancelar-salida]").addEventListener("cli
 });
 
 function mostrarMenu(abierto) {
+  // El menú puede quedar fijo en Inicio de escritorio. En módulos y pantallas estrechas se superpone.
   const menuFijo = panelInicio && pantallaAmplia.matches;
   if (menuFijo) {
     panelInicio.classList.toggle("menu-plegado", !abierto);
@@ -24,6 +26,7 @@ function mostrarMenu(abierto) {
   menuOperativo.classList.toggle("menu-abierto", desplegadoComoCajon);
   controlMenu.setAttribute("aria-expanded", String(abierto));
   fondoMenu.hidden = !desplegadoComoCajon;
+  // Mientras el menú se superpone, el teclado no puede enfocar los controles del fondo.
   paginaOperativa.inert = desplegadoComoCajon;
 
   if (abierto) {
@@ -40,11 +43,13 @@ document.querySelectorAll("[data-cerrar-menu]").forEach((elemento) => {
   elemento.addEventListener("click", () => mostrarMenu(false));
 });
 document.addEventListener("keydown", (evento) => {
+  // Si el diálogo está abierto, Escape actúa primero sobre él mediante el navegador.
   if (evento.key === "Escape" && !confirmacionSalida.open && !fondoMenu.hidden) {
     mostrarMenu(false);
   }
 });
 function ajustarMenuAlAncho() {
+  // Al cambiar de ancho se restaura el modo que corresponde y se conserva un foco utilizable.
   const abierto = Boolean(pantallaAmplia.matches && panelInicio && !panelInicio.classList.contains("menu-plegado"));
   const elementoActivo = document.activeElement;
   menuOperativo.classList.remove("menu-abierto");

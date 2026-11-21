@@ -11,6 +11,7 @@
     <span aria-hidden="true">×</span>
   </button>
 
+  {# Los enlaces reflejan las opciones del rol. Cada vista comprueba sus permisos en el servidor. #}
   {% with pagina=request.resolver_match.url_name %}
     <nav class="modulos-operativos" aria-label="Módulos">
       <a href="{% url 'inicio' %}"{% if pagina == 'inicio' %} aria-current="page"{% endif %}>
@@ -18,18 +19,28 @@
       </a>
       {% if mostrar_bodega %}
         <a href="{% url 'bodega_web' %}"{% if pagina == 'bodega_web' %} aria-current="page"{% endif %}>
-          <i class="fas fa-boxes" aria-hidden="true"></i>
-          {% if recepcion %}Recepción de despachos{% else %}Bodega y Despachos{% endif %}
+          <i class="fas fa-boxes" aria-hidden="true"></i> Bodega
+        </a>
+      {% endif %}
+      {% if mostrar_despachos %}
+        <a href="{% url 'despachos_web' %}"{% if pagina == 'despachos_web' %} aria-current="page"{% endif %}>
+          <i class="fas fa-truck-fast" aria-hidden="true"></i>
+          {% if recepcion %}Recepción de despachos{% else %}Despachos{% endif %}
         </a>
       {% endif %}
       {% if mostrar_catalogo %}
         <a href="{% url 'inventario' %}"{% if pagina == 'inventario' %} aria-current="page"{% endif %}>
-          <i class="fas fa-clipboard-list" aria-hidden="true"></i> Catálogo y Auditoría
+          <i class="fas fa-clipboard-list" aria-hidden="true"></i> Catálogo
+        </a>
+      {% endif %}
+      {% if mostrar_auditoria %}
+        <a href="{% url 'auditoria' %}"{% if pagina == 'auditoria' %} aria-current="page"{% endif %}>
+          <i class="fas fa-clipboard-check" aria-hidden="true"></i> Auditoría
         </a>
       {% endif %}
       {% if mostrar_finanzas %}
         <a href="{% url 'compras' %}"{% if pagina == 'compras' %} aria-current="page"{% endif %}>
-          <i class="fas fa-file-invoice-dollar" aria-hidden="true"></i> Compras y Finanzas
+          <i class="fas fa-file-invoice-dollar" aria-hidden="true"></i> Compras
         </a>
       {% endif %}
     </nav>
@@ -50,6 +61,7 @@
   </div>
 </aside>
 
+{# Solo el botón de confirmación envía el POST protegido por CSRF a la ruta de cierre de sesión. #}
 <dialog id="confirmacion-salida" class="dialogo-salida" aria-labelledby="titulo-salida">
   <h2 id="titulo-salida">¿Quieres cerrar sesión?</h2>
   <form method="post" action="{% url 'logout' %}">

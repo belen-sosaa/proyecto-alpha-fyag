@@ -27,6 +27,7 @@ def datos_articulo(articulo):
 
 
 def _guardar_especificaciones(articulo, datos):
+    # Si enviaron una ficha técnica, se guarda en MongoDB y se vincula al registro de PostgreSQL.
     if datos:
         identificador = guardar_especificaciones(articulo.pk, datos)
         Articulo.objects.filter(pk=articulo.pk).update(
@@ -40,6 +41,7 @@ def catalogo_listar(request):
     categoria_id = request.GET.get("categoria", "").strip()
     articulos = Articulo.objects.select_related("categoria").order_by("sku")
     if busqueda:
+        # Q combina los campos con OR. Basta que el texto coincida en uno de ellos.
         articulos = articulos.filter(
             Q(sku__icontains=busqueda)
             | Q(descripcion__icontains=busqueda)
@@ -66,6 +68,7 @@ def articulo_crear(request):
     form = ArticuloForm(request.POST if request.method == "POST" else None)
     if request.method == "POST" and form.is_valid():
         try:
+            # El alta inicial y su registro de auditoría quedan en la misma transacción de PostgreSQL.
             with transaction.atomic():
                 articulo = form.save()
                 BitacoraAuditoria.objects.create(
@@ -95,6 +98,7 @@ def catalogo_crear(request):
                     valor_nuevo=datos_articulo(articulo),
                     detalle="Creación desde el catálogo.",
                 )
+            # La ficha opcional se guarda en MongoDB después de confirmar los datos relacionales.
             _guardar_especificaciones(articulo, form.cleaned_data.get("especificaciones"))
         except IntegrityError:
             form.add_error(None, "No se pudo guardar. Revisa SKU y código de barras.")
@@ -103,12 +107,14 @@ def catalogo_crear(request):
             return redirect("catalogo_listar")
     return render(request, "catalogo/catalogo.html", {
         "form": form, "titulo": "Crear insumo", "perm": permisos_de(request.user),
+        "alta_articulo": True,
     })
 
 
 @facultad_requerida("editar_articulo")
 def catalogo_editar(request, pk):
     articulo = get_object_or_404(Articulo, pk=pk)
+    # Se captura el estado original antes de que el formulario cambie la instancia.
     anterior = datos_articulo(articulo)
     form = ArticuloCatalogoForm(
         request.POST if request.method == "POST" else None,
@@ -141,6 +147,7 @@ def catalogo_eliminar(request, pk):
     if request.method == "POST":
         try:
             with transaction.atomic():
+                # Con el insumo bloqueado se verifican existencias y relaciones antes de eliminarlo.
                 articulo = get_object_or_404(
                     Articulo.objects.select_for_update(), pk=pk
                 )
@@ -151,6 +158,7 @@ def catalogo_eliminar(request, pk):
                     messages.error(request, "No se puede eliminar un insumo con stock físico.")
                     return redirect("catalogo_listar")
                 with connection.cursor() as cursor:
+                    # La tabla de compras puede existir en el entorno integrado. Se consulta solo si está disponible.
                     tablas = connection.introspection.table_names(cursor=cursor)
                     if "bodega_detallefactura" in tablas:
                         cursor.execute(

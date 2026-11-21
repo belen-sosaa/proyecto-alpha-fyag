@@ -5,6 +5,7 @@ from apps.catalogo.especificaciones import validar_caracteristicas
 
 
 class ArticuloForm(forms.ModelForm):
+    # El alta desde Bodega incluye el stock inicial junto con la identificación del insumo.
     class Meta:
         model = Articulo
         fields = [
@@ -22,12 +23,14 @@ class ArticuloForm(forms.ModelForm):
         return sku
 
     def clean_codigo_barras(self):
+        # El código leído o escrito se guarda como texto para conservar los ceros iniciales.
         codigo = self.cleaned_data.get("codigo_barras")
         codigo = codigo.strip() if codigo else None
         if not codigo:
             return None
         existentes = Articulo.objects.filter(codigo_barras=codigo)
         if self.instance.pk:
+            # Al editar se excluye el propio artículo, para que pueda conservar su código.
             existentes = existentes.exclude(pk=self.instance.pk)
         if existentes.exists():
             raise forms.ValidationError("Artículo ya registrado")
@@ -35,6 +38,7 @@ class ArticuloForm(forms.ModelForm):
 
 
 class ArticuloCatalogoForm(ArticuloForm):
+    # Catálogo agrega una ficha opcional de características y deja fuera el stock físico.
     especificaciones = forms.JSONField(
         required=False,
         label="Especificaciones técnicas",
@@ -64,6 +68,7 @@ class ArticuloCatalogoForm(ArticuloForm):
         datos = super().clean()
         minimo = datos.get("stock_minimo")
         critico = datos.get("stock_critico")
+        # El umbral crítico debe quedar dentro del mínimo configurado para el mismo insumo.
         if minimo is not None and critico is not None and critico > minimo:
             self.add_error("stock_critico", "El stock crítico no puede superar al stock mínimo.")
         return datos

@@ -373,6 +373,28 @@ class AltaArticuloTests(TestCase):
         self.assertEqual(auditoria.id_registro, articulo.pk)
         self.assertEqual(auditoria.valor_nuevo["stock_fisico"], 10)
 
+    def test_altas_muestran_el_lector_y_guardan_el_codigo_para_despacho(self):
+        # Las dos pantallas de alta deben guardar el mismo campo que consulta Despacho.
+        casos = (
+            (self.url, reverse("bodega_web"), "REV-01", "00100100"),
+            (reverse("catalogo_crear"), reverse("catalogo_listar"), "REV-02", "00100200"),
+        )
+        for url, destino, sku, codigo in casos:
+            with self.subTest(url=url):
+                pagina = self.client.get(url)
+                self.assertContains(pagina, 'name="codigo_barras"')
+                self.assertContains(pagina, 'data-campo-destino="id_codigo_barras"')
+                self.assertContains(pagina, "Escanear código de barras")
+                self.assertContains(pagina, "js/lector_codigo.js")
+
+                respuesta = self.client.post(url, {**self.datos, "sku": sku, "codigo_barras": codigo})
+                self.assertRedirects(respuesta, destino)
+                articulo = Articulo.objects.get(sku=sku)
+                self.assertEqual(articulo.codigo_barras, codigo)
+                consulta = self.client.get(reverse("articulo_por_codigo"), {"codigo": codigo})
+                self.assertEqual(consulta.status_code, 200)
+                self.assertEqual(consulta.json()["id"], articulo.pk)
+
     def test_rechaza_sku_y_codigo_de_barras_duplicados(self):
         self.client.post(self.url, self.datos)
         for cambios in ({"codigo_barras": "100200"}, {"sku": "REV-02"}):

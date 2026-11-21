@@ -58,6 +58,7 @@
   overflow-wrap: anywhere;
 }
 
+/* Por defecto la navegación queda fuera de pantalla y se abre como un panel lateral temporal. */
 .menu-operativo {
   position: fixed;
   z-index: 60;
@@ -238,6 +239,7 @@
   }
 }
 
+/* En Inicio de escritorio el menú desplegado ocupa su propia columna. */
 @media (min-width: 64rem) {
   .panel-inicio:not(.menu-plegado) {
     display: grid;

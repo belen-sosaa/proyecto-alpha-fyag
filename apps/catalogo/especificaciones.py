@@ -24,6 +24,7 @@ def validar_caracteristicas(caracteristicas):
             "Debes ingresar un diccionario con características."
         )
 
+    # La ficha acepta valores simples. Se revisan las claves para guardarlas como campos de MongoDB.
     for nombre, valor in caracteristicas.items():
         if (
             not isinstance(nombre, str)
@@ -62,7 +63,7 @@ def guardar_especificaciones(articulo_id, caracteristicas):
     coleccion = obtener_base()["especificaciones_insumos"]
     ahora = datetime.now(timezone.utc)
 
-    # El identificador del artículo también identifica su ficha.
+    # El identificador del artículo también identifica su ficha. upsert la crea o actualiza en el mismo lugar.
     coleccion.update_one(
         {"_id": articulo.pk},
         {

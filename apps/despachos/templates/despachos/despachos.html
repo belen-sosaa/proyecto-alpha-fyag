@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ titulo_panel }} | Logística FYAG{% endblock %}
+
+{% block content %}
+  {% if recepcion %}
+  <div class="bg-white p-6 rounded-2xl shadow-sm">
+    <h3 class="text-lg font-bold">Recepción de despachos</h3>
+    <p class="mt-2 text-slate-600">La confirmación de recepción estará disponible cuando se incorpore la firma.</p>
+  </div>
+  {% endif %}
+  {% if perm.despachar %}
+  <!-- Despacho -->
+  <div id="nuevo-despacho"
+    class="scroll-mt-20 bg-white p-5 md:p-6 rounded-2xl shadow-sm border border-slate-100"
+  >
+    <div
+      class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6 pb-4 border-b border-slate-50"
+    >
+      <h3 class="text-lg font-bold text-slate-800">
+        <i
+          class="fas fa-truck-fast text-blue-600 mr-2 bg-blue-50 p-2 rounded-lg"
+        ></i>
+        Nuevo Despacho
+      </h3>
+      <button
+        type="button"
+        data-abrir-lector
+        aria-haspopup="dialog"
+        aria-controls="lector-codigo"
+        class="bg-blue-600 text-white px-5 py-3 rounded-xl hover:bg-blue-700 transition text-sm font-bold shadow-md shadow-blue-200 flex items-center justify-center w-full sm:w-auto"
+      >
+        <i class="fas fa-camera mr-2 text-lg"></i> Escanear
+      </button>
+    </div>
+
+    <form
+      method="POST"
+      action="{% url 'procesar_despacho' %}"
+      class="space-y-5"
+    >
+      {% csrf_token %}
+      {% include "despachos/obra_auto.html" %}
+      {# Tanto la selección manual como el escaneo dejan el mismo ID en el campo articulo. #}
+      <div>
+        <label for="input-articulo" class="block text-sm font-bold text-slate-600 mb-1.5"
+          >Artículo a despachar</label
+        >
+        <div class="relative">
+          <i
+            class="fas fa-box absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+          ></i>
+          <select
+            id="input-articulo"
+            name="articulo"
+            class="w-full border border-slate-200 text-slate-700 rounded-xl py-3.5 pl-11 pr-4 text-sm font-medium"
+            required
+          >
+            <option value="">Seleccione un artículo...</option>
+            {% for articulo in articulos %}
+            <option value="{{ articulo.id }}">
+              {{ articulo.sku }} | {{ articulo.descripcion }}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+        <p id="articulo-escaneado" role="status" class="mt-1 text-sm text-slate-600"></p>
+      </div>
+      <div class="w-full sm:max-w-48">
+        <label for="cant-despacho" class="block text-sm font-bold text-slate-600 mb-1.5"
+          >Cantidad</label
+        >
+        <input
+          type="number"
+          id="cant-despacho"
+          name="cantidad"
+          min="1"
+          value="1"
+          class="w-full border border-slate-200 rounded-xl p-3.5 focus:ring-2 focus:ring-blue-500 outline-none text-lg font-bold text-center bg-slate-50 focus:bg-white"
+        />
+      </div>
+
+      <button
+        type="submit"
+        class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl py-4 mt-4 shadow-lg shadow-blue-200 transition flex items-center justify-center text-base"
+      >
+        <i class="fas fa-check-circle mr-2 text-lg"></i> Confirmar
+        Despacho
+      </button>
+    </form>
+  </div>
+  {% endif %}
+
+  {% if perm.despachar %}
+    {% include "lector_codigo.html" %}
+  {% endif %}
+{% endblock %}
+
+{% block extra_js %}
+  {% if perm.despachar %}
+    <script src="{% static 'js/obra_auto.js' %}" defer></script>
+  {% endif %}
+{% endblock %}

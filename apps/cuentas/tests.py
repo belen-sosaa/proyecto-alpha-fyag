@@ -4,6 +4,7 @@ from django.urls import reverse
 
 
 class SalidaTests(TestCase):
+    # Se activa la validación CSRF para comprobar que solo la confirmación puede cerrar la sesión.
     def test_salida_pide_confirmacion_y_cierra_sesion_por_post_con_csrf(self):
         usuario = get_user_model().objects.create_user(username="cuenta_de_prueba")
         cliente = Client(enforce_csrf_checks=True)

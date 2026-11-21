@@ -6,15 +6,23 @@
 
   {% if form %}
     <!-- Formulario para crear o editar -->
+    {# La vista de alta activa el lector. En edición se muestran los campos de la ficha existente. #}
     <h1>{{ titulo }}</h1>
 
     <form method="post">
       {% csrf_token %}
-      {{ form.as_p }}
+      {% if alta_articulo %}
+        {% include "catalogo/campos_alta_articulo.html" %}
+      {% else %}
+        {{ form.as_p }}
+      {% endif %}
 
       <button type="submit">Guardar</button>
       <a href="{% url 'catalogo_listar' %}">Cancelar</a>
     </form>
+    {% if alta_articulo %}
+      {% include "lector_codigo.html" with campo_destino=form.codigo_barras.id_for_label only %}
+    {% endif %}
 
   {% elif articulo %}
     <!-- Confirmación de eliminación -->
@@ -47,6 +55,7 @@
       </p>
     {% endif %}
 
+    {# Los filtros viajan en la URL y el servidor conserva sus valores al mostrar los resultados. #}
     <form method="get">
       <div>
         <label for="q">Buscar</label>
@@ -130,7 +139,7 @@
     </div>
 
     <p>
-      <a href="{% url 'bodega_web' %}">Volver a bodega</a>
+      <a href="{% url 'inventario' %}">Volver a Catálogo</a>
     </p>
   {% endif %}
 

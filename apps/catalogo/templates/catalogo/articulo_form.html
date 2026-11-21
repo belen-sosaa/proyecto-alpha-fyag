@@ -5,11 +5,14 @@
 {% block content %}
   <h1>Nuevo artículo</h1>
 
+  {# El alta registra la ficha del insumo y permite indicar sus existencias iniciales. #}
   <form method="post">
     {% csrf_token %}
-    {{ form.as_p }}
+    {% include "catalogo/campos_alta_articulo.html" %}
 
     <button type="submit">Guardar artículo</button>
     <a href="{% url 'bodega_web' %}">Cancelar</a>
   </form>
+
+  {% include "lector_codigo.html" with campo_destino=form.codigo_barras.id_for_label only %}
 {% endblock %}

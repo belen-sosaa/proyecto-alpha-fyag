@@ -1,0 +1,18 @@
+{# Se conservan los errores y campos de Django al colocar el botón de escaneo junto al código. #}
+{{ form.non_field_errors }}
+{% for campo in form.hidden_fields %}
+  {{ campo }}
+{% endfor %}
+
+{% for campo in form.visible_fields %}
+  <div class="campo-alta-articulo">
+    {{ campo.as_field_group }}
+    {% if campo.name == "codigo_barras" %}
+      {# El lector llena este campo. Solo el botón Guardar envía el formulario a Django. #}
+      <button type="button" class="boton-escanear-alta" data-abrir-lector aria-haspopup="dialog" aria-controls="lector-codigo">
+        Escanear código de barras
+      </button>
+      <p id="codigo-agregado" class="mensaje-codigo-alta" role="status"></p>
+    {% endif %}
+  </div>
+{% endfor %}

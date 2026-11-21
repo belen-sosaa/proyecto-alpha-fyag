@@ -5,6 +5,7 @@
 
 {% block content %}
   <div class="space-y-6">
+    {# vista_inicio calcula estos indicadores al cargar la página y los entrega a los roles correspondientes. #}
     {% if mostrar_catalogo %}
       <section aria-label="Resumen de inventario" class="grid gap-4 sm:grid-cols-2">
         <a href="{% url 'inventario' %}" class="block rounded-2xl border border-slate-200 bg-white p-5 shadow-sm hover:border-blue-400">
@@ -18,11 +19,12 @@
       </section>
     {% endif %}
 
+    {# Quien puede despachar ve salidas recientes. El Supervisor tiene un acceso a Recepción. #}
     {% if perm.despachar %}
       <section aria-labelledby="titulo-despachos" class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
         <div class="flex flex-wrap items-center justify-between gap-3">
           <h2 id="titulo-despachos" class="text-lg font-bold text-slate-900">Últimos despachos</h2>
-          <a href="{% url 'bodega_web' %}" class="font-semibold text-blue-700 hover:underline">Ir a Bodega y Despachos</a>
+          <a href="{% url 'despachos_web' %}" class="font-semibold text-blue-700 hover:underline">Ir a Despachos</a>
         </div>
         <ul class="mt-4 divide-y divide-slate-200">
           {% for despacho in despachos_recientes %}
@@ -43,11 +45,11 @@
     {% elif recepcion %}
       <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <h2 class="text-lg font-bold text-slate-900">Recepción de despachos</h2>
-        <a href="{% url 'bodega_web' %}" class="mt-3 inline-block font-semibold text-blue-700 hover:underline">Abrir Recepción</a>
+        <a href="{% url 'despachos_web' %}" class="mt-3 inline-block font-semibold text-blue-700 hover:underline">Abrir Recepción</a>
       </section>
     {% endif %}
 
-    {% if not mostrar_catalogo and not mostrar_bodega and not mostrar_finanzas %}
+    {% if not mostrar_catalogo and not mostrar_bodega and not mostrar_despachos and not mostrar_auditoria and not mostrar_finanzas %}
       <p class="text-slate-600">Tu cuenta no tiene módulos habilitados.</p>
     {% endif %}
   </div>

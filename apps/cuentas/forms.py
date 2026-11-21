@@ -15,6 +15,7 @@ DURACION_BLOQUEO = timedelta(minutes=15)
 
 @transaction.atomic
 def autenticar_rut(request, rut, password):
+    # PostgreSQL bloquea el perfil hasta guardar el contador para que dos intentos simultáneos no se pisen.
     perfil = (
         PerfilUsuario.objects.select_related("usuario")
         .select_for_update(of=("self",))
@@ -24,9 +25,11 @@ def autenticar_rut(request, rut, password):
     if perfil is None or (
         perfil.bloqueado_hasta and perfil.bloqueado_hasta > timezone.now()
     ):
+        # Se calcula un hash también en estos casos para reducir diferencias de tiempo en la respuesta.
         make_password(password)
         return None
 
+    # El RUT identifica el perfil. Django verifica la contraseña contra la cuenta asociada.
     usuario = authenticate(request, username=perfil.usuario.get_username(), password=password)
     if usuario is not None and usuario.pk == perfil.usuario_id:
         if perfil.intentos_fallidos or perfil.bloqueado_hasta:
@@ -57,6 +60,7 @@ class AccesoRUTForm(forms.Form):
         self.usuario = None
 
     def clean_rut(self):
+        # Todos los formatos válidos terminan en el mismo RUT y comparten el contador.
         return normalizar_rut(self.cleaned_data["rut"])
 
     def clean(self):
@@ -66,8 +70,10 @@ class AccesoRUTForm(forms.Form):
         if rut and password:
             self.usuario = autenticar_rut(self.request, rut, password)
             if self.usuario is None:
+                # El mismo mensaje cubre credenciales inválidas, cuentas inactivas y bloqueos.
                 raise forms.ValidationError("RUT o contraseña incorrectos, o cuenta inactiva.")
         return datos
 
     def get_user(self):
+        # LoginView toma este usuario una vez que el formulario pasó la validación.
         return self.usuario
