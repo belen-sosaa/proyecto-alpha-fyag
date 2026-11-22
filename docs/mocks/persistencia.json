@@ -202,20 +202,17 @@
     },
     "recepcion": {
       "metodo": "POST",
-      "ruta": "/api/despachos/42/recepcion/",
-      "solicitud": {
-        "receptor_id": 8,
-        "firma_referencia": "firmas/despacho-42.png",
-        "comprobante_referencia": "comprobantes/despacho-42.pdf"
+      "ruta": "/despachos/42/recepcion/",
+      "formulario": {
+        "firma": "[[[28,80],[45,52],[70,55]]]"
       },
-      "estado": 201,
-      "respuesta": {
-        "id": 702,
+      "estado": 302,
+      "redireccion": "/despachos/42/comprobante/",
+      "comprobante": {
         "despacho_id": 42,
-        "receptor_id": 8,
-        "firma_referencia": "firmas/despacho-42.png",
-        "comprobante_referencia": "comprobantes/despacho-42.pdf",
-        "fecha_hora": "2026-11-19T14:08:00Z"
+        "nombre_receptor": "Supervisor de prueba",
+        "fecha_recepcion": "2026-11-19T14:08:00Z",
+        "firma": [[[28, 80], [45, 52], [70, 55]]]
       }
     },
     "merma": {

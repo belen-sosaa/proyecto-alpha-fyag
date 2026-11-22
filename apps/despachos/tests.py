@@ -11,7 +11,7 @@ from django.urls import reverse
 
 from apps.bodega.models import Articulo, BitacoraAuditoria, Categoria, MovimientoCardex, Obra
 from apps.cuentas.roles import ADMIN_BODEGA, BODEGUERO, SUPERVISOR
-from .models import Despacho
+from .models import Despacho, RecepcionDespacho
 
 
 class DespachoTransaccionalTests(TestCase):
@@ -148,3 +148,106 @@ class DespachoTransaccionalTests(TestCase):
         self.assertFalse(Despacho.objects.exists())
         self.assertFalse(MovimientoCardex.objects.exists())
         self.assertFalse(BitacoraAuditoria.objects.exists())
+
+
+class RecepcionDespachoTests(TestCase):
+    firma = [[[28, 80], [45, 52], [70, 55]], [[95, 100], [180, 100]]]
+
+    @classmethod
+    def setUpTestData(cls):
+        usuario = get_user_model()
+        grupo_supervisor = Group.objects.create(name=SUPERVISOR)
+        cls.supervisor = usuario.objects.create_user(username="supervision", first_name="Ana")
+        cls.supervisor.groups.add(grupo_supervisor)
+        cls.otro_supervisor = usuario.objects.create_user(username="otra-supervision")
+        cls.otro_supervisor.groups.add(grupo_supervisor)
+        cls.bodeguero = usuario.objects.create_user(username="bodeguero")
+        cls.bodeguero.groups.add(Group.objects.create(name=BODEGUERO))
+        cls.otro_bodeguero = usuario.objects.create_user(username="otro-bodeguero")
+        cls.otro_bodeguero.groups.add(Group.objects.get(name=BODEGUERO))
+        cls.admin = usuario.objects.create_user(username="admin-bodega")
+        cls.admin.groups.add(Group.objects.create(name=ADMIN_BODEGA))
+        categoria = Categoria.objects.create(nombre="Insumos")
+        cls.articulo = Articulo.objects.create(
+            sku="REF-002", descripcion="Válvula", categoria=categoria, stock_fisico=10,
+        )
+        obra = Obra.objects.create(nombre="Obra Norte")
+        cls.despacho = Despacho.objects.create(
+            articulo=cls.articulo, obra=obra, usuario=cls.bodeguero, cantidad=2,
+        )
+        cls.comprobante_url = reverse("comprobante_despacho", args=[cls.despacho.pk])
+        cls.recepcion_url = reverse("registrar_recepcion", args=[cls.despacho.pk])
+
+    def test_firma_vinculada_al_comprobante_y_auditada_sin_movimiento_de_stock(self):
+        self.client.force_login(self.supervisor)
+        self.assertContains(self.client.get(reverse("despachos")), "Revisar y firmar")
+        self.assertContains(self.client.get(self.comprobante_url), "<canvas")
+
+        respuesta = self.client.post(self.recepcion_url, {
+            "firma": json.dumps(self.firma), "receptor_id": self.otro_supervisor.pk,
+        })
+
+        self.assertRedirects(respuesta, self.comprobante_url)
+        recepcion = RecepcionDespacho.objects.get(despacho=self.despacho)
+        self.assertEqual(recepcion.receptor, self.supervisor)
+        self.assertEqual(recepcion.nombre_receptor, "Ana")
+        self.assertEqual(recepcion.firma, self.firma)
+        self.assertIsNotNone(recepcion.fecha_recepcion)
+        evento = BitacoraAuditoria.objects.get(entidad="RecepcionDespacho", id_registro=recepcion.pk)
+        self.assertEqual(evento.valor_nuevo, {
+            "despacho_id": self.despacho.pk, "receptor_id": self.supervisor.pk,
+        })
+        self.articulo.refresh_from_db()
+        self.assertEqual(self.articulo.stock_fisico, 10)
+        self.assertFalse(MovimientoCardex.objects.exists())
+
+        for usuario in (self.supervisor, self.bodeguero, self.admin):
+            with self.subTest(usuario=usuario):
+                self.client.force_login(usuario)
+                pagina = self.client.get(self.comprobante_url)
+                self.assertTemplateUsed(pagina, "despachos/despacho.html")
+                self.assertContains(pagina, "Ana")
+                self.assertContains(pagina, 'points="28,80 45,52 70,55"')
+                self.assertNotContains(pagina, "<canvas")
+
+        for usuario in (self.otro_supervisor, self.otro_bodeguero):
+            with self.subTest(usuario=usuario):
+                self.client.force_login(usuario)
+                self.assertEqual(self.client.get(self.comprobante_url).status_code, 404)
+
+    def test_validacion_y_permisos_de_firma(self):
+        self.client.force_login(self.bodeguero)
+        self.assertEqual(self.client.post(self.recepcion_url, {"firma": json.dumps(self.firma)}).status_code, 403)
+        self.client.force_login(self.supervisor)
+        self.assertEqual(self.client.get(self.recepcion_url).status_code, 405)
+
+        for firma in ("", "[]", "[[[0,0],[0,0]]]", "[[[0,0],[601,100]]]", "[[[false,0],[12,10]]]", "[[[0,0]],null]"):
+            with self.subTest(firma=firma):
+                respuesta = self.client.post(self.recepcion_url, {"firma": firma})
+                self.assertRedirects(respuesta, self.comprobante_url)
+                self.assertFalse(RecepcionDespacho.objects.exists())
+        self.assertFalse(BitacoraAuditoria.objects.exists())
+
+    def test_segundo_envio_no_reemplaza_la_firma(self):
+        self.client.force_login(self.supervisor)
+        self.client.post(self.recepcion_url, {"firma": json.dumps(self.firma)})
+
+        self.client.force_login(self.otro_supervisor)
+        respuesta = self.client.post(self.recepcion_url, {"firma": "[[[0,0],[40,20]]]"})
+
+        self.assertRedirects(respuesta, reverse("despachos"))
+        recepcion = RecepcionDespacho.objects.get()
+        self.assertEqual(recepcion.receptor, self.supervisor)
+        self.assertEqual(recepcion.firma, self.firma)
+        self.assertEqual(BitacoraAuditoria.objects.count(), 1)
+
+    def test_fallo_de_auditoria_revierte_la_recepcion(self):
+        self.client.force_login(self.supervisor)
+        with (
+            patch("apps.despachos.views.BitacoraAuditoria.objects.create", side_effect=IntegrityError),
+            self.assertLogs("apps.despachos.views", level="ERROR"),
+        ):
+            respuesta = self.client.post(self.recepcion_url, {"firma": json.dumps(self.firma)})
+
+        self.assertRedirects(respuesta, self.comprobante_url)
+        self.assertFalse(RecepcionDespacho.objects.exists())

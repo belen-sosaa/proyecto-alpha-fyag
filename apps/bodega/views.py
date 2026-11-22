@@ -5,7 +5,7 @@ from django.shortcuts import render
 from django.urls import reverse
 
 from apps.compras.models import FacturaCompra
-from apps.cuentas.roles import ACCESO, SUPERVISOR, permisos_de
+from apps.cuentas.roles import ACCESO, permisos_de
 from .models import Articulo, BitacoraAuditoria
 
 
@@ -27,7 +27,7 @@ def contexto_operativo(usuario):
         "articulos": Articulo.objects.order_by("sku") if permisos["despachar"] else (),
         "rol_actual": rol,
         "perm": permisos,
-        "recepcion": rol == SUPERVISOR,
+        "recepcion": permisos["firmar_recepcion"],
     }
 
 

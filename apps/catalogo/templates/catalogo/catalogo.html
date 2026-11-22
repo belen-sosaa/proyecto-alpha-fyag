@@ -100,6 +100,11 @@
             <td>{{ articulo.unidad_medida }}</td>
             <td>{{ articulo.stock_fisico }}</td>
             <td>
+              {% if perm.ver_costos %}
+                <a class="boton boton-secundario" href="{% url 'ultimos_precios' %}?articulo={{ articulo.pk }}">
+                  Últimos precios
+                </a>
+              {% endif %}
               {% if perm.editar_articulo %}
                 <a class="boton boton-secundario" href="{% url 'catalogo_editar' articulo.pk %}">
                   Editar

@@ -5,12 +5,14 @@ from functools import wraps
 
 from django import forms
 from django.db import DatabaseError, IntegrityError, transaction
-from django.db.models import Q
+from django.db.models import F, OuterRef, Q, Subquery
 from django.http import JsonResponse
+from django.shortcuts import render
 from django.views.decorators.http import require_GET, require_POST
 
 from apps.bodega.models import Articulo, BitacoraAuditoria, MovimientoCardex
 from apps.bodega.respaldo import guardar_respaldo_simulado
+from apps.cuentas.decorators import facultad_requerida
 from apps.cuentas.roles import puede
 from .models import DetalleFactura, EntidadComercial, FacturaCompra
 
@@ -39,6 +41,13 @@ class DetalleFacturaForm(forms.Form):
 
 class ConfirmarIngresoForm(forms.Form):
     factura_id = forms.IntegerField(min_value=1, max_value=2**63 - 1)
+
+
+class ConsultaPreciosForm(forms.Form):
+    articulo = forms.ModelChoiceField(
+        queryset=Articulo.objects.only("sku", "descripcion").order_by("sku"),
+        label="Artículo", empty_label="Selecciona un artículo",
+    )
 
 
 class StockFueraDeRango(Exception):
@@ -85,6 +94,41 @@ def listar_proveedores(request):
         proveedores = proveedores.filter(Q(rut__icontains=consulta) | Q(razon_social__icontains=consulta))
     datos = proveedores.order_by("razon_social", "id").values("id", "rut", "razon_social")
     return JsonResponse(list(datos), safe=False)
+
+
+def _ultimas_compras(articulo_id):
+    detalles = DetalleFactura.objects.filter(articulo_id=articulo_id)
+    # Si una factura repite el artículo, su última línea representa esa compra.
+    ultimo_detalle = detalles.filter(factura_id=OuterRef("factura_id")).order_by("-pk").values("pk")[:1]
+    return detalles.filter(pk=Subquery(ultimo_detalle), factura__tipo_documento__iexact="FACTURA").annotate(
+        folio=F("factura__folio"), proveedor_id=F("factura__proveedor_id"),
+        fecha_emision=F("factura__fecha_emision"),
+    ).order_by("-fecha_emision", "-factura_id", "-pk")[:3]
+
+
+@require_GET
+@permiso_compra("ver_costos")
+def consultar_ultimos_precios(request, articulo_id):
+    if not Articulo.objects.filter(pk=articulo_id).exists():
+        return error_json("ARTICULO_NO_ENCONTRADO", "El artículo no existe.", 404)
+    precios = _ultimas_compras(articulo_id).values(
+        "factura_id", "folio", "proveedor_id", "fecha_emision", "costo_unitario_neto_final",
+    )
+    return JsonResponse(list(precios), safe=False)
+
+
+@require_GET
+@facultad_requerida("ver_costos")
+def vista_ultimos_precios(request):
+    formulario = ConsultaPreciosForm(request.GET if "articulo" in request.GET else None)
+    contexto = {"formulario": formulario}
+    if formulario.is_bound and formulario.is_valid():
+        articulo = formulario.cleaned_data["articulo"]
+        contexto["articulo_seleccionado"] = articulo
+        contexto["precios"] = _ultimas_compras(articulo.pk).values(
+            "folio", "fecha_emision", "factura__proveedor__razon_social", "costo_unitario_neto_final",
+        )
+    return render(request, "compras/ultimos_precios.html", contexto)
 
 
 @require_POST

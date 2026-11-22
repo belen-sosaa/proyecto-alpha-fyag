@@ -8,7 +8,7 @@ from django.urls import reverse
 
 from apps.bodega.models import Articulo, BitacoraAuditoria, Categoria, MovimientoCardex
 from apps.cuentas.roles import ADMIN_BODEGA, BODEGUERO, FINANZAS
-from .models import EntidadComercial, FacturaCompra
+from .models import DetalleFactura, EntidadComercial, FacturaCompra
 
 
 class IngresoFacturaTests(TestCase):
@@ -116,3 +116,72 @@ class IngresoFacturaTests(TestCase):
         respuesta = self.confirmar(factura_id)
         self.assertEqual(respuesta.status_code, 409)
         self.assertEqual(respuesta.json()["codigo"], "FACTURA_HISTORICA")
+
+
+class UltimosPreciosTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        User = get_user_model()
+        cls.admin = User.objects.create_user(username="admin-precios")
+        cls.admin.groups.add(Group.objects.create(name=ADMIN_BODEGA))
+        cls.bodeguero = User.objects.create_user(username="bodega-precios")
+        cls.bodeguero.groups.add(Group.objects.create(name=BODEGUERO))
+        cls.proveedor = EntidadComercial.objects.create(rut="11111111-1", razon_social="Proveedor QA")
+        categoria = Categoria.objects.create(nombre="Repuestos")
+        cls.articulo = Articulo.objects.create(sku="QA-1", descripcion="Filtro", categoria=categoria)
+        cls.otro_articulo = Articulo.objects.create(sku="QA-2", descripcion="Válvula", categoria=categoria)
+
+    def crear_compra(self, folio, fecha, articulo, costo, tipo_documento="FACTURA"):
+        factura = FacturaCompra.objects.create(
+            proveedor=self.proveedor, folio=folio, fecha_emision=fecha,
+            tipo_documento=tipo_documento, usuario_registro=self.admin, subtotal_neto=costo, iva=0, total=costo,
+        )
+        DetalleFactura.objects.create(
+            factura=factura, articulo=articulo, cantidad=1,
+            precio_unitario_neto=costo, costo_unitario_neto_final=costo,
+        )
+        return factura
+
+    def test_de_cinco_compras_devuelve_tres_facturas_distintas_en_orden(self):
+        facturas = [self.crear_compra(str(i), fecha, self.articulo, i) for i, fecha in enumerate((
+            "2026-11-20", "2026-11-15", "2026-11-19", "2026-11-20", "2026-11-17",
+        ), start=1)]
+        DetalleFactura.objects.create(
+            factura=facturas[3], articulo=self.articulo, cantidad=2,
+            precio_unitario_neto=90, costo_unitario_neto_final=80,
+        )
+        self.crear_compra("NC-1", "2026-11-21", self.articulo, 100, "NOTA_CREDITO")
+        otra = self.crear_compra("OTRA", "2026-11-21", self.otro_articulo, 200)
+
+        self.client.force_login(self.admin)
+        respuesta = self.client.get(reverse("api_ultimos_precios", args=[self.articulo.pk]))
+        self.assertEqual(respuesta.status_code, 200)
+        precios = respuesta.json()
+        self.assertEqual([precio["factura_id"] for precio in precios], [facturas[3].pk, facturas[0].pk, facturas[2].pk])
+        self.assertEqual(precios[0], {
+            "factura_id": facturas[3].pk, "folio": "4", "proveedor_id": self.proveedor.pk,
+            "fecha_emision": "2026-11-20", "costo_unitario_neto_final": "80.00",
+        })
+        filtrada = self.client.get(reverse("api_ultimos_precios", args=[self.otro_articulo.pk])).json()
+        self.assertEqual([precio["factura_id"] for precio in filtrada], [otra.pk])
+
+        pagina = self.client.get(reverse("ultimos_precios"), {"articulo": self.articulo.pk})
+        self.assertContains(pagina, "Proveedor QA", count=3)
+        self.assertContains(pagina, "80.00")
+        self.assertNotContains(pagina, "Factura NC-1")
+        self.assertContains(self.client.get(reverse("catalogo_listar")), "Últimos precios")
+
+    def test_consulta_sin_compras_articulo_inexistente_y_permisos(self):
+        api = reverse("api_ultimos_precios", args=[self.articulo.pk])
+        pagina = reverse("ultimos_precios")
+        self.assertEqual(self.client.get(api).status_code, 401)
+        self.client.force_login(self.bodeguero)
+        self.assertEqual(self.client.get(api).status_code, 403)
+        self.assertEqual(self.client.get(pagina).status_code, 403)
+        self.assertNotContains(self.client.get(reverse("catalogo_listar")), "Últimos precios")
+
+        self.client.force_login(self.admin)
+        self.assertEqual(self.client.get(api).json(), [])
+        self.assertContains(self.client.get(pagina, {"articulo": self.articulo.pk}), "aún no tiene compras")
+        inexistente = self.client.get(reverse("api_ultimos_precios", args=[self.articulo.pk + 100]))
+        self.assertEqual(inexistente.status_code, 404)

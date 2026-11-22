@@ -21,7 +21,13 @@ from django.conf.urls.static import static
 from django.urls import path
 from django.views.generic import RedirectView
 from apps.bodega.views import vista_bodega
-from apps.compras.views import confirmar_ingreso, listar_proveedores, registrar_factura
+from apps.compras.views import (
+    confirmar_ingreso,
+    consultar_ultimos_precios,
+    listar_proveedores,
+    registrar_factura,
+    vista_ultimos_precios,
+)
 from apps.cuentas.views import AccesoView
 from apps.catalogo.views import (
     articulo_crear,
@@ -30,7 +36,13 @@ from apps.catalogo.views import (
     catalogo_eliminar,
     catalogo_listar,
 )
-from apps.despachos.views import obras_buscar, procesar_despacho, vista_despacho
+from apps.despachos.views import (
+    comprobante_despacho,
+    obras_buscar,
+    procesar_despacho,
+    registrar_recepcion,
+    vista_despacho,
+)
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -39,6 +51,7 @@ urlpatterns = [
     path('bodega/', vista_bodega, name='bodega_web'),
     path('auditoria/', vista_bodega, {'modulo': 'auditoria'}, name='auditoria'),
     path('compras/', vista_bodega, {'modulo': 'compras'}, name='compras'),
+    path('compras/precios/', vista_ultimos_precios, name='ultimos_precios'),
     path('finanzas/', vista_bodega, {'modulo': 'finanzas'}, name='finanzas'),
     path('articulos/nuevo/', articulo_crear, name="articulo_crear"),
     path('catalogo/', catalogo_listar, name='catalogo_listar'),
@@ -46,10 +59,13 @@ urlpatterns = [
     path('catalogo/<int:pk>/editar/', catalogo_editar, name='catalogo_editar'),
     path('catalogo/<int:pk>/eliminar/', catalogo_eliminar, name='catalogo_eliminar'),
     path('despachos/', vista_despacho, name='despachos'),
+    path('despachos/<int:despacho_id>/comprobante/', comprobante_despacho, name='comprobante_despacho'),
+    path('despachos/<int:despacho_id>/recepcion/', registrar_recepcion, name='registrar_recepcion'),
     path('mobile/', RedirectView.as_view(pattern_name='despachos', query_string=True), name='bodega_mobile'),
     path('obras/buscar/', obras_buscar, name="obras_buscar"),
     path('despacho/procesar/', procesar_despacho, name='procesar_despacho'),
     path('api/proveedores/', listar_proveedores, name='listar_proveedores'),
+    path('api/articulos/<int:articulo_id>/ultimos-precios/', consultar_ultimos_precios, name='api_ultimos_precios'),
     path('api/facturas/', registrar_factura, name='registrar_factura'),
     path('api/ingresos/', confirmar_ingreso, name='confirmar_ingreso'),
 ]

@@ -17,3 +17,16 @@ class Despacho(models.Model):
 
     def __str__(self):
         return f"Despacho {self.pk} - {self.articulo.sku}"
+
+
+class RecepcionDespacho(models.Model):
+    despacho = models.OneToOneField(
+        Despacho, on_delete=models.PROTECT, related_name="recepcion",
+    )
+    receptor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    nombre_receptor = models.CharField(max_length=301)
+    firma = models.JSONField(editable=False)
+    fecha_recepcion = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Recepción del despacho {self.despacho_id}"

@@ -46,6 +46,7 @@ FACULTADES = {
     "gestionar_usuarios": (ADMIN_TI,),
     "ver_costos": (GERENTE, FINANZAS, ADMIN_BODEGA),
     "despachar": (BODEGUERO, ADMIN_BODEGA),
+    "firmar_recepcion": (SUPERVISOR,),
     "registrar_factura": (FINANZAS, ADMIN_BODEGA),
     "confirmar_ingreso": (BODEGUERO, ADMIN_BODEGA),
 }

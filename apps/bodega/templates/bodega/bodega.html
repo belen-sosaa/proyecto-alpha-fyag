@@ -193,7 +193,10 @@
           </section>
         {% elif modulo_actual.clave == "compras" %}
           <section class="panel" aria-labelledby="facturas-recientes">
-            <div class="panel-cabecera"><h2 id="facturas-recientes">Facturas registradas</h2></div>
+            <div class="panel-cabecera">
+              <h2 id="facturas-recientes">Facturas registradas</h2>
+              {% if perm.ver_costos %}<a class="accion" href="{% url 'ultimos_precios' %}">Últimos precios</a>{% endif %}
+            </div>
             <ul class="registros">
               {% for factura in facturas %}
                 <li class="registro">
@@ -208,7 +211,10 @@
           </section>
         {% elif modulo_actual.clave == "finanzas" %}
           <section class="panel" aria-labelledby="resumen-compras">
-            <h2 id="resumen-compras">Resumen de facturas de compra</h2>
+            <div class="panel-cabecera">
+              <h2 id="resumen-compras">Resumen de facturas de compra</h2>
+              <a class="accion" href="{% url 'ultimos_precios' %}">Últimos precios</a>
+            </div>
             <dl class="resumen">
               <div class="registro"><dt>Facturas</dt><dd>{{ resumen.facturas }}</dd></div>
               <div class="registro"><dt>Monto neto</dt><dd>$ {{ resumen.neto|floatformat:"2g" }}</dd></div>

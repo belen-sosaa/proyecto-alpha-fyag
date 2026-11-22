@@ -11,6 +11,7 @@ Las rutas de escritura usan sesión y CSRF. Si no hay sesión, Django redirige a
 | `PerfilUsuario` | `usuario_id` y `rut` único. `normalizar_rut()` valida el RUT y `permisos_de()` obtiene las facultades desde los grupos. |
 | `Categoria` y `Articulo` | Categoría con nombre único. Artículo con `sku` único, `codigo_barras` opcional y único, `descripcion`, `categoria_id`, `unidad_medida`, `ubicacion_fisica`, `stock_fisico`, `stock_minimo` y `stock_critico`. El estado es crítico cuando el stock físico alcanza o baja del umbral crítico. |
 | `Obra` y `Despacho` | Obra con `nombre` y coordenadas opcionales. `Despacho` pertenece a `apps/despachos` y usa la tabla existente `bodega_despacho`. Guarda `articulo_id`, `obra_id`, `cantidad`, `usuario_id`, `fecha_despacho`, `tipo_movimiento` y `mongodb_id` opcional. El respaldo se simula con un JSON local. |
+| `RecepcionDespacho` | Una recepción por despacho. Guarda el usuario receptor, su nombre al firmar, la fecha y los trazos de la firma. El comprobante recupera la recepción mediante el ID del despacho. |
 | `BitacoraAuditoria` | `usuario_id`, `accion`, `entidad`, `id_registro`, `valor_anterior`, `valor_nuevo`, `detalle` y `fecha_hora`. |
 | `MovimientoCardex` | `tipo`, `cantidad`, `articulo_id`, `usuario_id`, `obra_id` opcional, `fecha_hora`, `stock_resultante` y `justificacion` opcional. Los despachos confirmados registran un movimiento de tipo `DESPACHO`. |
 | `EntidadComercial`, `FacturaCompra` y `DetalleFactura` | Compras reutiliza las tablas existentes de proveedores, facturas y líneas. La factura guarda su estado de ingreso. Cada línea registra artículo, cantidad, precio unitario neto, tres descuentos y costo unitario final. |
@@ -28,6 +29,8 @@ La migración `0006` incorpora `MovimientoCardex` y bloquea las actualizaciones 
 | `GET/POST /catalogo/{id}/eliminar/` | `catalogo_eliminar` | Requiere `eliminar_articulo`. Bloquea el borrado si hay stock, despachos o compras asociadas. |
 | `GET /obras/buscar/?q=norte` | `obras_buscar` | Requiere `despachar`. Con tres caracteres o más, devuelve hasta diez obras ordenadas por nombre e ID, con `id` y `nombre`. |
 | `POST /despacho/procesar/` | `procesar_despacho` | Requiere `despachar`. Recibe `obra`, `articulo` y `cantidad` positiva, con `dispositivo` y `tag_iot` opcionales. Guarda el stock, el despacho, el movimiento y la bitácora en una transacción. Después de confirmar, intenta el respaldo simulado. Responde con una redirección y un mensaje. |
+| `GET /despachos/{id}/comprobante/` | `comprobante_despacho` | Muestra el comprobante imprimible y la firma registrada. Administración de Bodega ve todos los despachos, Bodeguero ve los propios y Supervisión de Obra ve los pendientes y los que firmó. |
+| `POST /despachos/{id}/recepcion/` | `registrar_recepcion` | Requiere `firmar_recepcion` (Supervisor de Obra). Recibe `firma` como una lista JSON de trazos, donde cada punto tiene coordenadas enteras `[x, y]` en un lienzo de 600 por 220. El servidor obtiene el receptor de la sesión. Guarda la recepción y su bitácora en una transacción, sin aplicar un segundo movimiento de stock. |
 
 `datos_articulo()` prepara los campos para auditoría. `guardar_especificaciones()` y `obtener_especificaciones()` manejan la ficha técnica en MongoDB. La colección `especificaciones_insumos` usa el ID del artículo para `_id` e `id_articulo`, guarda `caracteristicas` con valores escalares y registra `creado_en` y `actualizado_en`. Ver [modelos](../../apps/bodega/models.py) y [rutas](../../logistica_fyag/urls.py).
 
@@ -38,16 +41,18 @@ La migración `0006` incorpora `MovimientoCardex` y bloquea las actualizaciones 
 | `GET /api/proveedores/` | `listar_proveedores()` | Filtro `q`. Devuelve `id`, `rut` y `razon_social`. El RUT identifica al proveedor de forma única. |
 | `POST /api/facturas/` | `registrar_factura()` | Recibe `proveedor_id`, `folio`, `fecha_emision` y `detalles[]`. Cada línea lleva `articulo_id`, `cantidad`, `precio_unitario_neto` y `descuento_1` a `descuento_3`. Devuelve la factura con sus IDs y `costo_unitario_neto_final` por línea. |
 | `POST /api/ingresos/` | `confirmar_ingreso()` | Recibe `factura_id`, confirma todas las líneas y devuelve `factura_id` y `movimientos[]`. Una segunda confirmación devuelve `409`. |
+| `GET /api/articulos/{id}/ultimos-precios/` | `consultar_ultimos_precios()` | Devuelve hasta tres compras con `factura_id`, `folio`, `proveedor_id`, `fecha_emision` y `costo_unitario_neto_final`. Requiere `ver_costos`. |
+| `GET /compras/precios/?articulo={id}` | `vista_ultimos_precios()` | Permite seleccionar un artículo y consultar sus precios desde el sistema. Requiere `ver_costos`. |
 
 Finanzas y Administración de Bodega pueden registrar facturas. Bodeguero y Administración de Bodega pueden confirmar ingresos. Las escrituras requieren sesión y CSRF. Una factura registrada queda pendiente hasta que bodega confirma el ingreso. Las facturas históricas requieren revisión previa para evitar duplicar stock.
+
+El historial de precios usa la fecha de emisión y, para desempatar, el ID de factura en orden descendente. Si una factura repite el artículo, se muestra la línea con mayor ID. El historial incluye facturas históricas y pendientes de recepción.
 
 ## API propuesta para frontend
 
 | Método y ruta | Función prevista | Entrada y respuesta |
 |---|---|---|
-| `GET /api/articulos/{id}/ultimos-precios/` | `consultar_ultimos_precios()` | Devuelve hasta tres compras con `factura_id`, `folio`, `proveedor_id`, `fecha_emision` y `costo_unitario_neto_final`. Orden descendente por fecha de emisión, ID de factura e ID de detalle. |
 | `POST /api/despachos/` | `confirmar_despacho()` | Recibe `articulo_id`, `obra_id` y `cantidad`. Devuelve `despacho_id` y `movimiento`. |
-| `POST /api/despachos/{id}/recepcion/` | `registrar_recepcion()` | Recibe `receptor_id`, `firma_referencia` y `comprobante_referencia`. Guarda la recepción con fecha y la vincula al despacho. |
 | `POST /api/mermas/` | `registrar_merma()` | Recibe `articulo_id`, `cantidad` y `justificacion` obligatoria, con texto distinto de espacios. Devuelve el movimiento. |
 | `POST /api/devoluciones/` | `registrar_devolucion()` | Recibe `articulo_id`, `proveedor_id`, `cantidad` y `justificacion`. Devuelve el movimiento vinculado al proveedor. |
 | `POST /api/conteos/` | `registrar_conteo()` | Recibe `detalles[]` con `articulo_id` y `stock_fisico`. Guarda el conteo con usuario y fecha. Cada línea captura `stock_sistema` y devuelve `diferencia = stock_fisico - stock_sistema`. |
