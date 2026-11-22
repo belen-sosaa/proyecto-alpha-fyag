@@ -276,3 +276,24 @@ class BitacoraAuditoria(RegistroInalterable):
     fecha_hora = models.DateTimeField(
         auto_now_add=True,
     )
+
+
+class ConteoInventario(models.Model):
+    usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    fecha_hora = models.DateTimeField(auto_now_add=True)
+
+
+class DetalleConteoInventario(models.Model):
+    conteo = models.ForeignKey(ConteoInventario, related_name="detalles", on_delete=models.PROTECT)
+    articulo = models.ForeignKey(Articulo, on_delete=models.PROTECT)
+    stock_sistema = models.PositiveIntegerField()
+    stock_fisico = models.PositiveIntegerField()
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["conteo", "articulo"], name="conteo_articulo_unico"),
+        ]
+
+    @property
+    def diferencia(self):
+        return self.stock_fisico - self.stock_sistema

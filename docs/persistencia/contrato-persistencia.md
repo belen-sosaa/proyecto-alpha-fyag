@@ -14,6 +14,7 @@ Las rutas de escritura usan sesión y CSRF. Si no hay sesión, Django redirige a
 | `RecepcionDespacho` | Una recepción por despacho. Guarda el usuario receptor, su nombre al firmar, la fecha y los trazos de la firma. El comprobante recupera la recepción mediante el ID del despacho. |
 | `BitacoraAuditoria` | `usuario_id`, `accion`, `entidad`, `id_registro`, `valor_anterior`, `valor_nuevo`, `detalle` y `fecha_hora`. |
 | `MovimientoCardex` | `tipo`, `cantidad`, `articulo_id`, `usuario_id`, `obra_id` opcional, `fecha_hora`, `stock_resultante` y `justificacion` opcional. Los despachos confirmados registran un movimiento de tipo `DESPACHO`. |
+| `ConteoInventario` y `DetalleConteoInventario` | El conteo guarda usuario y fecha. Cada detalle guarda un artículo único dentro del conteo, su saldo de sistema al registrar y la cantidad encontrada. La diferencia se calcula al consultar. |
 | `EntidadComercial`, `FacturaCompra` y `DetalleFactura` | Compras reutiliza las tablas existentes de proveedores, facturas y líneas. La factura guarda su estado de ingreso. Cada línea registra artículo, cantidad, precio unitario neto, tres descuentos y costo unitario final. |
 
 La migración `0006` incorpora `MovimientoCardex` y bloquea las actualizaciones y eliminaciones de filas en Cardex y bitácora. Los dos modelos permiten crear registros nuevos para conservar el historial de correcciones.
@@ -33,6 +34,18 @@ La migración `0006` incorpora `MovimientoCardex` y bloquea las actualizaciones 
 | `POST /despachos/{id}/recepcion/` | `registrar_recepcion` | Requiere `firmar_recepcion` (Supervisor de Obra). Recibe `firma` como una lista JSON de trazos, donde cada punto tiene coordenadas enteras `[x, y]` en un lienzo de 600 por 220. El servidor obtiene el receptor de la sesión. Guarda la recepción y su bitácora en una transacción, sin aplicar un segundo movimiento de stock. |
 
 `datos_articulo()` prepara los campos para auditoría. `guardar_especificaciones()` y `obtener_especificaciones()` manejan la ficha técnica en MongoDB. La colección `especificaciones_insumos` usa el ID del artículo para `_id` e `id_articulo`, guarda `caracteristicas` con valores escalares y registra `creado_en` y `actualizado_en`. Ver [modelos](../../apps/bodega/models.py) y [rutas](../../logistica_fyag/urls.py).
+
+## Conteos físicos
+
+| Método y ruta | Entrada o resultado |
+|---|---|
+| `GET /bodega/conteos/` | Historial de conteos con la cantidad de discrepancias. Disponible desde Bodega y Auditoría según el rol. |
+| `GET/POST /bodega/conteos/nuevo/` | Formulario para contar entre 1 y 50 artículos. Al guardar, redirige al reporte. |
+| `GET /bodega/conteos/{id}/` | Muestra las cantidades registradas con sus diferencias y coincidencias. |
+| `POST /api/conteos/` | Recibe `detalles[]` con `articulo_id` y `stock_fisico` entero no negativo. Devuelve `201` con el conteo y sus detalles. Cada línea captura `stock_sistema` y devuelve `diferencia = stock_fisico - stock_sistema`. |
+| `GET /api/conteos/{id}/discrepancias/` | Devuelve las líneas con diferencia distinta de cero. Devuelve `[]` para un conteo sin diferencias. |
+
+Bodeguero y Administración de Bodega pueden registrar y consultar conteos. Gerencia y Auditoría pueden consultar. El sistema captura el saldo bajo bloqueo y guarda encabezado, detalles y bitácora en una transacción. Los conteos conservan el saldo histórico. Cualquier ajuste de stock requiere su propio flujo de autorización.
 
 ## API de compras e ingresos
 
@@ -55,8 +68,6 @@ El historial de precios usa la fecha de emisión y, para desempatar, el ID de fa
 | `POST /api/despachos/` | `confirmar_despacho()` | Recibe `articulo_id`, `obra_id` y `cantidad`. Devuelve `despacho_id` y `movimiento`. |
 | `POST /api/mermas/` | `registrar_merma()` | Recibe `articulo_id`, `cantidad` y `justificacion` obligatoria, con texto distinto de espacios. Devuelve el movimiento. |
 | `POST /api/devoluciones/` | `registrar_devolucion()` | Recibe `articulo_id`, `proveedor_id`, `cantidad` y `justificacion`. Devuelve el movimiento vinculado al proveedor. |
-| `POST /api/conteos/` | `registrar_conteo()` | Recibe `detalles[]` con `articulo_id` y `stock_fisico`. Guarda el conteo con usuario y fecha. Cada línea captura `stock_sistema` y devuelve `diferencia = stock_fisico - stock_sistema`. |
-| `GET /api/conteos/{id}/discrepancias/` | `consultar_discrepancias()` | Devuelve las líneas con diferencia distinta de cero. Un ajuste posterior requiere autorización. |
 | `GET /api/cardex/` | `listar_movimientos()` | Filtros `articulo_id`, `obra_id`, `tipo`, `usuario_id`, `desde` y `hasta`. |
 | `GET /api/bitacora/` | `listar_eventos()` | Filtros `accion`, `entidad`, `usuario_id`, `desde` y `hasta`. |
 

@@ -20,6 +20,13 @@ from django.contrib.auth.views import LogoutView
 from django.conf.urls.static import static
 from django.urls import path
 from django.views.generic import RedirectView
+from apps.bodega.conteos import (
+    consultar_discrepancias,
+    nuevo_conteo,
+    registrar_conteo,
+    vista_conteos,
+    vista_discrepancias,
+)
 from apps.bodega.views import vista_bodega
 from apps.compras.views import (
     confirmar_ingreso,
@@ -49,6 +56,9 @@ urlpatterns = [
     path('', AccesoView.as_view(), name='login'),
     path('logout/', LogoutView.as_view(), name='logout'),
     path('bodega/', vista_bodega, name='bodega_web'),
+    path('bodega/conteos/', vista_conteos, name='conteos'),
+    path('bodega/conteos/nuevo/', nuevo_conteo, name='nuevo_conteo'),
+    path('bodega/conteos/<int:conteo_id>/', vista_discrepancias, name='discrepancias_conteo'),
     path('auditoria/', vista_bodega, {'modulo': 'auditoria'}, name='auditoria'),
     path('compras/', vista_bodega, {'modulo': 'compras'}, name='compras'),
     path('compras/precios/', vista_ultimos_precios, name='ultimos_precios'),
@@ -68,6 +78,8 @@ urlpatterns = [
     path('api/articulos/<int:articulo_id>/ultimos-precios/', consultar_ultimos_precios, name='api_ultimos_precios'),
     path('api/facturas/', registrar_factura, name='registrar_factura'),
     path('api/ingresos/', confirmar_ingreso, name='confirmar_ingreso'),
+    path('api/conteos/', registrar_conteo, name='registrar_conteo'),
+    path('api/conteos/<int:conteo_id>/discrepancias/', consultar_discrepancias, name='api_discrepancias_conteo'),
 ]
 
 if settings.DEBUG:
