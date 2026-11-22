@@ -11,7 +11,7 @@ from django.shortcuts import render
 from django.views.decorators.http import require_GET, require_POST
 
 from apps.bodega.models import Articulo, BitacoraAuditoria, MovimientoCardex
-from apps.bodega.respaldo import guardar_respaldo_simulado
+from apps.bodega.respaldo import documento_cardex, guardar_respaldo_cardex
 from apps.cuentas.decorators import facultad_requerida
 from apps.cuentas.roles import puede
 from .models import DetalleFactura, EntidadComercial, FacturaCompra
@@ -79,16 +79,10 @@ def cuerpo_json(request):
     return datos if isinstance(datos, dict) else None
 
 
-def proveedores_comerciales():
-    return EntidadComercial.objects.filter(
-        Q(tipo_entidad__iexact="PROVEEDOR") | Q(tipo_entidad__iexact="AMBOS")
-    )
-
-
 @require_GET
 @permiso_compra("registrar_factura", "confirmar_ingreso")
 def listar_proveedores(request):
-    proveedores = proveedores_comerciales()
+    proveedores = EntidadComercial.proveedores()
     consulta = request.GET.get("q", "").strip()
     if consulta:
         proveedores = proveedores.filter(Q(rut__icontains=consulta) | Q(razon_social__icontains=consulta))
@@ -170,7 +164,7 @@ def registrar_factura(request):
         return error_json("DATOS_INVALIDOS", "El total supera el importe admitido para la factura.")
 
     datos_factura = encabezado.cleaned_data
-    if not proveedores_comerciales().filter(pk=datos_factura["proveedor_id"]).exists():
+    if not EntidadComercial.proveedores().filter(pk=datos_factura["proveedor_id"]).exists():
         return error_json("PROVEEDOR_NO_ENCONTRADO", "Selecciona un proveedor válido.", 404)
     ids = {linea["articulo_id"] for linea in lineas}
     if Articulo.objects.filter(pk__in=ids).count() != len(ids):
@@ -225,6 +219,7 @@ def confirmar_ingreso(request):
                 pk__in={detalle.articulo_id for detalle in detalles},
             ).order_by("pk")}
             movimientos = []
+            documentos = []
             for detalle in detalles:
                 articulo = articulos[detalle.articulo_id]
                 stock_anterior = articulo.stock_fisico
@@ -251,11 +246,13 @@ def confirmar_ingreso(request):
                     "fecha_hora": movimiento.fecha_hora.isoformat(), "justificacion": None,
                     "factura_id": factura.pk, "detalle_factura_id": detalle.pk, "proveedor_id": factura.proveedor_id,
                 })
+                documentos.append(documento_cardex(
+                    movimiento, operacion="ingreso_factura", factura_id=factura.pk,
+                    detalle_factura_id=detalle.pk, proveedor_id=factura.proveedor_id,
+                ))
             factura.estado_ingreso = FacturaCompra.EstadoIngreso.CONFIRMADO
             factura.save(update_fields=["estado_ingreso"])
-            documentos = [{**movimiento, "_id": movimiento["id"], "movimiento_id": movimiento["id"],
-                           "operacion": "ingreso_factura"} for movimiento in movimientos]
-            transaction.on_commit(lambda: guardar_respaldo_simulado(documentos), robust=True)
+            transaction.on_commit(lambda: guardar_respaldo_cardex(documentos), robust=True)
     except FacturaCompra.DoesNotExist:
         return error_json("FACTURA_NO_ENCONTRADA", "La factura no existe.", 404)
     except StockFueraDeRango:

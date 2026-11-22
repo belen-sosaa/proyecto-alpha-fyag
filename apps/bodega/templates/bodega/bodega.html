@@ -177,9 +177,14 @@
             </ul>
           </section>
           {% if perm.registrar_merma %}
-            <section class="panel" aria-labelledby="mermas">
-              <h2 id="mermas">Mermas</h2>
-              <p class="vacio">El registro de mermas está pendiente de implementación.</p>
+            <section class="panel" aria-labelledby="otros-egresos">
+              <div class="panel-cabecera">
+                <h2 id="otros-egresos">Mermas y devoluciones</h2>
+                <a class="accion" href="{% url 'merma_crear' %}">Registrar merma</a>
+                {% if perm.registrar_devolucion %}
+                  <a class="accion" href="{% url 'devolucion_crear' %}">Registrar devolución</a>
+                {% endif %}
+              </div>
             </section>
           {% endif %}
         {% elif modulo_actual.clave == "auditoria" %}

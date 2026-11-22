@@ -40,6 +40,7 @@ FACULTADES = {
     "emitir_oc": (FINANZAS,),
     "crear_presupuesto": (BODEGUERO, ADMIN_BODEGA),
     "registrar_merma": (BODEGUERO, ADMIN_BODEGA),
+    "registrar_devolucion": (ADMIN_BODEGA,),
     "ingresar_articulo": (ADMIN_BODEGA, ADMIN_GENERAL_LEGADO),
     "editar_articulo": (ADMIN_BODEGA, ADMIN_GENERAL_LEGADO),
     "eliminar_articulo": (ADMIN_BODEGA, ADMIN_GENERAL_LEGADO),

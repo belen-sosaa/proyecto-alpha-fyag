@@ -1,40 +1,43 @@
-import json
 import logging
-import os
-from tempfile import NamedTemporaryFile
-from threading import Lock
 
-from django.conf import settings
+from pymongo import UpdateOne, timeout
+from pymongo.errors import PyMongoError
+
+from apps.catalogo.mongo import obtener_base
 
 
 logger = logging.getLogger(__name__)
-ARCHIVO_RESPALDO = settings.BASE_DIR / "apps" / "despachos" / "data" / "mock_mongodb_cardex.json"
-bloqueo_respaldo = Lock()
 
 
-def guardar_respaldo_simulado(documentos_nuevos):
-    # El simulador local conserva el archivo anterior si falla una escritura.
-    archivo = ARCHIVO_RESPALDO
-    temporal = None
-    with bloqueo_respaldo:
-        try:
-            documentos = json.loads(archivo.read_text(encoding="utf-8")) if archivo.exists() else []
-            if not isinstance(documentos, list):
-                raise ValueError("El respaldo simulado debe contener una lista.")
-            documentos.extend(documentos_nuevos)
-            with NamedTemporaryFile(mode="w", encoding="utf-8", dir=archivo.parent, delete=False) as salida:
-                temporal = salida.name
-                json.dump(documentos, salida, ensure_ascii=False, indent=2)
-            os.replace(temporal, archivo)
-            temporal = None
-        except (OSError, ValueError):
-            logger.exception(
-                "Falló el respaldo simulado de los movimientos %s.",
-                [documento["movimiento_id"] for documento in documentos_nuevos],
-            )
-        finally:
-            if temporal is not None:
-                try:
-                    os.unlink(temporal)
-                except OSError:
-                    logger.warning("No se pudo retirar el archivo temporal del respaldo.", exc_info=True)
+def documento_cardex(movimiento, **referencias):
+    return {
+        "_id": str(movimiento.pk),
+        "movimiento_id": movimiento.pk,
+        "tipo": movimiento.tipo,
+        "articulo_id": movimiento.articulo_id,
+        "usuario_id": movimiento.usuario_id,
+        "obra_id": movimiento.obra_id,
+        "proveedor_id": movimiento.proveedor_id,
+        "cantidad": movimiento.cantidad,
+        "stock_resultante": movimiento.stock_resultante,
+        "justificacion": movimiento.justificacion,
+        "fecha_hora": movimiento.fecha_hora,
+        **referencias,
+    }
+
+
+def guardar_respaldo_cardex(documentos):
+    if not documentos:
+        return
+    operaciones = [
+        UpdateOne({"_id": documento["_id"]}, {"$setOnInsert": documento}, upsert=True)
+        for documento in documentos
+    ]
+    try:
+        with timeout(3):
+            obtener_base()["cardex"].bulk_write(operaciones, ordered=False)
+    except PyMongoError:
+        logger.exception(
+            "Falló el respaldo de Cardex en MongoDB para los movimientos %s.",
+            [documento["movimiento_id"] for documento in documentos],
+        )

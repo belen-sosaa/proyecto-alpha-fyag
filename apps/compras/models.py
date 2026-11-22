@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.db import models
+from django.db.models import Q
 
 
 class EntidadComercial(models.Model):
@@ -8,6 +9,10 @@ class EntidadComercial(models.Model):
     tipo_entidad = models.CharField(max_length=15, default="PROVEEDOR")
     contacto = models.CharField(max_length=150, blank=True, null=True)
     datos_bancarios = models.TextField(blank=True, null=True)
+
+    @classmethod
+    def proveedores(cls):
+        return cls.objects.filter(Q(tipo_entidad__iexact="PROVEEDOR") | Q(tipo_entidad__iexact="AMBOS"))
 
     class Meta:
         db_table = "bodega_entidadcomercial"

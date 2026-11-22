@@ -27,6 +27,7 @@ from apps.bodega.conteos import (
     vista_conteos,
     vista_discrepancias,
 )
+from apps.bodega.egresos import registrar_egreso, vista_egreso
 from apps.bodega.views import vista_bodega
 from apps.compras.views import (
     confirmar_ingreso,
@@ -59,6 +60,8 @@ urlpatterns = [
     path('bodega/conteos/', vista_conteos, name='conteos'),
     path('bodega/conteos/nuevo/', nuevo_conteo, name='nuevo_conteo'),
     path('bodega/conteos/<int:conteo_id>/', vista_discrepancias, name='discrepancias_conteo'),
+    path('bodega/mermas/', vista_egreso, {'tipo': 'MERMA'}, name='merma_crear'),
+    path('bodega/devoluciones/', vista_egreso, {'tipo': 'DEVOLUCION'}, name='devolucion_crear'),
     path('auditoria/', vista_bodega, {'modulo': 'auditoria'}, name='auditoria'),
     path('compras/', vista_bodega, {'modulo': 'compras'}, name='compras'),
     path('compras/precios/', vista_ultimos_precios, name='ultimos_precios'),
@@ -80,6 +83,8 @@ urlpatterns = [
     path('api/ingresos/', confirmar_ingreso, name='confirmar_ingreso'),
     path('api/conteos/', registrar_conteo, name='registrar_conteo'),
     path('api/conteos/<int:conteo_id>/discrepancias/', consultar_discrepancias, name='api_discrepancias_conteo'),
+    path('api/mermas/', registrar_egreso, {'tipo': 'MERMA'}, name='registrar_merma'),
+    path('api/devoluciones/', registrar_egreso, {'tipo': 'DEVOLUCION'}, name='registrar_devolucion'),
 ]
 
 if settings.DEBUG:

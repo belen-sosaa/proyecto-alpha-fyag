@@ -54,7 +54,7 @@ class IngresoFacturaTests(TestCase):
         self.assertEqual(self.articulo.stock_fisico, 10)
 
         self.client.force_login(self.usuarios[BODEGUERO])
-        with patch("apps.compras.views.guardar_respaldo_simulado") as respaldo:
+        with patch("apps.compras.views.guardar_respaldo_cardex") as respaldo:
             with self.captureOnCommitCallbacks(execute=True) as callbacks:
                 respuesta = self.confirmar(datos["id"])
                 respaldo.assert_not_called()

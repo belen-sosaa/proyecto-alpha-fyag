@@ -1,6 +1,4 @@
 import json
-from pathlib import Path
-from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
@@ -8,6 +6,7 @@ from django.contrib.auth.models import Group
 from django.db import IntegrityError
 from django.test import TestCase
 from django.urls import reverse
+from pymongo.errors import ServerSelectionTimeoutError
 
 from apps.bodega.models import Articulo, BitacoraAuditoria, Categoria, MovimientoCardex, Obra
 from apps.cuentas.roles import ADMIN_BODEGA, BODEGUERO, SUPERVISOR
@@ -34,17 +33,12 @@ class DespachoTransaccionalTests(TestCase):
         })
 
     def test_despacho_guarda_cardex_bitacora_y_respalda_despues_del_commit(self):
-        with TemporaryDirectory() as carpeta:
-            base = Path(carpeta)
-            datos = base / "data"
-            datos.mkdir()
-            respaldo = datos / "mock_mongodb_cardex.json"
-            respaldo.write_text('[{"_id": "registro anterior"}]', encoding="utf-8")
-            with patch("apps.bodega.respaldo.ARCHIVO_RESPALDO", respaldo):
-                with self.captureOnCommitCallbacks(execute=True) as callbacks:
-                    respuesta = self.despachar(3)
-                    self.assertEqual(len(json.loads(respaldo.read_text(encoding="utf-8"))), 1)
-                guardado = json.loads(respaldo.read_text(encoding="utf-8"))
+        with patch("apps.despachos.views.guardar_respaldo_cardex") as guardar:
+            with self.captureOnCommitCallbacks(execute=True) as callbacks:
+                respuesta = self.despachar(3)
+                guardar.assert_not_called()
+            guardar.assert_called_once()
+        documento, = guardar.call_args.args[0]
 
         self.assertRedirects(respuesta, reverse("despachos"))
         self.assertEqual(len(callbacks), 1)
@@ -63,9 +57,10 @@ class DespachoTransaccionalTests(TestCase):
         self.assertEqual(evento.valor_anterior, {"stock_fisico": 10})
         self.assertEqual(evento.valor_nuevo["stock_fisico"], 7)
         self.assertEqual(evento.valor_nuevo["despacho_id"], despacho.pk)
-        self.assertEqual(guardado[0]["_id"], "registro anterior")
-        self.assertEqual(guardado[1]["movimiento_id"], movimiento.pk)
-        self.assertEqual(guardado[1]["_id"], despacho.mongodb_id)
+        self.assertEqual(documento["movimiento_id"], movimiento.pk)
+        self.assertEqual(documento["despacho_id"], despacho.pk)
+        self.assertEqual(documento["_id"], despacho.mongodb_id)
+        self.assertEqual(documento["stock_resultante"], 7)
 
         pagina = self.client.get(reverse("despachos"))
         self.assertTemplateUsed(pagina, "despachos/despacho.html")
@@ -121,18 +116,12 @@ class DespachoTransaccionalTests(TestCase):
         self.comprobar_reversion()
 
     def test_si_falla_el_respaldo_el_despacho_permanece_confirmado(self):
-        with TemporaryDirectory() as carpeta:
-            base = Path(carpeta)
-            datos = base / "data"
-            datos.mkdir()
-            with (
-                patch("apps.bodega.respaldo.ARCHIVO_RESPALDO", datos / "mock_mongodb_cardex.json"),
-                patch("apps.bodega.respaldo.os.replace", side_effect=OSError),
-                self.assertLogs("apps.bodega.respaldo", level="ERROR") as logs,
-                self.captureOnCommitCallbacks(execute=True),
-            ):
-                respuesta = self.despachar(3)
-            self.assertEqual(list(datos.iterdir()), [])
+        with (
+            patch("apps.bodega.respaldo.obtener_base", side_effect=ServerSelectionTimeoutError),
+            self.assertLogs("apps.bodega.respaldo", level="ERROR") as logs,
+            self.captureOnCommitCallbacks(execute=True),
+        ):
+            respuesta = self.despachar(3)
 
         self.assertRedirects(respuesta, reverse("despachos"))
         self.articulo.refresh_from_db()
@@ -140,7 +129,7 @@ class DespachoTransaccionalTests(TestCase):
         self.assertEqual(Despacho.objects.count(), 1)
         self.assertEqual(MovimientoCardex.objects.count(), 1)
         self.assertEqual(BitacoraAuditoria.objects.count(), 1)
-        self.assertIn("Falló el respaldo simulado", logs.output[0])
+        self.assertIn("Falló el respaldo de Cardex en MongoDB", logs.output[0])
 
     def comprobar_reversion(self):
         self.articulo.refresh_from_db()

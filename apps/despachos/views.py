@@ -1,5 +1,4 @@
 import logging
-import uuid
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -12,7 +11,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
 from apps.bodega.models import Articulo, BitacoraAuditoria, MovimientoCardex, Obra
-from apps.bodega.respaldo import guardar_respaldo_simulado
+from apps.bodega.respaldo import documento_cardex, guardar_respaldo_cardex
 from apps.bodega.views import contexto_operativo
 from apps.cuentas.decorators import facultad_requerida
 from apps.cuentas.roles import ADMIN_BODEGA
@@ -138,13 +137,13 @@ def procesar_despacho(request):
 
             articulo.stock_fisico = stock_anterior - cantidad
             articulo.save(update_fields=["stock_fisico"])
-            despacho = Despacho.objects.create(
-                articulo=articulo, obra=obra, cantidad=cantidad, usuario=request.user,
-                mongodb_id=str(uuid.uuid4()),
-            )
             movimiento = MovimientoCardex.objects.create(
                 tipo=MovimientoCardex.Tipo.DESPACHO, articulo=articulo, obra=obra,
                 cantidad=cantidad, usuario=request.user, stock_resultante=articulo.stock_fisico,
+            )
+            despacho = Despacho.objects.create(
+                articulo=articulo, obra=obra, cantidad=cantidad, usuario=request.user,
+                mongodb_id=str(movimiento.pk),
             )
             BitacoraAuditoria.objects.create(
                 usuario=request.user, accion="CREAR", entidad="MovimientoCardex",
@@ -155,16 +154,15 @@ def procesar_despacho(request):
                 },
                 detalle=f"Despacho {despacho.pk} confirmado.",
             )
-            documento = {
-                "_id": despacho.mongodb_id, "operacion": "despacho_material",
-                "movimiento_id": movimiento.pk, "despacho_id": despacho.pk,
-                "dispositivo": request.POST.get("dispositivo", "tablet_operativa"),
-                "geo_ubicacion": {"latitud": obra.latitud, "longitud": obra.longitud},
-                "tag_iot": request.POST.get("tag_iot", ""), "sku": articulo.sku,
-                "descripcion": articulo.descripcion, "obra": obra.nombre, "cantidad": cantidad,
-            }
+            documento = documento_cardex(
+                movimiento, operacion="despacho_material", despacho_id=despacho.pk,
+                dispositivo=request.POST.get("dispositivo", "tablet_operativa"),
+                geo_ubicacion={"latitud": obra.latitud, "longitud": obra.longitud},
+                tag_iot=request.POST.get("tag_iot", ""), sku=articulo.sku,
+                descripcion=articulo.descripcion, obra=obra.nombre,
+            )
             # El respaldo se ejecuta solo si se confirma la transacción de inventario.
-            transaction.on_commit(lambda: guardar_respaldo_simulado([documento]), robust=True)
+            transaction.on_commit(lambda: guardar_respaldo_cardex([documento]), robust=True)
     except (Articulo.DoesNotExist, Obra.DoesNotExist):
         messages.error(request, "La obra o el artículo seleccionado no existe.")
         return redirect("despachos")

@@ -10,10 +10,10 @@ Las rutas de escritura usan sesión y CSRF. Si no hay sesión, Django redirige a
 |---|---|
 | `PerfilUsuario` | `usuario_id` y `rut` único. `normalizar_rut()` valida el RUT y `permisos_de()` obtiene las facultades desde los grupos. |
 | `Categoria` y `Articulo` | Categoría con nombre único. Artículo con `sku` único, `codigo_barras` opcional y único, `descripcion`, `categoria_id`, `unidad_medida`, `ubicacion_fisica`, `stock_fisico`, `stock_minimo` y `stock_critico`. El estado es crítico cuando el stock físico alcanza o baja del umbral crítico. |
-| `Obra` y `Despacho` | Obra con `nombre` y coordenadas opcionales. `Despacho` pertenece a `apps/despachos` y usa la tabla existente `bodega_despacho`. Guarda `articulo_id`, `obra_id`, `cantidad`, `usuario_id`, `fecha_despacho`, `tipo_movimiento` y `mongodb_id` opcional. El respaldo se simula con un JSON local. |
+| `Obra` y `Despacho` | Obra con `nombre`, `estado`, `presupuesto_asignado`, cliente y coordenadas opcionales. `Despacho` pertenece a `apps/despachos` y usa la tabla existente `bodega_despacho`. Guarda `articulo_id`, `obra_id`, `cantidad`, `usuario_id`, `fecha_despacho`, `tipo_movimiento` y `mongodb_id` opcional. |
 | `RecepcionDespacho` | Una recepción por despacho. Guarda el usuario receptor, su nombre al firmar, la fecha y los trazos de la firma. El comprobante recupera la recepción mediante el ID del despacho. |
 | `BitacoraAuditoria` | `usuario_id`, `accion`, `entidad`, `id_registro`, `valor_anterior`, `valor_nuevo`, `detalle` y `fecha_hora`. |
-| `MovimientoCardex` | `tipo`, `cantidad`, `articulo_id`, `usuario_id`, `obra_id` opcional, `fecha_hora`, `stock_resultante` y `justificacion` opcional. Los despachos confirmados registran un movimiento de tipo `DESPACHO`. |
+| `MovimientoCardex` | `tipo`, `cantidad`, `articulo_id`, `usuario_id`, `fecha_hora`, `stock_resultante` y `obra_id` opcional. Las mermas y devoluciones exigen `justificacion`. Una devolución registra `proveedor_id` y admite `documento_referencia`. |
 | `ConteoInventario` y `DetalleConteoInventario` | El conteo guarda usuario y fecha. Cada detalle guarda un artículo único dentro del conteo, su saldo de sistema al registrar y la cantidad encontrada. La diferencia se calcula al consultar. |
 | `EntidadComercial`, `FacturaCompra` y `DetalleFactura` | Compras reutiliza las tablas existentes de proveedores, facturas y líneas. La factura guarda su estado de ingreso. Cada línea registra artículo, cantidad, precio unitario neto, tres descuentos y costo unitario final. |
 
@@ -29,7 +29,7 @@ La migración `0006` incorpora `MovimientoCardex` y bloquea las actualizaciones 
 | `GET/POST /catalogo/nuevo/` y `GET/POST /catalogo/{id}/editar/` | `catalogo_crear` y `catalogo_editar` | Requieren `ingresar_articulo` y `editar_articulo`. Admiten `especificaciones` en JSON, mantienen el stock físico y validan `stock_critico <= stock_minimo`. |
 | `GET/POST /catalogo/{id}/eliminar/` | `catalogo_eliminar` | Requiere `eliminar_articulo`. Bloquea el borrado si hay stock, despachos o compras asociadas. |
 | `GET /obras/buscar/?q=norte` | `obras_buscar` | Requiere `despachar`. Con tres caracteres o más, devuelve hasta diez obras ordenadas por nombre e ID, con `id` y `nombre`. |
-| `POST /despacho/procesar/` | `procesar_despacho` | Requiere `despachar`. Recibe `obra`, `articulo` y `cantidad` positiva, con `dispositivo` y `tag_iot` opcionales. Guarda el stock, el despacho, el movimiento y la bitácora en una transacción. Después de confirmar, intenta el respaldo simulado. Responde con una redirección y un mensaje. |
+| `POST /despacho/procesar/` | `procesar_despacho` | Requiere `despachar`. Recibe `obra`, `articulo` y `cantidad` positiva, con `dispositivo` y `tag_iot` opcionales. Guarda el stock, el despacho, el movimiento y la bitácora en una transacción. Después de confirmar, intenta el respaldo en MongoDB. Responde con una redirección y un mensaje. |
 | `GET /despachos/{id}/comprobante/` | `comprobante_despacho` | Muestra el comprobante imprimible y la firma registrada. Administración de Bodega ve todos los despachos, Bodeguero ve los propios y Supervisión de Obra ve los pendientes y los que firmó. |
 | `POST /despachos/{id}/recepcion/` | `registrar_recepcion` | Requiere `firmar_recepcion` (Supervisor de Obra). Recibe `firma` como una lista JSON de trazos, donde cada punto tiene coordenadas enteras `[x, y]` en un lienzo de 600 por 220. El servidor obtiene el receptor de la sesión. Guarda la recepción y su bitácora en una transacción, sin aplicar un segundo movimiento de stock. |
 
@@ -61,13 +61,21 @@ Finanzas y Administración de Bodega pueden registrar facturas. Bodeguero y Admi
 
 El historial de precios usa la fecha de emisión y, para desempatar, el ID de factura en orden descendente. Si una factura repite el artículo, se muestra la línea con mayor ID. El historial incluye facturas históricas y pendientes de recepción.
 
+## Mermas y devoluciones
+
+| Método y ruta | Entrada y resultado |
+|---|---|
+| `GET/POST /bodega/mermas/` y `/bodega/devoluciones/` | Formularios para los egresos. Al guardar, el panel de Bodega muestra el saldo resultante. |
+| `POST /api/mermas/` | Recibe `articulo_id`, `cantidad` positiva y `justificacion` con texto. Devuelve el movimiento con código `201`. Requiere rol Bodeguero o Administración de Bodega. |
+| `POST /api/devoluciones/` | Recibe `articulo_id`, `proveedor_id`, `cantidad`, `justificacion` y `documento_referencia` opcional. Devuelve el movimiento con código `201`. Requiere Administración de Bodega. |
+
+El saldo, el movimiento y la bitácora se guardan en la misma transacción. Si el saldo es insuficiente, la API devuelve `409` y conserva el inventario.
+
 ## API propuesta para frontend
 
 | Método y ruta | Función prevista | Entrada y respuesta |
 |---|---|---|
 | `POST /api/despachos/` | `confirmar_despacho()` | Recibe `articulo_id`, `obra_id` y `cantidad`. Devuelve `despacho_id` y `movimiento`. |
-| `POST /api/mermas/` | `registrar_merma()` | Recibe `articulo_id`, `cantidad` y `justificacion` obligatoria, con texto distinto de espacios. Devuelve el movimiento. |
-| `POST /api/devoluciones/` | `registrar_devolucion()` | Recibe `articulo_id`, `proveedor_id`, `cantidad` y `justificacion`. Devuelve el movimiento vinculado al proveedor. |
 | `GET /api/cardex/` | `listar_movimientos()` | Filtros `articulo_id`, `obra_id`, `tipo`, `usuario_id`, `desde` y `hasta`. |
 | `GET /api/bitacora/` | `listar_eventos()` | Filtros `accion`, `entidad`, `usuario_id`, `desde` y `hasta`. |
 
@@ -75,6 +83,6 @@ El historial de precios usa la fecha de emisión y, para desempatar, el ID de fa
 
 - **Facturas.** El folio identifica la factura dentro del proveedor y tipo de documento. Los tres descuentos van de 0 a 100 y se aplican en cascada. Para facturas afectas, el costo unitario neto y el IVA del 19 % se redondean a dos decimales. [Tasa general de IVA según el SII](https://www.sii.cl/preguntas_frecuentes/impuestos_mensuales/001_130_0572.htm).
 - **Cardex.** Cada movimiento guarda `id`, `tipo`, `articulo_id`, `cantidad` positiva, `usuario_id`, `fecha_hora` y `stock_resultante`. Según el flujo, incluye `obra_id`, `proveedor_id`, `justificacion`, `despacho_id`, `detalle_factura_id` o `movimiento_original_id`. `INGRESO` suma stock. `DESPACHO`, `MERMA` y `DEVOLUCION` lo descuentan. `AJUSTE` usa `sentido_ajuste` (`SUMA` o `RESTA`). `REVERSA` conserva la referencia y aplica el efecto opuesto. Las correcciones se registran con usuario, fecha y justificación.
-- **Auditoría y respaldo.** PostgreSQL guarda stock, movimiento y bitácora en una transacción. La bitácora identifica el movimiento con `entidad` e `id_registro`. El respaldo usa el ID del movimiento como `_id` en MongoDB y se envía al confirmar la transacción. Un fallo del respaldo se registra y el despacho confirmado sigue disponible. Los historiales son de solo lectura y ordenan por fecha e ID descendentes con fechas de filtro inclusivas.
+- **Auditoría y respaldo.** La bitácora identifica el movimiento con `entidad` e `id_registro`. Tras confirmar PostgreSQL se intenta insertar el documento en la colección `cardex` de MongoDB, con el ID del movimiento convertido a texto como `_id`. Repetir el respaldo usa el mismo documento. El intento tiene un límite de tres segundos. Si falla, se registra el error y la operación confirmada sigue disponible en PostgreSQL.
 - **Formato.** IDs positivos y cantidades en enteros. Importes y porcentajes como cadenas decimales. Fechas en `AAAA-MM-DD` y marcas de tiempo con zona horaria. El servidor asigna usuario, hora, importes calculados y stock resultante.
 - **Respuestas.** `200` al consultar, `201` al crear y `[]` para listas vacías. Los errores incluyen `codigo`, `mensaje` y `campos`. Códigos previstos `400` para datos inválidos, `401` sin sesión, `403` sin permiso, `404` si el recurso no existe y `409` ante conflictos de stock o estado.

@@ -57,6 +57,8 @@ class PerfilUsuario(models.Model):
         blank=True,
         editable=False,
     )
+    intentos_fallidos = models.PositiveSmallIntegerField(default=0, editable=False)
+    bloqueado_hasta = models.DateTimeField(blank=True, editable=False, null=True)
 
     class Meta:
         verbose_name = "Perfil de usuario"
@@ -192,6 +194,9 @@ class Obra(models.Model):
     nombre = models.CharField(max_length=200)
     latitud = models.FloatField(null=True, blank=True)
     longitud = models.FloatField(null=True, blank=True)
+    estado = models.CharField(max_length=20, default="ACTIVA")
+    presupuesto_asignado = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    cliente = models.ForeignKey("compras.EntidadComercial", on_delete=models.PROTECT, null=True, blank=True)
 
     def __str__(self):
         return self.nombre
@@ -228,10 +233,12 @@ class MovimientoCardex(RegistroInalterable):
     articulo = models.ForeignKey(Articulo, on_delete=models.PROTECT)
     usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
     obra = models.ForeignKey(Obra, on_delete=models.PROTECT, null=True, blank=True)
+    proveedor = models.ForeignKey("compras.EntidadComercial", on_delete=models.PROTECT, null=True, blank=True)
     fecha_hora = models.DateTimeField(auto_now_add=True)
     # Guarda una foto del saldo después del movimiento para consultar el historial.
     stock_resultante = models.PositiveIntegerField()
     justificacion = models.TextField(null=True, blank=True)
+    documento_referencia = models.CharField(max_length=100, blank=True, default="")
 
     class Meta:
         # La base valida cantidad y tipo aunque la escritura omita la validación del modelo.
@@ -246,7 +253,27 @@ class MovimientoCardex(RegistroInalterable):
                     tipo__in=["INGRESO", "DESPACHO", "MERMA", "DEVOLUCION", "AJUSTE", "REVERSA"]
                 )},
             ),
+            models.CheckConstraint(
+                name="cardex_egreso_justificado",
+                **{PARAMETRO_CONDICION: (
+                    ~models.Q(tipo__in=["MERMA", "DEVOLUCION"])
+                    | models.Q(justificacion__isnull=False, justificacion__regex=r"\S")
+                )},
+            ),
+            models.CheckConstraint(
+                name="cardex_proveedor_devolucion",
+                **{PARAMETRO_CONDICION: (
+                    ~models.Q(tipo="DEVOLUCION") | models.Q(proveedor__isnull=False)
+                )},
+            ),
         ]
+
+    def clean(self):
+        super().clean()
+        if self.tipo in (self.Tipo.MERMA, self.Tipo.DEVOLUCION) and not (self.justificacion or "").strip():
+            raise ValidationError({"justificacion": "Ingresa el motivo del egreso."})
+        if self.tipo == self.Tipo.DEVOLUCION and self.proveedor_id is None:
+            raise ValidationError({"proveedor": "Selecciona el proveedor de la devolución."})
 
 
 class BitacoraAuditoria(RegistroInalterable):

@@ -6,3 +6,4 @@ MVP de logística para Frío y Agroindustria SpA. El sistema cubre el catálogo 
 
 - [Contrato de persistencia](docs/persistencia/contrato-persistencia.md) — modelos, campos y rutas que existen en el repositorio, junto con las propuestas de integración para frontend.
 - [Datos simulados para frontend](docs/mocks/persistencia.json) — ejemplos de solicitudes, respuestas y errores para trabajar mientras se implementan las rutas propuestas.
+- [Migraciones y datos de prueba](docs/persistencia/pruebas-qa.md) — cómo cargar y verificar el entorno compartido de PostgreSQL y MongoDB.
