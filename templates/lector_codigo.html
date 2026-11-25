@@ -9,7 +9,7 @@
   class="lector-codigo"
 >
   <div class="lector-cabecera">
-    <h2 id="titulo-lector">{% if campo_destino %}Agregar código de barras{% else %}Buscar por código de barras{% endif %}</h2>
+    <h2 id="titulo-lector">{% if campo_destino %}Agregar código{% else %}Buscar por código{% endif %}</h2>
     <button type="button" data-cerrar-lector autofocus>Cerrar</button>
   </div>
   <div data-vista-camara></div>
@@ -22,7 +22,7 @@
   </button>
   {# La entrada manual usa el mismo flujo que una lectura exitosa de la cámara. #}
   <form method="dialog" data-enviar-codigo>
-    <label for="codigo-manual">Código de barras</label>
+    <label for="codigo-manual">Código de barras o contenido del QR</label>
     <div class="lector-entrada">
       <input id="codigo-manual" type="text" required maxlength="100" autocomplete="off">
       <button type="submit">{% if campo_destino %}Usar código{% else %}Buscar{% endif %}</button>

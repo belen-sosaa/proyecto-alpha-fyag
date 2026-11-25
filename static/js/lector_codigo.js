@@ -23,7 +23,7 @@ function aplicarCodigo(valor, formato) {
   detenerCamara();
   const codigo = valor.trim();
   if (!codigo || codigo.length > campoAlta.maxLength) {
-    mensaje.textContent = "Ingresa un código de barras válido.";
+    mensaje.textContent = "Ingresa un código válido.";
     return;
   }
 
@@ -92,7 +92,7 @@ async function buscarCodigo(valor, formato) {
       articulos.add(new Option(articulo.sku + " | " + articulo.descripcion, id));
     }
     articulos.value = id;
-    seleccion.textContent = "Artículo seleccionado por código de barras.";
+    seleccion.textContent = "Artículo seleccionado por código.";
     lector.close();
     articulos.focus();
   } catch {
@@ -110,7 +110,8 @@ async function iniciarCamara() {
     mensaje.textContent = "Para usar la cámara, abre la página por HTTPS. También puedes escribir el código.";
     return;
   }
-  if (!navigator.mediaDevices?.getUserMedia || !window.ZXingBrowser?.BrowserMultiFormatOneDReader) {
+  const { BrowserMultiFormatReader, BarcodeFormat } = window.ZXingBrowser ?? {};
+  if (!navigator.mediaDevices?.getUserMedia || !BrowserMultiFormatReader) {
     mensaje.textContent = "No se pudo iniciar el lector de cámara. Puedes escribir el código.";
     return;
   }
@@ -135,11 +136,10 @@ async function iniciarCamara() {
     intento.flujo = flujo;
     const video = plantillaVideo.content.firstElementChild.cloneNode(true);
     vistaCamara.replaceChildren(video);
-    mensaje.textContent = "Apunta la cámara al código de barras.";
+    mensaje.textContent = "Apunta la cámara al código de barras o QR.";
 
     // Cada apertura tiene su propio video para que un escaneo anterior no interfiera.
-    const {BrowserMultiFormatOneDReader, BarcodeFormat} = window.ZXingBrowser;
-    const decodificador = new BrowserMultiFormatOneDReader();
+    const decodificador = new BrowserMultiFormatReader();
     const controles = await decodificador.decodeFromStream(flujo, video, (resultado, _error, control) => {
       if (!resultado || !lector.open || lectura !== intento) return;
       intento.controles = control;

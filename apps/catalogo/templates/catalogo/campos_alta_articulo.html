@@ -10,7 +10,7 @@
     {% if campo.name == "codigo_barras" %}
       {# El lector llena este campo. Solo el botón Guardar envía el formulario a Django. #}
       <button type="button" class="boton-escanear-alta" data-abrir-lector aria-haspopup="dialog" aria-controls="lector-codigo">
-        Escanear código de barras
+        Escanear código de barras o QR
       </button>
       <p id="codigo-agregado" class="mensaje-codigo-alta" role="status"></p>
     {% endif %}

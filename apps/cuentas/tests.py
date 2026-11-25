@@ -13,6 +13,7 @@ class SalidaTests(TestCase):
         salida = reverse("logout")
 
         panel = cliente.get(inicio)
+        self.assertContains(panel, "js/navegacion_operativa.js")
         self.assertContains(panel, '<dialog id="confirmacion-salida"')
         self.assertContains(panel, 'data-confirmar-salida aria-haspopup="dialog"')
         self.assertContains(panel, '<button type="button" data-cancelar-salida autofocus>Cancelar</button>', html=True)
