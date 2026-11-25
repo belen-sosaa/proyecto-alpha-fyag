@@ -20,87 +20,19 @@
       </div>
     </section>
     {% if perm.registrar_merma %}
-    <!-- Mermas -->
-    {# Esta maqueta valida la justificación en pantalla. Todavía no registra mermas ni cambia el stock. #}
-    <div id="registro-merma"
-      class="scroll-mt-20 bg-white p-6 rounded-2xl shadow-sm border border-gray-100"
-    >
-      <h3 class="text-lg font-bold text-gray-800 mb-6">
-        <i class="fas fa-triangle-exclamation text-orange-500 mr-2"></i>
-        Registro de Merma
-      </h3>
-      <p class="mb-4 text-sm text-slate-600">Vista previa del registro de mermas.</p>
-      <div class="space-y-5 text-sm">
-        <div>
-          <label class="block font-semibold text-gray-600 mb-1"
-            >Artículo Dañado</label
-          >
-          <select
-            class="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-orange-500 outline-none bg-white"
-          >
-            <option>Seleccione artículo del catálogo...</option>
-            <option>Compresor 5HP Inverter</option>
-          </select>
-        </div>
-        <div>
-          <label class="block font-semibold text-gray-600 mb-1"
-            >Motivo / Justificación (Obligatorio)</label
-          >
-          <textarea
-            id="motivo-merma"
-            rows="3"
-            class="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-orange-500 outline-none"
-            placeholder="Describa por qué se da de baja el producto..."
-          ></textarea>
-        </div>
-        <button
-          onclick="validarMerma()"
-          class="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-lg p-3 mt-2 shadow-md transition"
-        >
-          <i class="fas fa-save mr-2"></i> Validar justificación
+    <section id="registro-merma" class="scroll-mt-20 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <h2 class="mb-4 text-lg font-bold text-slate-800">Registro de Merma</h2>
+      <form method="post" action="{% url 'merma_crear' %}" class="space-y-5 text-sm">
+        {% csrf_token %}
+        {{ merma_form.as_p }}
+        <button type="submit" class="w-full rounded-lg bg-orange-500 p-3 font-bold text-white hover:bg-orange-600">
+          Guardar merma
         </button>
-      </div>
-    </div>
+      </form>
+      <a href="{% url 'devolucion_crear' %}" class="mt-4 inline-block font-semibold text-orange-700 hover:underline">
+        Devoluci?n a proveedor
+      </a>
+    </section>
     {% endif %}
   </div>
-
-<!-- Notificaciones -->
-<div
-  id="toast"
-  class="hidden fixed bottom-6 left-1/2 -translate-x-1/2 w-11/12 max-w-sm px-6 py-4 rounded-xl shadow-2xl items-center gap-4 z-50 text-white font-bold transition-all"
->
-  <span id="toast-msg"></span>
-</div>
-
-{% endblock %}
-
-{% block extra_js %}
-<script>
-  function mostrarMensaje(mensaje, tipo) {
-    const toast = document.getElementById("toast");
-    toast.className = `fixed bottom-6 left-1/2 -translate-x-1/2 w-11/12 max-w-sm px-6 py-4 rounded-xl shadow-2xl flex items-center gap-4 z-50 text-white font-bold transition-all ${tipo === "error" ? "bg-red-600" : "bg-slate-800 border border-slate-600"}`;
-    document.getElementById("toast-msg").innerHTML =
-      tipo === "error"
-        ? `<i class="fas fa-exclamation-triangle mr-2"></i>${mensaje}`
-        : `<i class="fas fa-info-circle text-blue-400 mr-2"></i>${mensaje}`;
-    setTimeout(() => toast.classList.add("hidden"), 3000);
-  }
-
-  function validarMerma() {
-    const motivo = document.getElementById("motivo-merma").value;
-    if (motivo.trim() === "") {
-      mostrarMensaje(
-        "La justificación de la merma es obligatoria.",
-        "error",
-      );
-      return;
-    }
-    mostrarMensaje(
-      "Justificación válida. El registro de mermas aún no está conectado.",
-      "exito",
-    );
-    document.getElementById("motivo-merma").value = "";
-  }
-
-</script>
 {% endblock %}

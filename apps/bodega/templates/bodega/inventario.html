@@ -16,6 +16,15 @@
           <a href="{% url 'catalogo_listar' %}" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition text-sm font-bold">
             {% if perm.editar_articulo %}Administrar catálogo{% else %}Buscar insumos{% endif %}
           </a>
+          {% if mostrar_auditoria %}
+          <a href="{% url 'auditoria' %}" class="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition text-sm font-bold shadow-sm">Ver movimientos</a>
+          {% endif %}
+          {% if perm.ingresar_articulo %}
+          <a href="{% url 'conteo_crear' %}" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition text-sm font-bold">Conteo físico</a>
+          {% endif %}
+          {% if perm.ver_catalogo %}
+          <a href="{% url 'conteo_discrepancias' %}" class="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition text-sm font-bold shadow-sm">Discrepancias</a>
+          {% endif %}
           {% if perm.ingresar_articulo %}
           <a href="{% url 'articulo_crear' %}" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition text-sm font-bold">
             Nuevo Artículo

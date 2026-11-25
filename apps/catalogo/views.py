@@ -1,10 +1,21 @@
+from decimal import Decimal
+
 from django.contrib import messages
 from django.db import IntegrityError, connection, transaction
 from django.db.models import Q
 from django.db.models.deletion import ProtectedError
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.contrib.auth.decorators import login_required
+from openpyxl import Workbook
 
-from apps.bodega.models import Articulo, BitacoraAuditoria, Categoria, Despacho
+from apps.bodega.models import (
+    Articulo,
+    BitacoraAuditoria,
+    Categoria,
+    Despacho,
+    DetalleFacturaCompra,
+)
 from apps.catalogo.especificaciones import guardar_especificaciones
 from apps.catalogo.forms import ArticuloCatalogoForm, ArticuloForm
 from apps.cuentas.decorators import facultad_requerida
@@ -190,3 +201,72 @@ def catalogo_eliminar(request, pk):
     return render(request, "catalogo/catalogo.html", {
         "articulo": articulo, "perm": permisos_de(request.user),
     })
+
+
+@login_required
+@facultad_requerida("ver_catalogo")
+def articulo_detalle(request, pk):
+    articulo = get_object_or_404(Articulo, pk=pk)
+    precios = DetalleFacturaCompra.objects.filter(
+        articulo=articulo
+    ).select_related("factura", "factura__proveedor").order_by(
+        "-factura__fecha", "-id"
+    )[:3]
+    for detalle in precios:
+        detalle.precio_neto_unitario = (
+            detalle.subtotal_neto / detalle.cantidad
+        ).quantize(Decimal("0.01"))
+    return render(request, "catalogo/articulo_detalle.html", {
+        "articulo": articulo,
+        "precios": precios,
+        "perm": permisos_de(request.user),
+    })
+
+
+@login_required
+@facultad_requerida("ver_catalogo")
+def articulo_exportar_precios_excel(request, pk):
+    articulo = get_object_or_404(Articulo, pk=pk)
+    precios = DetalleFacturaCompra.objects.filter(
+        articulo=articulo
+    ).select_related("factura", "factura__proveedor").order_by(
+        "-factura__fecha", "-id"
+    )[:3]
+
+    libro = Workbook()
+    hoja = libro.active
+    hoja.title = "Precios"
+    hoja.append([
+        "Fecha",
+        "Factura",
+        "Proveedor",
+        "Precio Unitario",
+        "Descuentos",
+        "Precio Neto Final",
+    ])
+    for detalle in precios:
+        descuentos = "{}% / {}% / {}%".format(
+            detalle.descuento_1,
+            detalle.descuento_2,
+            detalle.descuento_3,
+        )
+        precio_neto_unitario = (
+            detalle.subtotal_neto / detalle.cantidad
+        ).quantize(Decimal("0.01"))
+        hoja.append([
+            detalle.factura.fecha.strftime("%d-%m-%Y %H:%M"),
+            detalle.factura.numero_factura,
+            detalle.factura.proveedor.nombre,
+            float(detalle.precio_unitario),
+            descuentos,
+            float(precio_neto_unitario),
+        ])
+
+    respuesta = HttpResponse(
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    respuesta["Content-Disposition"] = (
+        f'attachment; filename="precios_{articulo.sku}.xlsx"'
+    )
+    libro.save(respuesta)
+    return respuesta
