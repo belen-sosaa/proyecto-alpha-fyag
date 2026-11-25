@@ -12,7 +12,21 @@ from django.test import Client, RequestFactory, TestCase
 from django.urls import reverse
 
 from apps.cuentas.decorators import facultad_requerida, roles_validos
-from .models import Articulo, BitacoraAuditoria, Categoria, Despacho, Obra, PerfilUsuario
+from .models import (
+    Articulo,
+    BitacoraAuditoria,
+    Categoria,
+    ConteoFisico,
+    Despacho,
+    DetalleConteoFisico,
+    DetalleFacturaCompra,
+    DevolucionProveedor,
+    FacturaCompra,
+    Merma,
+    Obra,
+    PerfilUsuario,
+    Proveedor,
+)
 from apps.cuentas.roles import (
     ADMIN_BODEGA,
     ADMIN_TI,
@@ -243,6 +257,167 @@ class RolesTests(TestCase):
                 articulo.refresh_from_db()
                 self.assertEqual(articulo.stock_fisico, 7)
                 self.assertTrue(Despacho.objects.filter(articulo=articulo, usuario=usuario, cantidad=3).exists())
+
+
+class HistoriasUsuarioBodegaTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.usuario = get_user_model().objects.create_user(username="bodega_hu")
+        cls.usuario.groups.add(Group.objects.create(name=ADMIN_BODEGA))
+        cls.categoria = Categoria.objects.create(nombre="Pruebas")
+        cls.articulo = Articulo.objects.create(
+            sku="HU-001",
+            descripcion="Artículo HU",
+            categoria=cls.categoria,
+            stock_fisico=10,
+        )
+        cls.proveedor = Proveedor.objects.create(
+            nombre="Proveedor Prueba",
+            rut="76.123.456-7",
+        )
+
+    def setUp(self):
+        self.client.force_login(self.usuario)
+
+    def test_hu05_merma_registra_stock_motivo_y_bitacora(self):
+        respuesta = self.client.post(reverse("merma_crear"), {
+            "articulo": self.articulo.pk,
+            "cantidad": 3,
+            "motivo": "Producto deteriorado",
+        })
+        self.assertRedirects(respuesta, reverse("bodega_web"))
+        self.articulo.refresh_from_db()
+        self.assertEqual(self.articulo.stock_fisico, 7)
+        merma = Merma.objects.get()
+        self.assertEqual(merma.motivo, "Producto deteriorado")
+        self.assertTrue(BitacoraAuditoria.objects.filter(
+            accion="MERMA", entidad="Merma", id_registro=merma.pk
+        ).exists())
+        respuesta = self.client.get(reverse("cardex"))
+        self.assertEqual(respuesta.status_code, 200)
+        self.assertContains(respuesta, "MERMA")
+        self.assertContains(respuesta, "Producto deteriorado")
+
+        respuesta = self.client.post(reverse("merma_crear"), {
+            "articulo": self.articulo.pk,
+            "cantidad": 8,
+            "motivo": "Exceso",
+        })
+        self.assertContains(respuesta, "La cantidad supera el stock disponible")
+
+    def test_hu05_rechaza_merma_con_cantidad_cero(self):
+        respuesta = self.client.post(reverse("merma_crear"), {
+            "articulo": self.articulo.pk,
+            "cantidad": 0,
+            "motivo": "Producto defectuoso",
+        })
+        self.assertContains(respuesta, "La cantidad debe ser mayor que cero.")
+        self.articulo.refresh_from_db()
+        self.assertEqual(self.articulo.stock_fisico, 10)
+
+    def test_hu08_compra_aplica_descuentos_incrementa_stock_y_crea_factura(self):
+        respuesta = self.client.post(reverse("compras"), {
+            "numero_factura": "FAC-HU08",
+            "proveedor": self.proveedor.pk,
+            "articulo": self.articulo.pk,
+            "cantidad": 2,
+            "precio_unitario": "100",
+            "descuento_1": "10",
+            "descuento_2": "5",
+            "descuento_3": "2",
+        })
+        self.assertRedirects(respuesta, reverse("compras"))
+        self.articulo.refresh_from_db()
+        self.assertEqual(self.articulo.stock_fisico, 12)
+        factura = FacturaCompra.objects.get(numero_factura="FAC-HU08")
+        detalle = DetalleFacturaCompra.objects.get(factura=factura)
+        self.assertEqual(str(detalle.subtotal_neto), "167.58")
+        self.assertTrue(BitacoraAuditoria.objects.filter(
+            accion="COMPRA", entidad="FacturaCompra", id_registro=factura.pk
+        ).exists())
+
+    def test_hu08_descuentos_vacios_se_guardan_como_cero(self):
+        respuesta = self.client.post(reverse("compras"), {
+            "numero_factura": "FAC-DESC-CERO",
+            "proveedor": self.proveedor.pk,
+            "articulo": self.articulo.pk,
+            "cantidad": 1,
+            "precio_unitario": "100",
+            "descuento_1": "",
+            "descuento_2": "",
+            "descuento_3": "",
+        })
+        self.assertRedirects(respuesta, reverse("compras"))
+        detalle = DetalleFacturaCompra.objects.get(
+            factura__numero_factura="FAC-DESC-CERO"
+        )
+        self.assertEqual(detalle.descuento_1, 0)
+        self.assertEqual(detalle.descuento_2, 0)
+        self.assertEqual(detalle.descuento_3, 0)
+
+    def test_hu010_devolucion_descuenta_stock_y_registra_movimiento(self):
+        respuesta = self.client.post(reverse("devolucion_crear"), {
+            "proveedor": self.proveedor.pk,
+            "articulo": self.articulo.pk,
+            "cantidad": 4,
+            "motivo": "Producto rechazado",
+        })
+        self.assertRedirects(respuesta, reverse("devolucion_crear"))
+        self.articulo.refresh_from_db()
+        self.assertEqual(self.articulo.stock_fisico, 6)
+        devolucion = DevolucionProveedor.objects.get()
+        self.assertTrue(BitacoraAuditoria.objects.filter(
+            accion="DEVOLUCION_PROVEEDOR",
+            entidad="DevolucionProveedor",
+            id_registro=devolucion.pk,
+        ).exists())
+
+    def test_hu010_rechaza_devolucion_con_cantidad_cero(self):
+        respuesta = self.client.post(reverse("devolucion_crear"), {
+            "proveedor": self.proveedor.pk,
+            "articulo": self.articulo.pk,
+            "cantidad": 0,
+            "motivo": "Cambio",
+        })
+        self.assertContains(respuesta, "La cantidad debe ser mayor que cero.")
+        self.articulo.refresh_from_db()
+        self.assertEqual(self.articulo.stock_fisico, 10)
+
+    def test_hu09_conteo_con_y_sin_discrepancias(self):
+        respuesta = self.client.post(reverse("conteo_crear"), {
+            f"stock_contado_{self.articulo.pk}": "8",
+            "observacion": "Reconteo",
+        })
+        self.assertRedirects(respuesta, reverse("conteo_discrepancias"))
+        conteo = ConteoFisico.objects.get()
+        detalle = DetalleConteoFisico.objects.get(conteo=conteo)
+        self.assertEqual(detalle.diferencia, -2)
+        respuesta = self.client.get(reverse("conteo_discrepancias"))
+        self.assertContains(respuesta, "Diferencia")
+        self.assertContains(respuesta, "-2")
+
+        self.client.post(reverse("conteo_crear"), {
+            f"stock_contado_{self.articulo.pk}": "10",
+            "observacion": "Sin diferencias",
+        })
+        respuesta = self.client.get(reverse("conteo_discrepancias"))
+        self.assertContains(
+            respuesta,
+            "No se encontraron discrepancias en el inventario",
+        )
+
+    def test_hu09_rechaza_valores_negativos_o_no_numericos(self):
+        respuesta = self.client.post(reverse("conteo_crear"), {
+            f"stock_contado_{self.articulo.pk}": "-2",
+        })
+        self.assertContains(respuesta, "no puede ser negativo")
+        self.assertFalse(ConteoFisico.objects.exists())
+
+        respuesta = self.client.post(reverse("conteo_crear"), {
+            f"stock_contado_{self.articulo.pk}": "texto",
+        })
+        self.assertContains(respuesta, "debe ser un número entero")
+        self.assertFalse(ConteoFisico.objects.exists())
 
 
 class AccesoRUTTests(TestCase):
