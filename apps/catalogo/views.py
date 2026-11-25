@@ -8,8 +8,9 @@ from pymongo.errors import PyMongoError
 from apps.bodega.models import Articulo, BitacoraAuditoria, Categoria
 from apps.catalogo.especificaciones import guardar_especificaciones
 from apps.catalogo.forms import ArticuloCatalogoForm, ArticuloForm
+from apps.compras.views import ultimas_compras
 from apps.cuentas.decorators import facultad_requerida
-from apps.cuentas.roles import permisos_de
+from apps.cuentas.roles import ACCESO, permisos_de
 from apps.despachos.models import Despacho
 
 
@@ -64,12 +65,14 @@ def catalogo_listar(request):
             articulos.filter(categoria_id=int(categoria_id))
             if categoria_id.isdecimal() else articulos.none()
         )
+    permisos = permisos_de(request.user)
     return render(request, "catalogo/catalogo.html", {
         "articulos": articulos,
         "categorias": Categoria.objects.order_by("nombre"),
         "q": busqueda,
         "categoria_seleccionada": categoria_id,
-        "perm": permisos_de(request.user),
+        "perm": permisos,
+        "mostrar_cardex": "cardex" in ACCESO.get(permisos["rol"], ()),
     })
 
 
@@ -212,7 +215,8 @@ def catalogo_eliminar(request, pk):
 @facultad_requerida("ver_catalogo")
 def articulo_detalle(request, pk):
     articulo = get_object_or_404(Articulo.objects.select_related("categoria"), pk=pk)
-    return render(request, "catalogo/articulo_detalle.html", {
-        "articulo": articulo,
-        "perm": permisos_de(request.user),
-    })
+    permisos = permisos_de(request.user)
+    contexto = {"articulo": articulo, "perm": permisos}
+    if permisos["ver_costos"]:
+        contexto["precios"] = ultimas_compras(articulo.pk).select_related("factura__proveedor")
+    return render(request, "catalogo/articulo_detalle.html", contexto)

@@ -211,6 +211,14 @@ class UltimosPreciosTests(TestCase):
         self.assertNotContains(pagina, "Factura NC-1")
         self.assertContains(self.client.get(reverse("catalogo_listar")), "Últimos precios")
 
+        detalle_url = reverse("articulo_detalle", args=[self.articulo.pk])
+        detalle = self.client.get(detalle_url)
+        self.assertContains(detalle, "Últimos tres precios de compra")
+        self.assertContains(detalle, "Proveedor QA", count=3)
+        self.assertContains(detalle, "80.00")
+        self.client.force_login(self.bodeguero)
+        self.assertNotContains(self.client.get(detalle_url), "Proveedor QA")
+
     def test_consulta_sin_compras_articulo_inexistente_y_permisos(self):
         api = reverse("api_ultimos_precios", args=[self.articulo.pk])
         pagina = reverse("ultimos_precios")

@@ -91,7 +91,7 @@ def listar_proveedores(request):
     return JsonResponse(list(datos), safe=False)
 
 
-def _ultimas_compras(articulo_id):
+def ultimas_compras(articulo_id):
     detalles = DetalleFactura.objects.filter(articulo_id=articulo_id)
     # Si una factura repite el artículo, su última línea representa esa compra.
     ultimo_detalle = detalles.filter(factura_id=OuterRef("factura_id")).order_by("-pk").values("pk")[:1]
@@ -106,7 +106,7 @@ def _ultimas_compras(articulo_id):
 def consultar_ultimos_precios(request, articulo_id):
     if not Articulo.objects.filter(pk=articulo_id).exists():
         return error_json("ARTICULO_NO_ENCONTRADO", "El artículo no existe.", 404)
-    precios = _ultimas_compras(articulo_id).values(
+    precios = ultimas_compras(articulo_id).values(
         "factura_id", "folio", "proveedor_id", "fecha_emision", "costo_unitario_neto_final",
     )
     return JsonResponse(list(precios), safe=False)
@@ -120,7 +120,7 @@ def vista_ultimos_precios(request):
     if formulario.is_bound and formulario.is_valid():
         articulo = formulario.cleaned_data["articulo"]
         contexto["articulo_seleccionado"] = articulo
-        contexto["precios"] = _ultimas_compras(articulo.pk).values(
+        contexto["precios"] = ultimas_compras(articulo.pk).values(
             "folio", "fecha_emision", "factura__proveedor__razon_social", "costo_unitario_neto_final",
         )
     return render(request, "compras/ultimos_precios.html", contexto)
@@ -325,7 +325,7 @@ def exportar_precios_excel(request, pk):
     hoja = libro.active
     hoja.title = "Precios"
     hoja.append(["Fecha", "Factura", "Proveedor", "Precio unitario", "Descuentos", "Precio neto final"])
-    for detalle in _ultimas_compras(articulo.pk).select_related("factura__proveedor"):
+    for detalle in ultimas_compras(articulo.pk).select_related("factura__proveedor"):
         hoja.append([
             detalle.factura.fecha_emision, detalle.factura.folio, detalle.factura.proveedor.razon_social,
             detalle.precio_unitario_neto,

@@ -1,3 +1,4 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -308,6 +309,10 @@
       background: #f8faff;
     }
 
+    .tabla-desplazable {
+      overflow-x: auto;
+    }
+
     td:first-child {
       font-weight: 600;
       white-space: nowrap;
@@ -353,41 +358,56 @@
     }
   </style>
 
+  {% if panel_operativo %}
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/panel_operativo.css' %}">
+  {% endif %}
   {% block extra_head %}{% endblock %}
 </head>
 
 <body>
-  <!-- Identidad visual y usuario autenticado. -->
-  <header class="cabecera">
-    <div class="marca">
-      <span class="marca-icono" aria-hidden="true">FY</span>
-      <div>
-        <strong>Logística FYAG</strong>
-        <small>Control Operativo</small>
+  <div{% if panel_operativo %} class="panel-operativo{% if request.resolver_match.url_name == 'inicio' %} panel-inicio{% endif %}"{% endif %}>
+    {% if panel_operativo %}
+      {% include "navegacion_operativa.html" %}
+    {% endif %}
+    <div{% if panel_operativo %} class="pagina-operativa"{% endif %}>
+      {% if panel_operativo %}
+        <header class="cabecera-operativa">
+          <button type="button" data-abrir-menu aria-controls="menu-operativo" aria-expanded="false">
+            <span aria-hidden="true">☰</span> Menú
+          </button>
+          <h1>{{ titulo_panel }}</h1>
+        </header>
+      {% else %}
+        <header class="cabecera">
+          <div class="marca">
+            <span class="marca-icono" aria-hidden="true">FY</span>
+            <div>
+              <strong>Logística FYAG</strong>
+              <small>Control Operativo</small>
+            </div>
+          </div>
+          {% if user.is_authenticated %}
+            <div class="usuario">
+              {% block datos_usuario %}Usuario: <strong>{{ user.get_username }}</strong>{% endblock %}
+            </div>
+          {% endif %}
+        </header>
+      {% endif %}
+      <div{% if not panel_operativo %} class="contenedor"{% endif %}>
+        {% for message in messages %}
+          <p class="mensaje {{ message.tags }}" role="status">{{ message }}</p>
+        {% endfor %}
+        <main class="{% if panel_operativo %}contenido-operativo{% else %}contenido{% endif %}">
+          {% block content %}{% endblock %}
+        </main>
       </div>
     </div>
-
-    {% if user.is_authenticated %}
-      <div class="usuario">
-        {% block datos_usuario %}Usuario: <strong>{{ user.get_username }}</strong>{% endblock %}
-      </div>
-    {% endif %}
-  </header>
-
-  <div class="contenedor">
-    <!-- Conserva los mensajes enviados por las vistas. -->
-    {% for message in messages %}
-      <p class="mensaje {{ message.tags }}" role="status">
-        {{ message }}
-      </p>
-    {% endfor %}
-
-    <!-- Contenido específico de cada página. -->
-    <main class="contenido">
-      {% block content %}{% endblock %}
-    </main>
   </div>
-
+  {% if panel_operativo %}
+    <script src="{% static 'js/navegacion_operativa.js' %}" defer></script>
+  {% endif %}
   {% block extra_js %}{% endblock %}
 </body>
 </html>

@@ -37,7 +37,13 @@ LineasConteo = forms.formset_factory(
 )
 
 
-def _guardar_conteo(usuario, lineas):
+class ObservacionConteoForm(forms.Form):
+    observacion = forms.CharField(
+        label="Observación", required=False, widget=forms.Textarea(attrs={"rows": 3}),
+    )
+
+
+def _guardar_conteo(usuario, lineas, observacion):
     cantidades = dict(lineas)
     if len(cantidades) != len(lineas):
         raise ValidationError("Ingresa cada artículo una sola vez por conteo.")
@@ -50,7 +56,7 @@ def _guardar_conteo(usuario, lineas):
         )
         if len(saldos) != len(cantidades):
             raise ValidationError("Uno de los artículos del conteo ya no está disponible.")
-        conteo = ConteoInventario.objects.create(usuario=usuario)
+        conteo = ConteoInventario.objects.create(usuario=usuario, observacion=observacion)
         detalles = DetalleConteoInventario.objects.bulk_create([
             DetalleConteoInventario(
                 conteo=conteo, articulo_id=articulo_id, stock_sistema=saldos[articulo_id],
@@ -85,13 +91,14 @@ def vista_conteos(request):
 @require_http_methods(["GET", "POST"])
 def nuevo_conteo(request):
     formulario = LineasConteo(request.POST if request.method == "POST" else None)
-    if formulario.is_valid():
+    observacion_form = ObservacionConteoForm(request.POST if request.method == "POST" else None)
+    if formulario.is_valid() and observacion_form.is_valid():
         lineas = [
             (datos["articulo"].pk, datos["stock_fisico"])
             for datos in formulario.cleaned_data if datos
         ]
         try:
-            conteo, _ = _guardar_conteo(request.user, lineas)
+            conteo, _ = _guardar_conteo(request.user, lineas, observacion_form.cleaned_data["observacion"])
         except ValidationError as error:
             messages.error(request, error.message)
         except DatabaseError:
@@ -100,7 +107,9 @@ def nuevo_conteo(request):
         else:
             messages.success(request, "Conteo guardado correctamente.")
             return redirect("discrepancias_conteo", conteo_id=conteo.pk)
-    return render(request, "bodega/conteos.html", {"formulario": formulario})
+    return render(request, "bodega/conteos.html", {
+        "formulario": formulario, "observacion_form": observacion_form,
+    })
 
 
 @facultad_requerida("ver_conteos")
@@ -137,6 +146,10 @@ def _datos_conteo(request):
     if not isinstance(detalles, list) or not 1 <= len(detalles) <= MAX_ARTICULOS:
         raise ValidationError(f"Ingresa entre 1 y {MAX_ARTICULOS} artículos.")
 
+    observacion = datos.get("observacion", "")
+    if not isinstance(observacion, str) or "\x00" in observacion:
+        raise ValidationError("La observación debe ser texto válido.")
+
     lineas = []
     for detalle in detalles:
         if not isinstance(detalle, dict):
@@ -148,14 +161,15 @@ def _datos_conteo(request):
         if type(cantidad) is not int or not 0 <= cantidad <= MAX_STOCK:
             raise ValidationError("La cantidad contada debe ser un entero no negativo dentro del rango de stock.")
         lineas.append((articulo, cantidad))
-    return lineas
+    return lineas, observacion.strip()
 
 
 @facultad_requerida("registrar_conteo")
 @require_POST
 def registrar_conteo(request):
     try:
-        conteo, detalles = _guardar_conteo(request.user, _datos_conteo(request))
+        lineas, observacion = _datos_conteo(request)
+        conteo, detalles = _guardar_conteo(request.user, lineas, observacion)
     except ValidationError as error:
         return JsonResponse({
             "codigo": "CONTEO_INVALIDO", "mensaje": error.message, "campos": {},
@@ -167,6 +181,7 @@ def registrar_conteo(request):
         }, status=500)
     return JsonResponse({
         "id": conteo.pk, "usuario_id": conteo.usuario_id, "fecha_hora": conteo.fecha_hora,
+        "observacion": conteo.observacion,
         "detalles": [_linea_json(detalle) for detalle in detalles],
     }, status=201)
 

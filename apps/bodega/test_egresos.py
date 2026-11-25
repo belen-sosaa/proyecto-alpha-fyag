@@ -93,6 +93,9 @@ class EgresosTests(TestCase):
         self.assertEqual(movimiento.documento_referencia, "Guía 100")
         self.assertEqual(Articulo.objects.get(pk=self.articulo.pk).stock_fisico, 8)
         self.assertEqual(BitacoraAuditoria.objects.get().valor_nuevo["proveedor_id"], self.proveedor.pk)
+        historial = self.client.get(reverse("devolucion_crear"))
+        self.assertContains(historial, "Devoluciones registradas")
+        self.assertContains(historial, "Guía 100")
         with self.assertRaises(IntegrityError), transaction.atomic():
             MovimientoCardex.objects.filter(pk=movimiento.pk).update(cantidad=1)
         with self.assertRaises(IntegrityError), transaction.atomic():

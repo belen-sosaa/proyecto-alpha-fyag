@@ -5,6 +5,7 @@ from django import forms
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
+from django.core.paginator import Paginator
 from django.db import DatabaseError, transaction
 from django.http import JsonResponse
 from django.shortcuts import redirect, render
@@ -111,7 +112,13 @@ def vista_egreso(request, tipo):
         else:
             messages.success(request, f"{movimiento.get_tipo_display()} registrada. Stock disponible: {movimiento.stock_resultante}.")
             return redirect("bodega_web")
-    return render(request, "bodega/egreso.html", {"form": form, "titulo": titulo})
+    contexto = {"form": form, "titulo": titulo}
+    if tipo == MovimientoCardex.Tipo.DEVOLUCION:
+        devoluciones = MovimientoCardex.objects.filter(tipo=tipo).select_related(
+            "articulo", "proveedor",
+        ).order_by("-fecha_hora", "-pk")
+        contexto["devoluciones"] = Paginator(devoluciones, 20).get_page(request.GET.get("pagina"))
+    return render(request, "bodega/egreso.html", contexto)
 
 
 def _error_json(codigo, mensaje, estado, campos=None):

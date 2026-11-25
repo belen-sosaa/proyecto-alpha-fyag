@@ -3,10 +3,6 @@
 
 {% block title %}Despachos · FYAG{% endblock %}
 
-{% block datos_usuario %}
-  <strong>{{ user.get_full_name|default:user.get_username }}</strong> · {{ rol_actual }}
-{% endblock %}
-
 {% block extra_head %}
   <style>
     .despacho-cabecera { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 20px; margin-bottom: 24px; }
@@ -39,11 +35,12 @@
     {% if comprobante %}
       @media print {
         body, #comprobante-despacho { background: white; }
-        .cabecera, .mensaje, .contenido > :not(#comprobante-despacho) { display: none; }
-        .contenedor, .contenido, #comprobante-despacho {
+        .cabecera-operativa, .menu-operativo, .fondo-menu, .mensaje,
+        .contenido-operativo > :not(#comprobante-despacho) { display: none; }
+        .contenido-operativo, #comprobante-despacho {
           width: auto; max-width: none; margin: 0; padding: 0; border: 0; box-shadow: none;
         }
-        .contenido { overflow: visible; }
+        .contenido-operativo { overflow: visible; }
         #comprobante-despacho .firma-despacho { max-width: 320px; }
       }
     {% endif %}
@@ -52,7 +49,6 @@
 
 {% block content %}
   <div class="despacho-cabecera">
-    <h1>{% if comprobante %}Comprobante{% elif recepcion %}Recepción de despachos{% else %}Despachos{% endif %}</h1>
     {% if comprobante %}
       <a class="boton boton-secundario" href="{% url 'despachos' %}">Volver a despachos</a>
     {% else %}
@@ -111,38 +107,7 @@
   {% else %}
     <div {% if perm.despachar %}class="despacho-grid"{% endif %}>
       {% if perm.despachar %}
-      <section class="despacho-panel" aria-labelledby="nuevo-despacho">
-        <h2 id="nuevo-despacho">Nuevo despacho</h2>
-        <form method="post" action="{% url 'procesar_despacho' %}" class="despacho-formulario">
-          {% csrf_token %}
-          <div data-obra-autocomplete data-url="{% url 'obras_buscar' %}">
-            <label for="obra-destino">Obra de destino</label>
-            <input id="obra-destino" type="text" data-obra-texto autocomplete="off"
-                   placeholder="Escribe al menos 3 letras" aria-describedby="obra-mensaje" required>
-            <input type="hidden" name="obra" data-obra-id>
-            <ul data-obra-resultados class="despacho-resultados" hidden></ul>
-            <p id="obra-mensaje" class="despacho-ayuda" data-obra-mensaje role="status"></p>
-          </div>
-          <div>
-            <label for="input-articulo">Artículo</label>
-            <select id="input-articulo" name="articulo" required>
-              <option value="">Selecciona un artículo</option>
-              {% for articulo in articulos %}
-                <option value="{{ articulo.pk }}">{{ articulo.sku }} · {{ articulo.descripcion }} ({{ articulo.stock_fisico }} disponibles)</option>
-              {% endfor %}
-            </select>
-            <button type="button" class="boton boton-secundario" data-abrir-lector
-                    aria-haspopup="dialog" aria-controls="lector-codigo">Escanear código</button>
-            <p id="articulo-escaneado" class="despacho-ayuda" role="status"></p>
-          </div>
-          <div>
-            <label for="cant-despacho">Cantidad</label>
-            <input id="cant-despacho" name="cantidad" type="number" min="1" step="1" value="1" inputmode="numeric" required>
-          </div>
-          <button type="submit">Confirmar despacho</button>
-        </form>
-        {% include "lector_codigo.html" %}
-      </section>
+        {% include "despachos/despachos.html" %}
       {% endif %}
 
       <section class="despacho-panel" aria-labelledby="despachos-recientes">

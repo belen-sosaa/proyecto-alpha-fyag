@@ -1,0 +1,25 @@
+<section class="despacho-panel" aria-labelledby="nuevo-despacho">
+  <h2 id="nuevo-despacho">Nuevo despacho</h2>
+  <form method="post" action="{% url 'procesar_despacho' %}" class="despacho-formulario">
+    {% csrf_token %}
+    {% include "despachos/obra_auto.html" %}
+    <div>
+      <label for="input-articulo">Artículo</label>
+      <select id="input-articulo" name="articulo" required>
+        <option value="">Selecciona un artículo</option>
+        {% for articulo in articulos %}
+          <option value="{{ articulo.pk }}">{{ articulo.sku }} · {{ articulo.descripcion }} ({{ articulo.stock_fisico }} disponibles)</option>
+        {% endfor %}
+      </select>
+      <button type="button" class="boton boton-secundario" data-abrir-lector
+              aria-haspopup="dialog" aria-controls="lector-codigo">Escanear código</button>
+      <p id="articulo-escaneado" class="despacho-ayuda" role="status"></p>
+    </div>
+    <div>
+      <label for="cant-despacho">Cantidad</label>
+      <input id="cant-despacho" name="cantidad" type="number" min="1" step="1" value="1" inputmode="numeric" required>
+    </div>
+    <button type="submit">Confirmar despacho</button>
+  </form>
+  {% include "lector_codigo.html" %}
+</section>

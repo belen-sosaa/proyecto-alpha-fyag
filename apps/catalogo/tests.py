@@ -465,3 +465,15 @@ class AltaArticuloTests(TestCase):
                 self.assertContains(respuesta, "Artículo ya registrado")
         self.assertEqual(Articulo.objects.count(), 1)
         self.assertEqual(BitacoraAuditoria.objects.count(), 1)
+
+    def test_rechaza_duplicados_con_otras_mayusculas_y_conserva_el_escaneo(self):
+        datos = {**self.datos, "codigo_barras": "ab-001"}
+        self.assertRedirects(self.client.post(self.url, datos), reverse("bodega_web"))
+        articulo = Articulo.objects.get()
+        self.assertEqual(articulo.codigo_barras, "AB-001")
+        consulta = self.client.get(reverse("articulo_por_codigo"), {"codigo": "ab-001"})
+        self.assertEqual(consulta.json()["id"], articulo.pk)
+        for cambios in ({"sku": "rev-01", "codigo_barras": "AB-002"}, {"sku": "REV-02"}):
+            with self.subTest(cambios=cambios):
+                self.assertContains(self.client.post(self.url, {**datos, **cambios}), "Artículo ya registrado")
+        self.assertEqual(Articulo.objects.count(), 1)

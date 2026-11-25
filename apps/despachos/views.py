@@ -27,6 +27,8 @@ def vista_despacho(request):
     contexto = contexto_operativo(request.user)
     if not (contexto["perm"]["despachar"] or contexto["recepcion"]):
         return redirect("bodega_web")
+    modulo = contexto["modulos_operativos"]["despacho"]
+    contexto.update(modulo_actual=modulo, titulo_panel=modulo["nombre"])
     despachos = _despachos_visibles(request.user, contexto).order_by("-fecha_despacho", "-pk")
     pagina = Paginator(despachos, 10).get_page(request.GET.get("pagina"))
     contexto.update(pagina=pagina, despachos_recientes=pagina.object_list)
@@ -50,7 +52,12 @@ def comprobante_despacho(request, despacho_id):
 
     despacho = get_object_or_404(_despachos_visibles(request.user, contexto), pk=despacho_id)
     recepcion_firmada = getattr(despacho, "recepcion", None)
-    contexto.update(comprobante=despacho, recepcion_firmada=recepcion_firmada)
+    contexto.update(
+        comprobante=despacho,
+        recepcion_firmada=recepcion_firmada,
+        modulo_actual=contexto["modulos_operativos"]["despacho"],
+        titulo_panel="Comprobante",
+    )
     if recepcion_firmada:
         contexto["firma_trazos"] = [
             " ".join(f"{x},{y}" for x, y in (trazo if len(trazo) > 1 else trazo * 2))
@@ -112,18 +119,17 @@ def articulo_por_codigo(request):
     if not codigo or len(codigo) > Articulo._meta.get_field("codigo_barras").max_length:
         return JsonResponse({"error": "Ingresa un código de barras válido."}, status=400)
 
-    # La entrada manual es exacta. La misma etiqueta escaneada puede leerse como UPC-A
-    # de 12 dígitos o como EAN-13 con un cero inicial.
-    codigos = [codigo]
+    # Los identificadores alfanuméricos del catálogo se comparan sin distinguir mayúsculas.
+    filtro = Q(codigo_barras__iexact=codigo)
     formato = request.GET.get("formato")
     if codigo.isascii() and codigo.isdecimal():
         if formato == "UPC_A" and len(codigo) == 12:
-            codigos.append("0" + codigo)
+            filtro |= Q(codigo_barras="0" + codigo)
         elif formato == "EAN_13" and len(codigo) == 13 and codigo.startswith("0"):
-            codigos.append(codigo[1:])
+            filtro |= Q(codigo_barras=codigo[1:])
 
     # Dos coincidencias bastan para detectar la ambigüedad y evitar seleccionar el insumo equivocado.
-    coincidencias = list(Articulo.objects.filter(codigo_barras__in=codigos).values(
+    coincidencias = list(Articulo.objects.filter(filtro).values(
         "id", "sku", "descripcion", "codigo_barras", "unidad_medida",
     )[:2])
     if not coincidencias:

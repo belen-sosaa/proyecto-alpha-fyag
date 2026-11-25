@@ -167,8 +167,12 @@ class Articulo(models.Model):
         verbose_name_plural = "Insumos"
 
     @property
+    def es_stock_critico(self):
+        return self.stock_fisico <= self.stock_critico
+
+    @property
     def estado(self):
-        if self.stock_fisico <= self.stock_critico:
+        if self.es_stock_critico:
             return "Stock Crítico"
         return "Stock Normal"
 
@@ -308,6 +312,7 @@ class BitacoraAuditoria(RegistroInalterable):
 class ConteoInventario(models.Model):
     usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
     fecha_hora = models.DateTimeField(auto_now_add=True)
+    observacion = models.TextField(blank=True)
 
 
 class DetalleConteoInventario(models.Model):

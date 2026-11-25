@@ -1,3 +1,6 @@
+from datetime import datetime, timedelta, timezone
+from unittest.mock import patch
+
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AnonymousUser, Group
 from django.contrib.staticfiles import finders
@@ -152,6 +155,26 @@ class RolesTests(TestCase):
                 self.assertEqual(self.client.post(reverse("procesar_despacho")).status_code, 403)
                 self.assertEqual(self.client.get(reverse("obras_buscar"), {"q": "Edi"}).status_code, 403)
 
+    def test_cardex_muestra_valores_de_auditoria_y_protege_costos(self):
+        BitacoraAuditoria.objects.create(
+            usuario=self.usuarios[ADMIN_BODEGA], accion="EDITAR", entidad="Articulo", id_registro=1,
+            valor_anterior={"stock_fisico": 10}, valor_nuevo={"stock_fisico": 8},
+        )
+        BitacoraAuditoria.objects.create(
+            usuario=self.usuarios[FINANZAS], accion="COMPRA", entidad="FacturaCompra", id_registro=1,
+            valor_nuevo={"subtotal_neto": "999.12"},
+        )
+        url = reverse("cardex")
+        self.client.force_login(self.usuarios[AUDITOR])
+        pagina = self.client.get(url)
+        self.assertContains(pagina, "Anterior")
+        self.assertContains(pagina, "stock_fisico")
+        self.assertNotContains(pagina, "999.12")
+        self.client.force_login(self.usuarios[FINANZAS])
+        self.assertContains(self.client.get(url), "999.12")
+        self.client.force_login(self.usuarios[BODEGUERO])
+        self.assertEqual(self.client.get(url).status_code, 403)
+
     def test_bodega_puede_despachar_y_descontar_stock(self):
         self.assertIsNotNone(finders.find("js/obra_auto.js"))
         obra = Obra.objects.create(nombre="Edificio A")
@@ -216,6 +239,8 @@ class AccesoRUTTests(TestCase):
     def test_login_no_pide_elegir_version(self):
         respuesta = self.client.get(reverse("login"))
         self.assertContains(respuesta, 'name="rut"')
+        self.assertContains(respuesta, "js/formato_rut.js")
+        self.assertIsNotNone(finders.find("js/formato_rut.js"))
         self.assertNotContains(respuesta, 'name="destino"')
 
     def test_login_respeta_el_destino_original_del_enlace(self):
@@ -264,3 +289,29 @@ class AccesoRUTTests(TestCase):
         duplicado = PerfilUsuario(usuario=otro, rut="11111111-1")
         with self.assertRaisesMessage(ValidationError, "RUT"):
             duplicado.full_clean()
+
+    def test_formatos_del_rut_comparten_el_bloqueo_y_su_vencimiento(self):
+        url = reverse("login")
+        inicio = datetime(2026, 11, 19, 15, tzinfo=timezone.utc)
+        perfil = self.usuario.perfilusuario
+        with patch("apps.cuentas.forms.timezone.now", return_value=inicio) as reloj:
+            for rut in ("11.111.111-1", "11111111-1", "111111111", "11.111.111-1", "11111111-1"):
+                self.client.post(url, {"rut": rut, "password": "clave-incorrecta"})
+
+            perfil.refresh_from_db()
+            vence = inicio + timedelta(minutes=15)
+            self.assertEqual(perfil.intentos_fallidos, 5)
+            self.assertEqual(perfil.bloqueado_hasta, vence)
+
+            credenciales = {"rut": "111111111", "password": "clave-de-test"}
+            reloj.return_value = vence - timedelta(seconds=1)
+            self.assertContains(self.client.post(url, credenciales), "RUT o contraseña incorrectos")
+            perfil.refresh_from_db()
+            self.assertEqual(perfil.bloqueado_hasta, vence)
+
+            reloj.return_value = vence
+            self.assertRedirects(self.client.post(url, credenciales), reverse("bodega_web"))
+
+        perfil.refresh_from_db()
+        self.assertEqual(perfil.intentos_fallidos, 0)
+        self.assertIsNone(perfil.bloqueado_hasta)

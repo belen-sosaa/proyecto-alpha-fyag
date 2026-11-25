@@ -1,0 +1,51 @@
+<div class="tabla-desplazable" role="region" aria-label="Tabla de insumos" tabindex="0">
+  <table>
+    <thead>
+      <tr>
+        <th>SKU</th>
+        <th>Código de barras</th>
+        <th>Descripción</th>
+        <th>Categoría</th>
+        <th>Unidad</th>
+        <th>Stock</th>
+        <th>Acciones</th>
+      </tr>
+    </thead>
+
+    <tbody>
+      {% for articulo in articulos %}
+        <tr>
+          <td>{{ articulo.sku }}</td>
+          <td>{{ articulo.codigo_barras|default_if_none:"—" }}</td>
+          <td>{{ articulo.descripcion }}</td>
+          <td>{{ articulo.categoria.nombre }}</td>
+          <td>{{ articulo.unidad_medida }}</td>
+          <td>{{ articulo.stock_fisico }}</td>
+          <td>
+            <a class="boton boton-secundario" href="{% url 'articulo_detalle' articulo.pk %}">Ver detalle</a>
+            {% if perm.ver_costos %}
+              <a class="boton boton-secundario" href="{% url 'ultimos_precios' %}?articulo={{ articulo.pk }}">
+                Últimos precios
+              </a>
+            {% endif %}
+            {% if perm.editar_articulo %}
+              <a class="boton boton-secundario" href="{% url 'catalogo_editar' articulo.pk %}">
+                Editar
+              </a>
+            {% endif %}
+
+            {% if perm.eliminar_articulo %}
+              <a class="boton boton-peligro" href="{% url 'catalogo_eliminar' articulo.pk %}">
+                Eliminar
+              </a>
+            {% endif %}
+          </td>
+        </tr>
+      {% empty %}
+        <tr>
+          <td colspan="7">No se encontraron insumos.</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>

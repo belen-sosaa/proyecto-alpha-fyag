@@ -69,11 +69,14 @@ class ConteosInventarioTests(TestCase):
             "form-TOTAL_FORMS": 2, "form-INITIAL_FORMS": 0,
             "form-0-articulo": self.a.pk, "form-0-stock_fisico": 10,
             "form-1-articulo": self.b.pk, "form-1-stock_fisico": 5,
+            "observacion": "Revisar ubicación del material",
         })
         conteo = ConteoInventario.objects.get()
         reporte_url = reverse("discrepancias_conteo", args=[conteo.pk])
         self.assertRedirects(respuesta, reporte_url)
         self.assertContains(self.client.get(reporte_url), "No hay diferencias de stock.")
+        self.assertEqual(conteo.observacion, "Revisar ubicación del material")
+        self.assertContains(self.client.get(reporte_url), conteo.observacion)
         self.assertEqual(self.client.get(reverse("api_discrepancias_conteo", args=[conteo.pk])).json(), [])
 
     def test_datos_invalidos_no_guardan_conteos_parciales(self):

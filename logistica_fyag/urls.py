@@ -28,7 +28,7 @@ from apps.bodega.conteos import (
     vista_discrepancias,
 )
 from apps.bodega.egresos import registrar_egreso, vista_egreso
-from apps.bodega.views import vista_bodega
+from apps.bodega.views import vista_bodega, vista_cardex
 from apps.compras.views import (
     confirmar_ingreso,
     consultar_ultimos_precios,
@@ -62,10 +62,10 @@ urlpatterns = [
     path('', AccesoView.as_view(), name='login'),
     path('logout/', LogoutView.as_view(http_method_names=["post", "options"]), name='logout'),
     path('inicio/', vista_bodega, {'modulo': 'inicio'}, name='inicio'),
-    path('operaciones/', RedirectView.as_view(pattern_name='inicio')),
+    path('operaciones/', RedirectView.as_view(pattern_name='inicio', query_string=True)),
     path('bodega/', vista_bodega, name='bodega_web'),
     path('bodega/inventario/', RedirectView.as_view(pattern_name='catalogo_listar', query_string=True), name='inventario'),
-    path('bodega/cardex/', vista_bodega, {'modulo': 'auditoria'}, name='cardex'),
+    path('bodega/cardex/', vista_cardex, name='cardex'),
     path('bodega/conteos/', vista_conteos, name='conteos'),
     path('bodega/conteos/nuevo/', nuevo_conteo, name='nuevo_conteo'),
     path('bodega/conteos/<int:conteo_id>/', vista_discrepancias, name='discrepancias_conteo'),
@@ -90,6 +90,7 @@ urlpatterns = [
     path('catalogo/<int:pk>/editar/', catalogo_editar, name='catalogo_editar'),
     path('catalogo/<int:pk>/eliminar/', catalogo_eliminar, name='catalogo_eliminar'),
     path('despachos/', vista_despacho, name='despachos'),
+    path('despachos/', vista_despacho, name='despachos_web'),
     path('despachos/<int:despacho_id>/comprobante/', comprobante_despacho, name='comprobante_despacho'),
     path('despachos/<int:despacho_id>/recepcion/', registrar_recepcion, name='registrar_recepcion'),
     path('mobile/', RedirectView.as_view(pattern_name='despachos', query_string=True), name='bodega_mobile'),

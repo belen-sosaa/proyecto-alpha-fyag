@@ -19,65 +19,9 @@
 {% block content %}
   {% timezone "America/Santiago" %}
     {% if formulario %}
-      <h1>Registrar conteo físico</h1>
-      <p>Ingresa la cantidad que encontraste en bodega. El sistema guardará la diferencia para revisarla.</p>
-      <form method="post" id="form-conteo">
-        {% csrf_token %}
-        {{ formulario.management_form }}
-        {{ formulario.non_form_errors }}
-        <div id="lineas-conteo">
-          {% for linea in formulario %}
-            <div class="conteo-linea">
-              <div>{{ linea.articulo.label_tag }}{{ linea.articulo }}{{ linea.articulo.errors }}</div>
-              <div>{{ linea.stock_fisico.label_tag }}{{ linea.stock_fisico }}{{ linea.stock_fisico.errors }}</div>
-            </div>
-          {% endfor %}
-        </div>
-        <template id="linea-conteo">
-          <div class="conteo-linea">
-            <div>{{ formulario.empty_form.articulo.label_tag }}{{ formulario.empty_form.articulo }}</div>
-            <div>{{ formulario.empty_form.stock_fisico.label_tag }}{{ formulario.empty_form.stock_fisico }}</div>
-          </div>
-        </template>
-        <div class="conteos-acciones">
-          <button type="button" class="boton boton-secundario" id="agregar-linea" hidden>Agregar artículo</button>
-          <button type="button" class="boton boton-secundario" id="quitar-linea" hidden>Quitar último artículo</button>
-        </div>
-        <div class="conteos-acciones">
-          <button type="submit">Guardar conteo</button>
-          <a class="boton boton-secundario" href="{% url 'conteos' %}">Volver a conteos</a>
-        </div>
-      </form>
+      {% include "bodega/conteo_fisico.html" %}
     {% elif conteo %}
-      <h1>Conteo físico #{{ conteo.pk }}</h1>
-      <p>{{ conteo.usuario.get_full_name|default:conteo.usuario.get_username }} · {{ conteo.fecha_hora|date:"d/m/Y H:i" }}</p>
-      {% for nombre, detalles, vacio in grupos %}
-        <h2>{{ nombre }}</h2>
-        {% if detalles %}
-          <div class="conteo-tabla">
-            <table aria-label="{{ nombre }}">
-              <thead>
-                <tr><th scope="col">Artículo</th><th scope="col">Stock del sistema</th><th scope="col">Cantidad contada</th><th scope="col">Diferencia</th></tr>
-              </thead>
-              <tbody>
-                {% for detalle in detalles %}
-                  <tr>
-                    <th scope="row">{{ detalle.articulo }}</th>
-                    <td>{{ detalle.stock_sistema }}</td>
-                    <td>{{ detalle.stock_fisico }}</td>
-                    <td>{% if detalle.diferencia > 0 %}+{% endif %}{{ detalle.diferencia }}</td>
-                  </tr>
-                {% endfor %}
-              </tbody>
-            </table>
-          </div>
-        {% else %}
-          <p>{{ vacio }}</p>
-        {% endif %}
-      {% endfor %}
-      <div class="conteos-acciones">
-        <a class="boton boton-secundario" href="{% url 'conteos' %}">Volver a conteos</a>
-      </div>
+      {% include "bodega/discrepancias.html" %}
     {% else %}
       <h1>Conteos físicos</h1>
       <div class="conteos-acciones">

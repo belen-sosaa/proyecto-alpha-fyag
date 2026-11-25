@@ -21,6 +21,9 @@
       <a class="boton boton-secundario" href="{% url 'bodega_web' %}">Volver a bodega</a>
     </div>
   </form>
+  {% if devoluciones.number %}
+    {% include "bodega/devoluciones.html" %}
+  {% endif %}
 {% endblock %}
 
 {% block extra_js %}

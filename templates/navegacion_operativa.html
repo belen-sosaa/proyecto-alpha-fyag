@@ -1,0 +1,46 @@
+<div class="fondo-menu" data-cerrar-menu hidden></div>
+<aside id="menu-operativo" class="menu-operativo" aria-label="Menú operativo">
+  <div class="marca">
+    <span class="marca-icono" aria-hidden="true">FY</span>
+    <div>
+      <strong>Logística FYAG</strong>
+      <small>Control Operativo</small>
+    </div>
+  </div>
+  <button type="button" class="cerrar-menu" data-cerrar-menu aria-label="Cerrar menú">
+    <span aria-hidden="true">×</span>
+  </button>
+
+  {# Los enlaces reflejan las opciones del rol. Cada vista comprueba sus permisos en el servidor. #}
+  <nav class="modulos-operativos" aria-label="M?dulos operativos">
+    {% for modulo in modulos_operativos.values %}
+      <a href="{{ modulo.url }}"{% if modulo.clave == modulo_actual.clave %} aria-current="page"{% endif %}>
+        <i class="fas {{ modulo.icono }}" aria-hidden="true"></i> {{ modulo.nombre }}
+      </a>
+    {% endfor %}
+  </nav>
+
+  <div class="perfil-operativo">
+    <div class="identidad-operativa">
+      <span class="icono-perfil" aria-hidden="true"><i class="fas fa-user"></i></span>
+      <div>
+        <p id="nombre-usuario">{{ user.get_full_name|default:user.username }}</p>
+        <p>{{ rol_actual }}</p>
+      </div>
+    </div>
+    <button type="button" data-confirmar-salida aria-haspopup="dialog" aria-controls="confirmacion-salida">
+      <i class="fas fa-sign-out-alt" aria-hidden="true"></i>
+      Salir
+    </button>
+  </div>
+</aside>
+
+{# Solo el botón de confirmación envía el POST protegido por CSRF a la ruta de cierre de sesión. #}
+<dialog id="confirmacion-salida" class="dialogo-salida" aria-labelledby="titulo-salida">
+  <h2 id="titulo-salida">¿Quieres cerrar sesión?</h2>
+  <form method="post" action="{% url 'logout' %}">
+    {% csrf_token %}
+    <button type="button" data-cancelar-salida autofocus>Cancelar</button>
+    <button type="submit">Cerrar sesión</button>
+  </form>
+</dialog>

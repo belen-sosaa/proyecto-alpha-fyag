@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% load tz %}
+
+{% block title %}Cardex de movimientos · FYAG{% endblock %}
+
+{% block content %}
+  <a class="boton boton-secundario" href="{% url 'auditoria' %}">Volver a auditoría</a>
+  <div class="tabla-desplazable" role="region" aria-label="Movimientos del Cardex" tabindex="0">
+    <table>
+      <thead>
+        <tr>
+          <th scope="col">Fecha y hora</th><th scope="col">Usuario</th>
+          <th scope="col">Acción y registro</th><th scope="col">Detalle y valores</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% timezone "America/Santiago" %}
+          {% for movimiento in pagina %}
+            <tr>
+              <td><time datetime="{{ movimiento.fecha_hora|date:'c' }}">{{ movimiento.fecha_hora|date:"d/m/Y H:i:s" }}</time></td>
+              <td>{{ movimiento.usuario.get_full_name|default:movimiento.usuario.get_username }}</td>
+              <td><strong>{{ movimiento.accion }}</strong><br>{{ movimiento.entidad }} #{{ movimiento.id_registro }}</td>
+              <td>
+                {% if movimiento.detalle %}<p>{{ movimiento.detalle }}</p>{% endif %}
+                {% if perm.ver_costos or movimiento.accion != "COMPRA" and movimiento.entidad not in entidades_de_compra %}
+                  {% if movimiento.valor_anterior %}<p><strong>Anterior</strong> {{ movimiento.valor_anterior }}</p>{% endif %}
+                  {% if movimiento.valor_nuevo %}<p><strong>Nuevo</strong> {{ movimiento.valor_nuevo }}</p>{% endif %}
+                {% endif %}
+              </td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="4">No hay movimientos registrados.</td></tr>
+          {% endfor %}
+        {% endtimezone %}
+      </tbody>
+    </table>
+  </div>
+  {% if pagina.has_other_pages %}
+    <nav class="mt-4 flex flex-wrap items-center gap-3" aria-label="Páginas del Cardex">
+      {% if pagina.has_previous %}<a class="boton boton-secundario" href="?pagina={{ pagina.previous_page_number }}">Anterior</a>{% endif %}
+      <span>Página {{ pagina.number }} de {{ pagina.paginator.num_pages }}</span>
+      {% if pagina.has_next %}<a class="boton boton-secundario" href="?pagina={{ pagina.next_page_number }}">Siguiente</a>{% endif %}
+    </nav>
+  {% endif %}
+{% endblock %}

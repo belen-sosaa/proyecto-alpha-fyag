@@ -1,0 +1,24 @@
+{% load tz %}
+<section class="panel" aria-labelledby="eventos-recientes">
+  <div class="panel-cabecera">
+    <h2 id="eventos-recientes">Eventos recientes</h2>
+    <a class="accion" href="{% url 'cardex' %}">Ver Cardex de movimientos</a>
+    {% if perm.ver_conteos %}<a class="accion" href="{% url 'conteos' %}">Ver conteos físicos</a>{% endif %}
+  </div>
+  {% timezone "America/Santiago" %}
+    <ul class="registros">
+      {% for evento in eventos %}
+        <li class="registro">
+          <strong>{{ evento.accion }} · {{ evento.entidad }} #{{ evento.id_registro }}</strong>
+          <p>{{ evento.detalle }}</p>
+          <small>{{ evento.usuario.get_full_name|default:evento.usuario.get_username }} · <time datetime="{{ evento.fecha_hora|date:'c' }}">{{ evento.fecha_hora|date:'d/m/Y H:i' }}</time></small>
+          {% if evento.entidad == "ConteoInventario" and perm.ver_conteos %}
+            <p><a href="{% url 'discrepancias_conteo' evento.id_registro %}">Ver reporte del conteo</a></p>
+          {% endif %}
+        </li>
+      {% empty %}
+        <li class="vacio">Aún no hay eventos de auditoría.</li>
+      {% endfor %}
+    </ul>
+  {% endtimezone %}
+</section>

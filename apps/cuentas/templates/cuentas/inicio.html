@@ -1,0 +1,50 @@
+{% load tz %}
+  <div class="space-y-6">
+    {# vista_inicio calcula estos indicadores al cargar la página y los entrega a los roles correspondientes. #}
+    {% if resumen_stock %}
+      <section aria-label="Resumen de inventario" class="grid gap-4 sm:grid-cols-2">
+        <a href="{% url 'inventario' %}" class="block rounded-2xl border border-slate-200 bg-white p-5 shadow-sm hover:border-blue-400">
+          <h2 class="text-sm font-semibold text-slate-600">Insumos registrados</h2>
+          <p class="mt-2 text-3xl font-bold text-slate-900">{{ resumen_stock.total }}</p>
+        </a>
+        <a href="{% url 'inventario' %}" class="block rounded-2xl border border-slate-200 bg-white p-5 shadow-sm hover:border-blue-400">
+          <h2 class="text-sm font-semibold text-slate-600">Insumos con stock crítico</h2>
+          <p class="mt-2 text-3xl font-bold {% if resumen_stock.criticos %}text-red-700{% else %}text-slate-900{% endif %}">{{ resumen_stock.criticos }}</p>
+        </a>
+      </section>
+    {% endif %}
+
+    {# Quien puede despachar ve salidas recientes. El Supervisor tiene un acceso a Recepción. #}
+    {% if perm.despachar %}
+      <section aria-labelledby="titulo-despachos" class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <h2 id="titulo-despachos" class="text-lg font-bold text-slate-900">Últimos despachos</h2>
+          <a href="{% url 'despachos_web' %}" class="font-semibold text-blue-700 hover:underline">Ir a Despachos</a>
+        </div>
+        <ul class="mt-4 divide-y divide-slate-200">
+          {% for despacho in ultimos_despachos %}
+            <li class="flex flex-wrap items-start justify-between gap-x-6 gap-y-1 py-3">
+              <div class="min-w-0 break-words">
+                <p class="font-semibold text-slate-800">{{ despacho.articulo.descripcion }}</p>
+                <p class="text-sm text-slate-600">{{ despacho.cantidad }} · {{ despacho.obra.nombre }}</p>
+              </div>
+              <time datetime="{{ despacho.fecha_despacho|date:'c' }}" class="text-sm text-slate-600">
+                {{ despacho.fecha_despacho|timezone:"America/Santiago"|date:"d/m/Y H:i" }}
+              </time>
+            </li>
+          {% empty %}
+            <li class="py-3 text-sm text-slate-600">Todavía no hay despachos registrados.</li>
+          {% endfor %}
+        </ul>
+      </section>
+    {% elif recepcion %}
+      <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <h2 class="text-lg font-bold text-slate-900">Recepción de despachos</h2>
+        <a href="{% url 'despachos_web' %}" class="mt-3 inline-block font-semibold text-blue-700 hover:underline">Abrir Recepción</a>
+      </section>
+    {% endif %}
+
+    {% if modulos_operativos|length == 1 %}
+      <p class="text-slate-600">Tu cuenta no tiene módulos habilitados.</p>
+    {% endif %}
+  </div>

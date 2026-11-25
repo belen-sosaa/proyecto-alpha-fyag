@@ -283,10 +283,12 @@ class ArticuloPorCodigoTests(TestCase):
 
     def test_lector_se_muestra_en_nuevo_despacho_segun_el_rol(self):
         url = reverse("despachos")
+        self.assertEqual(reverse("despachos_web"), url)
         self.client.force_login(self.bodeguero)
         pagina = self.client.get(url)
         self.assertContains(pagina, 'id="lector-codigo"')
         self.assertContains(pagina, f'data-url="{reverse("articulo_por_codigo")}"')
+        self.assertContains(pagina, 'id="menu-operativo"')
         self.client.force_login(self.supervisor)
         self.assertNotContains(self.client.get(url), 'id="lector-codigo"')
 

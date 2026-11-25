@@ -1,3 +1,4 @@
+{% load static %}
 <!doctype html>
 <html lang="es">
   <head>
@@ -123,6 +124,10 @@
         -webkit-backdrop-filter: blur(16px);
         border: 1px solid rgba(255, 255, 255, 0.5);
       }
+
+      @media (prefers-reduced-motion: reduce) {
+        .blob { animation: none; }
+      }
     </style>
   </head>
 
@@ -172,8 +177,10 @@
               name="rut"
               value="{{ form.rut.value|default:'' }}"
               autocomplete="username"
+              autocapitalize="characters"
+              spellcheck="false"
               maxlength="12"
-              class="w-full border border-slate-200 pl-10 p-3 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-slate-50 text-slate-700 transition"
+              class="w-full border border-slate-200 py-3 pr-3 pl-10 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-slate-50 text-slate-700 transition"
               placeholder="11.111.111-1"
               required
             />
@@ -195,7 +202,7 @@
               id="password"
               name="password"
               autocomplete="current-password"
-              class="w-full border border-slate-200 pl-10 p-3 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-slate-50 text-slate-700 transition"
+              class="w-full border border-slate-200 py-3 pr-3 pl-10 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-slate-50 text-slate-700 transition"
               placeholder="••••••••"
               required
             />
@@ -219,5 +226,6 @@
 
     </div>
 
+    <script src="{% static 'js/formato_rut.js' %}" defer></script>
   </body>
 </html>

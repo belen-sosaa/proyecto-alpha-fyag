@@ -1,0 +1,30 @@
+<h1>Registrar conteo físico</h1>
+<p>Ingresa la cantidad que encontraste en bodega. El sistema guardará la diferencia para revisarla.</p>
+<form method="post" id="form-conteo">
+  {% csrf_token %}
+  {{ formulario.management_form }}
+  {{ formulario.non_form_errors }}
+  <div id="lineas-conteo">
+    {% for linea in formulario %}
+      <div class="conteo-linea">
+        <div>{{ linea.articulo.label_tag }}{{ linea.articulo }}{{ linea.articulo.errors }}</div>
+        <div>{{ linea.stock_fisico.label_tag }}{{ linea.stock_fisico }}{{ linea.stock_fisico.errors }}</div>
+      </div>
+    {% endfor %}
+  </div>
+  <template id="linea-conteo">
+    <div class="conteo-linea">
+      <div>{{ formulario.empty_form.articulo.label_tag }}{{ formulario.empty_form.articulo }}</div>
+      <div>{{ formulario.empty_form.stock_fisico.label_tag }}{{ formulario.empty_form.stock_fisico }}</div>
+    </div>
+  </template>
+  <div class="conteos-acciones">
+    <button type="button" class="boton boton-secundario" id="agregar-linea" hidden>Agregar artículo</button>
+    <button type="button" class="boton boton-secundario" id="quitar-linea" hidden>Quitar último artículo</button>
+  </div>
+  {{ observacion_form.observacion.as_field_group }}
+  <div class="conteos-acciones">
+    <button type="submit">Guardar conteo</button>
+    <a class="boton boton-secundario" href="{% url 'conteos' %}">Volver a conteos</a>
+  </div>
+</form>

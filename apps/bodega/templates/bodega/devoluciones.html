@@ -1,0 +1,37 @@
+{% load tz %}
+<section aria-labelledby="historial-devoluciones">
+  <h2 id="historial-devoluciones">Devoluciones registradas</h2>
+  <div class="tabla-desplazable" role="region" aria-labelledby="historial-devoluciones" tabindex="0">
+    <table>
+      <thead>
+        <tr>
+          <th scope="col">Fecha</th><th scope="col">Proveedor</th><th scope="col">Artículo</th>
+          <th scope="col">Cantidad</th><th scope="col">Motivo</th><th scope="col">Documento</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% timezone "America/Santiago" %}
+          {% for devolucion in devoluciones %}
+            <tr>
+              <td>{{ devolucion.fecha_hora|date:"d/m/Y H:i" }}</td>
+              <td>{{ devolucion.proveedor.razon_social }}</td>
+              <td>{{ devolucion.articulo }}</td>
+              <td>{{ devolucion.cantidad }}</td>
+              <td>{{ devolucion.justificacion }}</td>
+              <td>{{ devolucion.documento_referencia|default:"—" }}</td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="6">No hay devoluciones registradas.</td></tr>
+          {% endfor %}
+        {% endtimezone %}
+      </tbody>
+    </table>
+  </div>
+  {% if devoluciones.has_other_pages %}
+    <nav class="egreso-acciones" aria-label="Páginas de devoluciones">
+      {% if devoluciones.has_previous %}<a class="boton boton-secundario" href="?pagina={{ devoluciones.previous_page_number }}">Anterior</a>{% endif %}
+      <span>Página {{ devoluciones.number }} de {{ devoluciones.paginator.num_pages }}</span>
+      {% if devoluciones.has_next %}<a class="boton boton-secundario" href="?pagina={{ devoluciones.next_page_number }}">Siguiente</a>{% endif %}
+    </nav>
+  {% endif %}
+</section>
