@@ -11,7 +11,7 @@
     {% include "catalogo/campos_alta_articulo.html" %}
 
     <button type="submit">Guardar artículo</button>
-    <a href="{% url 'bodega_web' %}">Cancelar</a>
+    <a class="boton boton-secundario" href="{% url 'bodega_web' %}">Cancelar</a>
   </form>
 
   {% include "lector_codigo.html" with campo_destino=form.codigo_barras.id_for_label only %}

@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% load static tz %}
+
+{% block title %}Conteos físicos · FYAG{% endblock %}
+
+{% block extra_head %}
+  <style>
+    .conteos-acciones { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 16px 0; }
+    .conteo-linea { display: grid; gap: 10px; margin-bottom: 12px; padding: 14px; border: 1px solid var(--borde); border-radius: 10px; }
+    .conteo-linea > div { min-width: 0; }
+    .conteo-linea select, .conteo-linea input { width: 100%; }
+    .conteo-tabla { overflow-x: auto; }
+    @media (min-width: 640px) {
+      .conteo-linea { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
+    }
+  </style>
+{% endblock %}
+
+{% block content %}
+  {% timezone "America/Santiago" %}
+    {% if formulario %}
+      <h1>Registrar conteo físico</h1>
+      <p>Ingresa la cantidad que encontraste en bodega. El sistema guardará la diferencia para revisarla.</p>
+      <form method="post" id="form-conteo">
+        {% csrf_token %}
+        {{ formulario.management_form }}
+        {{ formulario.non_form_errors }}
+        <div id="lineas-conteo">
+          {% for linea in formulario %}
+            <div class="conteo-linea">
+              <div>{{ linea.articulo.label_tag }}{{ linea.articulo }}{{ linea.articulo.errors }}</div>
+              <div>{{ linea.stock_fisico.label_tag }}{{ linea.stock_fisico }}{{ linea.stock_fisico.errors }}</div>
+            </div>
+          {% endfor %}
+        </div>
+        <template id="linea-conteo">
+          <div class="conteo-linea">
+            <div>{{ formulario.empty_form.articulo.label_tag }}{{ formulario.empty_form.articulo }}</div>
+            <div>{{ formulario.empty_form.stock_fisico.label_tag }}{{ formulario.empty_form.stock_fisico }}</div>
+          </div>
+        </template>
+        <div class="conteos-acciones">
+          <button type="button" class="boton boton-secundario" id="agregar-linea" hidden>Agregar artículo</button>
+          <button type="button" class="boton boton-secundario" id="quitar-linea" hidden>Quitar último artículo</button>
+        </div>
+        <div class="conteos-acciones">
+          <button type="submit">Guardar conteo</button>
+          <a class="boton boton-secundario" href="{% url 'conteos' %}">Volver a conteos</a>
+        </div>
+      </form>
+    {% elif conteo %}
+      <h1>Conteo físico #{{ conteo.pk }}</h1>
+      <p>{{ conteo.usuario.get_full_name|default:conteo.usuario.get_username }} · {{ conteo.fecha_hora|date:"d/m/Y H:i" }}</p>
+      {% for nombre, detalles, vacio in grupos %}
+        <h2>{{ nombre }}</h2>
+        {% if detalles %}
+          <div class="conteo-tabla">
+            <table aria-label="{{ nombre }}">
+              <thead>
+                <tr><th scope="col">Artículo</th><th scope="col">Stock del sistema</th><th scope="col">Cantidad contada</th><th scope="col">Diferencia</th></tr>
+              </thead>
+              <tbody>
+                {% for detalle in detalles %}
+                  <tr>
+                    <th scope="row">{{ detalle.articulo }}</th>
+                    <td>{{ detalle.stock_sistema }}</td>
+                    <td>{{ detalle.stock_fisico }}</td>
+                    <td>{% if detalle.diferencia > 0 %}+{% endif %}{{ detalle.diferencia }}</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% else %}
+          <p>{{ vacio }}</p>
+        {% endif %}
+      {% endfor %}
+      <div class="conteos-acciones">
+        <a class="boton boton-secundario" href="{% url 'conteos' %}">Volver a conteos</a>
+      </div>
+    {% else %}
+      <h1>Conteos físicos</h1>
+      <div class="conteos-acciones">
+        {% if puede_registrar %}<a class="boton" href="{% url 'nuevo_conteo' %}">Registrar conteo</a>{% endif %}
+        <a class="boton boton-secundario" href="{% url 'bodega_web' %}">Volver al panel</a>
+      </div>
+      {% if pagina.object_list %}
+        <div class="conteo-tabla">
+          <table aria-label="Historial de conteos">
+            <thead><tr><th scope="col">Conteo</th><th scope="col">Fecha</th><th scope="col">Responsable</th><th scope="col">Discrepancias</th></tr></thead>
+            <tbody>
+              {% for registro in pagina %}
+                <tr>
+                  <th scope="row"><a href="{% url 'discrepancias_conteo' registro.pk %}">Ver conteo #{{ registro.pk }}</a></th>
+                  <td>{{ registro.fecha_hora|date:"d/m/Y H:i" }}</td>
+                  <td>{{ registro.usuario.get_full_name|default:registro.usuario.get_username }}</td>
+                  <td>{{ registro.discrepancias }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <p>Aún no hay conteos registrados.</p>
+      {% endif %}
+      {% if pagina.has_other_pages %}
+        <nav class="conteos-acciones" aria-label="Páginas de conteos">
+          {% if pagina.has_previous %}<a class="boton boton-secundario" href="?pagina={{ pagina.previous_page_number }}">Anterior</a>{% endif %}
+          <span>Página {{ pagina.number }} de {{ pagina.paginator.num_pages }}</span>
+          {% if pagina.has_next %}<a class="boton boton-secundario" href="?pagina={{ pagina.next_page_number }}">Siguiente</a>{% endif %}
+        </nav>
+      {% endif %}
+    {% endif %}
+  {% endtimezone %}
+{% endblock %}
+
+{% block extra_js %}
+  {% if formulario %}<script src="{% static 'js/conteo_inventario.js' %}" defer></script>{% endif %}
+{% endblock %}

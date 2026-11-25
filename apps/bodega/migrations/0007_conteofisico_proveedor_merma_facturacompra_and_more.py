@@ -44,6 +44,7 @@ class Migration(migrations.Migration):
         ),
         migrations.CreateModel(
             name='FacturaCompra',
+            options={'db_table': 'bodega_facturacompra_israel'},
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('numero_factura', models.CharField(max_length=50)),

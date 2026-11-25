@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     "apps.cuentas.apps.CuentasConfig",
     "apps.catalogo.apps.CatalogoConfig",
     "apps.despachos.apps.DespachosConfig",
+    "apps.compras",
 ]
 
 MIDDLEWARE = [
@@ -156,7 +157,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # AUTENTICACIÓN Y REDIRECCIONES
 LOGIN_URL = "login"
-LOGIN_REDIRECT_URL = "inicio"
+LOGIN_REDIRECT_URL = "bodega_web"
 LOGOUT_REDIRECT_URL = "login"
 
 # SESIONES: VENCIMIENTO TRAS 15 MINUTOS DE INACTIVIDAD

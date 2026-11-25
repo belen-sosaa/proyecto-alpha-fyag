@@ -45,10 +45,7 @@ class AdoptarEsquemaArticulo(migrations.SeparateDatabaseAndState):
 
 
 operaciones_articulo = [
-    migrations.RemoveField(
-        model_name='articulo',
-        name='estado',
-    ),
+    # Conserva la columna y sus valores hasta que la migración 0005 renombre el campo de Django.
     migrations.AddField(
         model_name='articulo',
         name='codigo_barras',

@@ -14,8 +14,8 @@ class ArticuloForm(forms.ModelForm):
         ]
 
     def clean_sku(self):
-        sku = self.cleaned_data["sku"].strip().upper()
-        existentes = Articulo.objects.filter(sku__iexact=sku)
+        sku = self.cleaned_data["sku"].strip()
+        existentes = Articulo.objects.filter(sku=sku)
         if self.instance.pk:
             existentes = existentes.exclude(pk=self.instance.pk)
         if existentes.exists():
@@ -25,10 +25,10 @@ class ArticuloForm(forms.ModelForm):
     def clean_codigo_barras(self):
         # El código leído o escrito se guarda como texto para conservar los ceros iniciales.
         codigo = self.cleaned_data.get("codigo_barras")
-        codigo = codigo.strip().upper() if codigo else None
+        codigo = codigo.strip() if codigo else None
         if not codigo:
             return None
-        existentes = Articulo.objects.filter(codigo_barras__iexact=codigo)
+        existentes = Articulo.objects.filter(codigo_barras=codigo)
         if self.instance.pk:
             # Al editar se excluye el propio artículo, para que pueda conservar su código.
             existentes = existentes.exclude(pk=self.instance.pk)

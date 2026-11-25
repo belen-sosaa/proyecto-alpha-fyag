@@ -1,38 +1,335 @@
-{% extends "base.html" %}
+{% load tz %}
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ modulo_actual.nombre|default:"Panel operativo" }} · FYAG</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <style>
+    :root {
+      color-scheme: light;
+      --texto: #17243a;
+      --secundario: #53637a;
+      --borde: #dce5f0;
+      --azul: #2456cb;
+      --fondo: #f2f6fb;
+    }
 
-{% block title %}Bodega | Logística FYAG{% endblock %}
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; font: 1rem/1.45 system-ui, sans-serif; background: var(--fondo); color: var(--texto); }
+    .estructura { display: grid; grid-template-columns: 16rem minmax(0, 1fr); min-height: 100vh; }
+    a { color: var(--azul); }
+    :where(a, button):focus-visible { outline: 3px solid #5691fc; outline-offset: 3px; }
+    button { font: inherit; cursor: pointer; }
+    [hidden] { display: none !important; }
 
-{% block content %}
-  <div class="grid grid-cols-1 items-start gap-4 lg:grid-cols-2 md:gap-8">
-    <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      <h2 class="text-lg font-bold text-slate-800">Existencias e insumos</h2>
-      <div class="mt-4 flex flex-wrap gap-3">
-        {% if mostrar_catalogo %}
-          <a href="{% url 'inventario' %}" class="rounded-lg bg-blue-50 px-4 py-3 font-semibold text-blue-700 hover:bg-blue-100">
-            Ver existencias
-          </a>
-        {% endif %}
-        {% if perm.ingresar_articulo %}
-          <a href="{% url 'articulo_crear' %}" class="rounded-lg bg-blue-600 px-4 py-3 font-semibold text-white hover:bg-blue-700">
-            Nuevo artículo
-          </a>
-        {% endif %}
-      </div>
-    </section>
-    {% if perm.registrar_merma %}
-    <section id="registro-merma" class="scroll-mt-20 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      <h2 class="mb-4 text-lg font-bold text-slate-800">Registro de Merma</h2>
-      <form method="post" action="{% url 'merma_crear' %}" class="space-y-5 text-sm">
-        {% csrf_token %}
-        {{ merma_form.as_p }}
-        <button type="submit" class="w-full rounded-lg bg-orange-500 p-3 font-bold text-white hover:bg-orange-600">
-          Guardar merma
+    .menu {
+      position: sticky;
+      top: 0;
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      color: #e5edfb;
+      background: linear-gradient(155deg, #14284c 0%, #101c35 55%, #0b1428 100%);
+      border-right: 1px solid #263653;
+    }
+
+    .marca { display: flex; flex: 0 0 auto; align-items: center; gap: 12px; padding: 23px 18px; border-bottom: 1px solid #31415e; }
+    .marca-icono { display: grid; flex: 0 0 42px; height: 42px; place-items: center; border-radius: 12px; background: #3063df; color: white; font-weight: 800; }
+    .marca p, .cuenta p { margin: 0; }
+    .marca strong { display: block; color: #fff; font-size: 17px; }
+    .marca small, .cuenta small { color: #aebfda; }
+    .marca-texto, .cuenta { min-width: 0; overflow-wrap: anywhere; }
+    .marca-texto { flex: 1; }
+    .menu nav { min-height: 0; flex: 1; overflow-y: auto; padding: 20px 12px; }
+    .menu-etiqueta { margin: 0 10px 12px; color: #aebfda; font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+    .modulos { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+    .modulo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-height: 48px;
+      padding: 8px 10px;
+      border-radius: 10px;
+      color: #e5edfb;
+      font-size: 15px;
+      font-weight: 600;
+      text-decoration: none;
+    }
+
+    .modulo i { display: grid; flex: 0 0 32px; height: 32px; place-items: center; border-radius: 8px; background: #263957; color: #d3e0fa; }
+    .modulo:hover { background: #253958; }
+    .modulo[aria-current="page"] { background: var(--azul); color: white; }
+    .modulo[aria-current="page"] i { background: #ffffff24; color: white; }
+    .menu-pie { flex: 0 0 auto; padding: 16px; border-top: 1px solid #31415e; }
+    .cuenta { margin-bottom: 10px; }
+    .menu-pie button { width: 100%; min-height: 44px; border: 1px solid #52627c; border-radius: 9px; background: transparent; color: #f2f5fa; }
+    .menu-pie button:hover { background: #253958; }
+
+    .principal { min-width: 0; }
+    .cabecera { display: flex; align-items: center; gap: 12px; padding: 18px clamp(16px, 4vw, 40px); border-bottom: 1px solid var(--borde); background: #fff; }
+    h1, h2, p { overflow-wrap: anywhere; }
+    h1 { margin: 0; font-size: clamp(24px, 3vw, 32px); }
+    h2 { margin: 0; font-size: 19px; }
+    .contenido { max-width: 76rem; padding: clamp(16px, 4vw, 40px); }
+    .panel { min-width: 0; padding: clamp(16px, 3vw, 24px); border: 1px solid var(--borde); border-radius: 15px; background: #fff; }
+    .panel + .panel { margin-top: 16px; }
+    .panel-cabecera { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; margin-bottom: 14px; }
+    .accion { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 9px 14px; border-radius: 9px; background: var(--azul); color: #fff; font-weight: 650; text-decoration: none; }
+    .accion:hover { background: #1a44a6; }
+    .vacio { margin: 8px 0 0; color: var(--secundario); }
+    .registros { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr)); gap: 12px; padding: 0; margin: 0; list-style: none; }
+    .registro { min-width: 0; padding: 13px 14px; border: 1px solid var(--borde); border-radius: 10px; background: #f8fafd; overflow-wrap: anywhere; }
+    .registro p { margin: 4px 0; }
+    .registro small, .registro time { color: var(--secundario); }
+    .critico { color: #a32121; font-weight: 650; }
+    .resumen { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr)); gap: 12px; margin: 16px 0 0; }
+    .resumen dt { color: var(--secundario); }
+    .resumen dd { margin: 5px 0 0; font-size: 1.25rem; font-weight: 750; }
+    .mensaje { margin: 0 0 12px; padding: 12px 16px; border: 1px solid #b5c9ec; border-radius: 10px; background: #ecf3ff; }
+    .mensaje.error { border-color: #fecaca; background: #fef2f2; color: #991b1b; }
+    .mensaje.success { border-color: #bbf7d0; background: #f0fdf4; color: #166534; }
+    .menu-movil { display: none; }
+    .dialogo-salida { width: min(26rem, calc(100% - 2rem)); padding: 24px; border: 1px solid var(--borde); border-radius: 15px; }
+    .dialogo-salida::backdrop { background: #071329a6; }
+    .dialogo-salida form { display: flex; gap: 10px; justify-content: flex-end; margin-top: 16px; }
+
+    @media (max-width: 767px) {
+      .estructura { display: block; }
+      .menu { position: fixed; inset: 0 auto 0 0; width: min(18rem, calc(100% - 2rem)); height: 100%; z-index: 20; visibility: hidden; }
+      .menu[data-abierto] { visibility: visible; }
+      .menu-movil { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; padding: 6px; border: 1px solid var(--borde); border-radius: 9px; background: #fff; color: #162946; }
+      .marca .menu-movil { border-color: #52627c; background: transparent; color: #fff; }
+      #fondo-menu { position: fixed; inset: 0; width: 100%; z-index: 19; padding: 0; border: 0; background: #071329a6; }
+    }
+  </style>
+</head>
+<body>
+  <div class="estructura">
+    <button id="fondo-menu" type="button" aria-label="Cerrar menú" tabindex="-1" hidden></button>
+    <aside id="menu-lateral" class="menu" aria-label="Menú operativo">
+      <div class="marca">
+        <span class="marca-icono" aria-hidden="true">FY</span>
+        <p class="marca-texto"><strong>Logística FYAG</strong><small>Control operativo</small></p>
+        <button type="button" id="cerrar-menu" class="menu-movil" aria-label="Cerrar menú">
+          <i class="fas fa-times" aria-hidden="true"></i>
         </button>
-      </form>
-      <a href="{% url 'devolucion_crear' %}" class="mt-4 inline-block font-semibold text-orange-700 hover:underline">
-        Devoluci?n a proveedor
-      </a>
-    </section>
-    {% endif %}
+      </div>
+      <nav aria-label="Módulos operativos">
+        {% if modulos_operativos %}
+          <p class="menu-etiqueta">Módulos operativos</p>
+          <ul class="modulos">
+            {% for modulo in modulos_operativos %}
+              <li>
+                <a class="modulo" href="{{ modulo.url }}"{% if modulo.clave == modulo_actual.clave %} aria-current="page"{% endif %}>
+                  <i class="fas {{ modulo.icono }}" aria-hidden="true"></i>
+                  {{ modulo.nombre }}
+                </a>
+              </li>
+            {% endfor %}
+          </ul>
+        {% endif %}
+      </nav>
+      <div class="menu-pie">
+        <div class="cuenta"><p>{{ user.get_full_name|default:user.get_username }}</p><small>{{ rol_actual }}</small></div>
+        <button type="button" data-confirmar-salida aria-haspopup="dialog" aria-controls="confirmacion-salida">
+          Cerrar sesión
+        </button>
+      </div>
+    </aside>
+
+    <div id="contenido-principal" class="principal">
+      <header class="cabecera">
+        <button id="abrir-menu" class="menu-movil" type="button" aria-label="Abrir menú" aria-controls="menu-lateral" aria-expanded="false">
+          <i class="fas fa-bars" aria-hidden="true"></i>
+        </button>
+        <h1>{{ modulo_actual.nombre|default:"Panel operativo" }}</h1>
+      </header>
+      <main class="contenido">
+        {% for message in messages %}
+          <p class="mensaje {{ message.tags }}" role="status">{{ message }}</p>
+        {% endfor %}
+
+        {% if modulo_actual.clave == "inicio" %}
+          {% if resumen_stock %}
+            <section class="panel" aria-label="Resumen de inventario">
+              <dl class="resumen">
+                <div class="registro"><dt>Insumos registrados</dt><dd>{{ resumen_stock.total }}</dd></div>
+                <div class="registro"><dt>Insumos con stock crítico</dt><dd class="critico">{{ resumen_stock.criticos }}</dd></div>
+              </dl>
+            </section>
+          {% endif %}
+          {% if perm.despachar %}
+            <section class="panel" aria-labelledby="despachos-inicio">
+              <div class="panel-cabecera">
+                <h2 id="despachos-inicio">Últimos despachos</h2>
+                <a class="accion" href="{% url 'despachos' %}">Ver despachos</a>
+              </div>
+              <ul class="registros">
+                {% for despacho in ultimos_despachos %}
+                  <li class="registro">{{ despacho.articulo }} · {{ despacho.cantidad }} · {{ despacho.obra.nombre }}</li>
+                {% empty %}
+                  <li class="vacio">Aún no hay despachos registrados.</li>
+                {% endfor %}
+              </ul>
+            </section>
+          {% elif recepcion %}
+            <a class="accion" href="{% url 'despachos' %}">Abrir recepción de despachos</a>
+          {% endif %}
+        {% elif modulo_actual.clave == "bodega" %}
+          {% if perm.ver_conteos %}
+            <section class="panel" aria-labelledby="conteos-fisicos">
+              <div class="panel-cabecera">
+                <h2 id="conteos-fisicos">Conteos físicos</h2>
+                <a class="accion" href="{% url 'conteos' %}">Ver conteos</a>
+              </div>
+            </section>
+          {% endif %}
+          <section class="panel" aria-labelledby="existencias">
+            <div class="panel-cabecera">
+              <h2 id="existencias">Existencias</h2>
+              {% if perm.ingresar_articulo %}<a class="accion" href="{% url 'articulo_crear' %}">Nuevo artículo</a>{% endif %}
+            </div>
+            <ul class="registros">
+              {% for articulo in existencias %}
+                <li class="registro">
+                  <strong>{{ articulo.descripcion }}</strong>
+                  <p><small>{{ articulo.sku }} · {{ articulo.categoria.nombre }}</small></p>
+                  <p{% if articulo.stock_fisico <= articulo.stock_critico %} class="critico"{% endif %}>{{ articulo.stock_fisico }} {{ articulo.unidad_medida }} · {{ articulo.estado }}</p>
+                </li>
+              {% empty %}
+                <li class="vacio">Aún no hay artículos registrados.</li>
+              {% endfor %}
+            </ul>
+          </section>
+          {% if perm.registrar_merma %}
+            <section class="panel" aria-labelledby="otros-egresos">
+              <div class="panel-cabecera">
+                <h2 id="otros-egresos">Mermas y devoluciones</h2>
+                <a class="accion" href="{% url 'merma_crear' %}">Registrar merma</a>
+                {% if perm.registrar_devolucion %}
+                  <a class="accion" href="{% url 'devolucion_crear' %}">Registrar devolución</a>
+                {% endif %}
+              </div>
+            </section>
+          {% endif %}
+        {% elif modulo_actual.clave == "auditoria" %}
+          <section class="panel" aria-labelledby="eventos-recientes">
+            <div class="panel-cabecera">
+              <h2 id="eventos-recientes">Eventos recientes</h2>
+              {% if perm.ver_conteos %}<a class="accion" href="{% url 'conteos' %}">Ver conteos físicos</a>{% endif %}
+            </div>
+            {% timezone "America/Santiago" %}
+              <ul class="registros">
+                {% for evento in eventos %}
+                  <li class="registro">
+                    <strong>{{ evento.accion }} · {{ evento.entidad }} #{{ evento.id_registro }}</strong>
+                    <p>{{ evento.detalle }}</p>
+                    <small>{{ evento.usuario.get_full_name|default:evento.usuario.get_username }} · <time datetime="{{ evento.fecha_hora|date:'c' }}">{{ evento.fecha_hora|date:'d/m/Y H:i' }}</time></small>
+                    {% if evento.entidad == "ConteoInventario" and perm.ver_conteos %}
+                      <p><a href="{% url 'discrepancias_conteo' evento.id_registro %}">Ver reporte del conteo</a></p>
+                    {% endif %}
+                  </li>
+                {% empty %}
+                  <li class="vacio">Aún no hay eventos de auditoría.</li>
+                {% endfor %}
+              </ul>
+            {% endtimezone %}
+          </section>
+        {% elif modulo_actual.clave == "compras" %}
+          <section class="panel" aria-labelledby="facturas-recientes">
+            <div class="panel-cabecera">
+              <h2 id="facturas-recientes">Facturas registradas</h2>
+              {% if perm.registrar_factura %}<a class="accion" href="{% url 'vista_registrar_compra' %}">Registrar factura</a>{% endif %}
+              {% if perm.ver_costos %}<a class="accion" href="{% url 'ultimos_precios' %}">Últimos precios</a>{% endif %}
+            </div>
+            <ul class="registros">
+              {% for factura in facturas %}
+                <li class="registro">
+                  <strong>Factura {{ factura.folio }}</strong>
+                  <p>{{ factura.proveedor__razon_social }}</p>
+                  <p>Ingreso {{ factura.estado_ingreso|lower }}</p>
+                  {% if perm.confirmar_ingreso and factura.estado_ingreso == "PENDIENTE" %}
+                    <form method="post" action="{% url 'vista_confirmar_compra' factura.pk %}">
+                      {% csrf_token %}
+                      <button type="submit" class="accion">Confirmar ingreso</button>
+                    </form>
+                  {% endif %}
+                  <time datetime="{{ factura.fecha_emision|date:'Y-m-d' }}">{{ factura.fecha_emision|date:'d/m/Y' }}</time>
+                </li>
+              {% empty %}
+                <li class="vacio">Aún no hay facturas registradas.</li>
+              {% endfor %}
+            </ul>
+          </section>
+        {% elif modulo_actual.clave == "finanzas" %}
+          <section class="panel" aria-labelledby="resumen-compras">
+            <div class="panel-cabecera">
+              <h2 id="resumen-compras">Resumen de facturas de compra</h2>
+              <a class="accion" href="{% url 'ultimos_precios' %}">Últimos precios</a>
+            </div>
+            <dl class="resumen">
+              <div class="registro"><dt>Facturas</dt><dd>{{ resumen.facturas }}</dd></div>
+              <div class="registro"><dt>Monto neto</dt><dd>$ {{ resumen.neto|floatformat:"2g" }}</dd></div>
+              <div class="registro"><dt>IVA</dt><dd>$ {{ resumen.iva|floatformat:"2g" }}</dd></div>
+              <div class="registro"><dt>Total</dt><dd>$ {{ resumen.total|floatformat:"2g" }}</dd></div>
+            </dl>
+          </section>
+        {% elif recepcion %}
+          <section class="panel" aria-labelledby="recepcion">
+            <div class="panel-cabecera">
+              <h2 id="recepcion">Recepción de despachos</h2>
+              <a class="accion" href="{% url 'despachos' %}">Abrir recepción</a>
+            </div>
+          </section>
+        {% elif not modulo_actual %}
+          <p class="vacio">Tu cuenta todavía no tiene módulos operativos asignados.</p>
+        {% endif %}
+      </main>
+    </div>
   </div>
-{% endblock %}
+
+  <dialog id="confirmacion-salida" class="dialogo-salida" aria-labelledby="titulo-salida">
+    <h2 id="titulo-salida">¿Quieres cerrar sesión?</h2>
+    <form method="post" action="{% url 'logout' %}">
+      {% csrf_token %}
+      <button type="button" data-cancelar-salida autofocus>Cancelar</button>
+      <button type="submit" class="accion">Cerrar sesión</button>
+    </form>
+  </dialog>
+
+  <script>
+    const salida = document.getElementById("confirmacion-salida");
+    document.querySelector("[data-confirmar-salida]").addEventListener("click", () => salida.showModal());
+    document.querySelector("[data-cancelar-salida]").addEventListener("click", () => salida.close());
+
+    const menuLateral = document.getElementById("menu-lateral");
+    const fondoMenu = document.getElementById("fondo-menu");
+    const abrirMenu = document.getElementById("abrir-menu");
+    const cerrarMenu = document.getElementById("cerrar-menu");
+    const contenidoPrincipal = document.getElementById("contenido-principal");
+    const pantallaMovil = window.matchMedia("(max-width: 767px)");
+
+    function mostrarMenu(abierto) {
+      menuLateral.toggleAttribute("data-abierto", abierto);
+      fondoMenu.hidden = !abierto;
+      abrirMenu.setAttribute("aria-expanded", String(abierto));
+      contenidoPrincipal.inert = abierto;
+      if (abierto) cerrarMenu.focus();
+      else if (pantallaMovil.matches) abrirMenu.focus();
+    }
+
+    abrirMenu.addEventListener("click", () => mostrarMenu(true));
+    cerrarMenu.addEventListener("click", () => mostrarMenu(false));
+    fondoMenu.addEventListener("click", () => mostrarMenu(false));
+    pantallaMovil.addEventListener("change", () => {
+      if (!pantallaMovil.matches) mostrarMenu(false);
+    });
+    document.addEventListener("keydown", (evento) => {
+      if (evento.key === "Escape" && menuLateral.hasAttribute("data-abierto")) mostrarMenu(false);
+    });
+  </script>
+</body>
+</html>

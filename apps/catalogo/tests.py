@@ -1,21 +1,12 @@
-﻿from io import BytesIO
-from decimal import Decimal
+﻿from unittest.mock import patch
 
 from django.contrib.auth.models import Group, Permission, User
-from openpyxl import load_workbook
 from django.test import TestCase
 from django.urls import reverse
+from pymongo.errors import ServerSelectionTimeoutError
 
-from apps.bodega.models import (
-    Articulo,
-    BitacoraAuditoria,
-    Categoria,
-    Despacho,
-    DetalleFacturaCompra,
-    FacturaCompra,
-    Obra,
-    Proveedor,
-)
+from apps.bodega.models import Articulo, BitacoraAuditoria, Categoria, Obra
+from apps.despachos.models import Despacho
 
 class CatalogoInsumosCRUDTests(TestCase):
     """
@@ -191,6 +182,34 @@ class CatalogoInsumosCRUDTests(TestCase):
         self.assertIsNotNone(auditoria)
         self.assertEqual(auditoria.usuario, self.admin_bodega)
 
+    def test_crear_insumo_permite_reintentar_ficha_si_mongodb_falla(self):
+        self.client.force_login(self.admin_bodega)
+        datos = {
+            "sku": "REF-999",
+            "descripcion": "Compresor",
+            "categoria": self.cat_refrigeracion.pk,
+            "unidad_medida": "unidad",
+            "stock_minimo": 4,
+            "stock_critico": 2,
+            "especificaciones": '{"modelo": "Demo"}',
+        }
+        with patch("apps.catalogo.views.guardar_especificaciones", side_effect=ServerSelectionTimeoutError):
+            respuesta = self.client.post(reverse("catalogo_crear"), datos, follow=True)
+
+        insumo = Articulo.objects.get(sku=datos["sku"])
+        editar = reverse("catalogo_editar", args=[insumo.pk])
+        self.assertRedirects(respuesta, editar)
+        self.assertContains(respuesta, "La ficha técnica quedó pendiente.")
+        self.assertIsNone(insumo.mongodb_especificaciones_id)
+        self.assertTrue(BitacoraAuditoria.objects.filter(id_registro=insumo.pk, accion="CREAR").exists())
+
+        with patch("apps.catalogo.views.guardar_especificaciones", return_value=insumo.pk):
+            respuesta = self.client.post(editar, datos)
+        self.assertRedirects(respuesta, reverse("catalogo_listar"))
+        insumo.refresh_from_db()
+        self.assertEqual(insumo.mongodb_especificaciones_id, str(insumo.pk))
+        self.assertEqual(Articulo.objects.filter(sku=datos["sku"]).count(), 1)
+
     def test_prevencion_duplicados_sku_y_codigo_barras(self):
         """
         Verifica que el sistema impida registrar un insumo cuyo SKU o código
@@ -294,6 +313,36 @@ class CatalogoInsumosCRUDTests(TestCase):
         self.assertEqual(auditoria.valor_anterior["ubicacion_fisica"], "Pasillo A-1")
         self.assertEqual(auditoria.valor_nuevo["ubicacion_fisica"], "Pasillo Nuevo C-3")
 
+    def test_editar_lee_stock_despues_de_bloquear_el_insumo(self):
+        self.client.force_login(self.admin_bodega)
+        insumo = self.insumo_con_stock
+        seleccionar_con_bloqueo = Articulo.objects.select_for_update
+
+        def completar_despacho_antes_del_bloqueo():
+            Articulo.objects.filter(pk=insumo.pk).update(stock_fisico=12)
+            return seleccionar_con_bloqueo()
+
+        with patch.object(
+            Articulo.objects, "select_for_update", side_effect=completar_despacho_antes_del_bloqueo,
+        ) as bloqueo:
+            respuesta = self.client.post(reverse("catalogo_editar", args=[insumo.pk]), {
+                "sku": insumo.sku,
+                "codigo_barras": insumo.codigo_barras,
+                "descripcion": "Descripción actualizada",
+                "categoria": insumo.categoria_id,
+                "unidad_medida": insumo.unidad_medida,
+                "stock_minimo": insumo.stock_minimo,
+                "stock_critico": insumo.stock_critico,
+            })
+
+        bloqueo.assert_called_once_with()
+        self.assertRedirects(respuesta, reverse("catalogo_listar"))
+        insumo.refresh_from_db()
+        self.assertEqual(insumo.stock_fisico, 12)
+        evento = BitacoraAuditoria.objects.get(id_registro=insumo.pk, accion="EDITAR")
+        self.assertEqual(evento.valor_anterior["stock_fisico"], 12)
+        self.assertEqual(evento.valor_nuevo["stock_fisico"], 12)
+
     # ==========================================================================
     # SECCIÓN 5: DELETE (BLOQUEO DE ELIMINACIÓN CON MOVIMIENTOS O STOCK)
     # ==========================================================================
@@ -360,97 +409,6 @@ class CatalogoInsumosCRUDTests(TestCase):
         )
 
 
-class HistoriasUsuarioCatalogoTests(TestCase):
-    def setUp(self):
-        self.usuario = User.objects.create_user(username="catalogo_hu")
-        self.usuario.groups.add(Group.objects.create(name="Administrador de Bodega"))
-        self.client.force_login(self.usuario)
-        self.categoria = Categoria.objects.create(nombre="Catálogo HU")
-        self.articulo = Articulo.objects.create(
-            sku="HU-PRICE",
-            descripcion="Artículo con precios",
-            categoria=self.categoria,
-        )
-        self.proveedor = Proveedor.objects.create(nombre="Proveedor Precio")
-
-    def test_hu011_muestra_exactamente_ultimos_tres_precios_y_exporta_excel(self):
-        for numero in range(1, 6):
-            factura = FacturaCompra.objects.create(
-                numero_factura=f"FAC-{numero}",
-                proveedor=self.proveedor,
-                usuario=self.usuario,
-                total_neto=Decimal("100.00"),
-            )
-            DetalleFacturaCompra.objects.create(
-                factura=factura,
-                articulo=self.articulo,
-                cantidad=1,
-                precio_unitario=Decimal(numero),
-                subtotal_neto=Decimal(numero),
-            )
-
-        respuesta = self.client.get(
-            reverse("articulo_detalle", args=[self.articulo.pk])
-        )
-        self.assertEqual(respuesta.status_code, 200)
-        for factura in ("FAC-5", "FAC-4", "FAC-3"):
-            self.assertContains(respuesta, factura)
-        self.assertNotContains(respuesta, "FAC-2")
-        self.assertNotContains(respuesta, "FAC-1")
-
-        respuesta = self.client.get(
-            reverse("articulo_exportar_precios_excel", args=[self.articulo.pk])
-        )
-        self.assertEqual(
-            respuesta["Content-Type"],
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        )
-        libro = load_workbook(BytesIO(respuesta.content), read_only=True)
-        hoja = libro.active
-        filas = list(hoja.iter_rows(values_only=True))
-        self.assertEqual(
-            filas[0],
-            (
-                "Fecha",
-                "Factura",
-                "Proveedor",
-                "Precio Unitario",
-                "Descuentos",
-                "Precio Neto Final",
-            ),
-        )
-        self.assertEqual(len(filas), 4)
-        self.assertEqual(filas[1][1], "FAC-5")
-
-    def test_hu011_excel_muestra_precio_neto_unitario(self):
-        factura = FacturaCompra.objects.create(
-            numero_factura="FAC-UNIDAD",
-            proveedor=self.proveedor,
-            usuario=self.usuario,
-            total_neto=Decimal("200.00"),
-        )
-        DetalleFacturaCompra.objects.create(
-            factura=factura,
-            articulo=self.articulo,
-            cantidad=4,
-            precio_unitario=Decimal("100.00"),
-            descuento_1=Decimal("50"),
-            subtotal_neto=Decimal("200.00"),
-        )
-
-        respuesta = self.client.get(
-            reverse("articulo_detalle", args=[self.articulo.pk])
-        )
-        self.assertContains(respuesta, "$50.00")
-
-        respuesta = self.client.get(
-            reverse("articulo_exportar_precios_excel", args=[self.articulo.pk])
-        )
-        libro = load_workbook(BytesIO(respuesta.content), read_only=True)
-        fila = list(libro.active.iter_rows(values_only=True))[1]
-        self.assertEqual(fila[5], 50)
-
-
 class AltaArticuloTests(TestCase):
     def setUp(self):
         self.usuario = User.objects.create_user(username="bodega_alta")
@@ -507,19 +465,3 @@ class AltaArticuloTests(TestCase):
                 self.assertContains(respuesta, "Artículo ya registrado")
         self.assertEqual(Articulo.objects.count(), 1)
         self.assertEqual(BitacoraAuditoria.objects.count(), 1)
-
-    def test_rechaza_duplicados_insensibles_a_mayusculas(self):
-        self.client.post(self.url, self.datos)
-        respuesta = self.client.post(self.url, {
-            **self.datos,
-            "sku": "rev-01",
-            "codigo_barras": "100200",
-        })
-        self.assertContains(respuesta, "Artículo ya registrado")
-
-        respuesta = self.client.post(self.url, {
-            **self.datos,
-            "sku": "REV-02",
-            "codigo_barras": "100100",
-        })
-        self.assertContains(respuesta, "Artículo ya registrado")

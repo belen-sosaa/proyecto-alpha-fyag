@@ -17,14 +17,13 @@ SIN_ROL = "Sin rol"
 MODULOS = {
     "panel": ("Inicio", "fa-gauge-high", "inicio", "Alertas y resumen de la sesión"),
     "catalogo": ("Catálogo", "fa-boxes-stacked", "catalogo_listar", "Consulta de existencias"),
-    "cardex": ("Auditoría", "fa-clipboard-check", "auditoria", "Auditoría de movimientos"),
-    "despacho": ("Despachos", "fa-truck-fast", "despachos_web", "Despachos de materiales y recepción en obra"),
+    "cardex": ("Cardex", "fa-clipboard-check", "cardex", "Auditoría de movimientos"),
+    "despacho": ("Despachos", "fa-truck-fast", "despachos", "Salidas a obra"),
     "merma": ("Mermas", "fa-triangle-exclamation", "merma_crear", "Bajas con justificación"),
     "compras": ("Compras", "fa-file-invoice-dollar", "compras", "Presupuestos y órdenes"),
     "usuarios": ("Usuarios", "fa-users-gear", "usuarios", "Gestión de cuentas"),
 }
 
-# Módulos asociados a cada rol. Las vistas usan esta lista para construir la navegación.
 ACCESO = {
     GERENTE: ("panel", "catalogo", "cardex", "compras"),
     ADMIN_TI: ("panel", "usuarios"),
@@ -36,18 +35,23 @@ ACCESO = {
     ADMIN_GENERAL_LEGADO: ("panel", "catalogo", "cardex"),
 }
 
-# Acciones que el servidor permite a cada rol, incluso al acceder a una ruta directamente.
 FACULTADES = {
     "ver_catalogo": (GERENTE, ADMIN_BODEGA, BODEGUERO, FINANZAS, AUDITOR, ADMIN_GENERAL_LEGADO),
     "emitir_oc": (FINANZAS,),
     "crear_presupuesto": (BODEGUERO, ADMIN_BODEGA),
     "registrar_merma": (BODEGUERO, ADMIN_BODEGA),
+    "registrar_devolucion": (ADMIN_BODEGA,),
     "ingresar_articulo": (ADMIN_BODEGA, ADMIN_GENERAL_LEGADO),
     "editar_articulo": (ADMIN_BODEGA, ADMIN_GENERAL_LEGADO),
     "eliminar_articulo": (ADMIN_BODEGA, ADMIN_GENERAL_LEGADO),
     "gestionar_usuarios": (ADMIN_TI,),
     "ver_costos": (GERENTE, FINANZAS, ADMIN_BODEGA),
     "despachar": (BODEGUERO, ADMIN_BODEGA),
+    "firmar_recepcion": (SUPERVISOR,),
+    "registrar_conteo": (BODEGUERO, ADMIN_BODEGA),
+    "ver_conteos": (BODEGUERO, ADMIN_BODEGA, GERENTE, AUDITOR),
+    "registrar_factura": (FINANZAS, ADMIN_BODEGA),
+    "confirmar_ingreso": (BODEGUERO, ADMIN_BODEGA),
 }
 
 
@@ -64,7 +68,6 @@ def rol_principal(user):
     for grupo in grupos:
         if grupo in ROLES:
             return grupo
-    # El grupo antiguo se toma como respaldo cuando la cuenta aún no tiene un rol actual.
     return ADMIN_GENERAL_LEGADO if ADMIN_GENERAL_LEGADO in grupos else SIN_ROL
 
 
