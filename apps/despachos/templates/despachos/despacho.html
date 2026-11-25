@@ -1,0 +1,205 @@
+{% extends "base.html" %}
+{% load static tz %}
+
+{% block title %}Despachos · FYAG{% endblock %}
+
+{% block datos_usuario %}
+  <strong>{{ user.get_full_name|default:user.get_username }}</strong> · {{ rol_actual }}
+{% endblock %}
+
+{% block extra_head %}
+  <style>
+    .despacho-cabecera { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 20px; margin-bottom: 24px; }
+    .despacho-cabecera h1, .despacho-panel h2 { margin: 0; }
+    .despacho-panel h2 { font-size: 19px; }
+    .despacho-grid { display: grid; gap: 24px; }
+    .despacho-panel { min-width: 0; }
+    .despacho-formulario { display: grid; gap: 16px; }
+    .despacho-formulario :is(input, select, button) { min-height: 48px; }
+    .despacho-ayuda { margin: 4px 0 0; color: var(--secundario); font-size: 14px; }
+    .despacho-resultados { margin: 4px 0 0; padding: 0; list-style: none; }
+    .despacho-resultados button { width: 100%; margin-top: 4px; background: #eff6ff; color: #1e40af; text-align: left; }
+    .despacho-resultados button:hover { background: #dbeafe; }
+    .despacho-registros { display: grid; gap: 12px; margin: 16px 0 0; padding: 0; list-style: none; }
+    .despacho-registro { padding: 14px; border: 1px solid var(--borde); border-radius: 12px; background: #f8fafc; overflow-wrap: anywhere; }
+    .despacho-registro p { margin: 5px 0; }
+    .despacho-registro time { color: var(--secundario); font-size: 14px; }
+    .despacho-registro dl { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 10px; margin: 10px 0 0; font-size: 14px; }
+    .despacho-registro dt { font-weight: 600; }
+    .despacho-registro dd { margin: 0; }
+    .despacho-qr { margin: 16px 0; }
+    .despacho-qr summary { padding: 8px 0; color: #1d4ed8; cursor: pointer; }
+    .despacho-registro a, .despacho-paginacion { margin-top: 12px; }
+    .despacho-paginacion, .firma-acciones { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+    .comprobante-despacho { max-width: 650px; margin: 0 auto 24px; }
+    .firma-despacho { display: block; width: 100%; height: auto; margin: 10px 0; border: 1px solid var(--borde); border-radius: 8px; background: white; }
+    canvas.firma-despacho { touch-action: none; cursor: crosshair; }
+    .firma-acciones button { min-height: 44px; }
+    @media (min-width: 900px) {
+      .despacho-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 32px; }
+    }
+    {% if comprobante %}
+      @media print {
+        body, #comprobante-despacho { background: white; }
+        .cabecera, .mensaje, .contenido > :not(#comprobante-despacho) { display: none; }
+        .contenedor, .contenido, #comprobante-despacho {
+          width: auto; max-width: none; margin: 0; padding: 0; border: 0; box-shadow: none;
+        }
+        .contenido { overflow: visible; }
+        #comprobante-despacho .firma-despacho { max-width: 320px; }
+      }
+    {% endif %}
+  </style>
+{% endblock %}
+
+{% block content %}
+  <div class="despacho-cabecera">
+    <h1>{% if comprobante %}Comprobante{% elif recepcion %}Recepción de despachos{% else %}Despachos{% endif %}</h1>
+    {% if comprobante %}
+      <a class="boton boton-secundario" href="{% url 'despachos' %}">Volver a despachos</a>
+    {% else %}
+      <a class="boton boton-secundario" href="{% url 'bodega_web' %}">Volver a bodega</a>
+    {% endif %}
+  </div>
+
+  {% if comprobante %}
+    {% timezone "America/Santiago" %}
+      <article class="despacho-registro comprobante-despacho" id="comprobante-despacho">
+        <h2>Comprobante de despacho #{{ comprobante.pk }}</h2>
+        <dl>
+          <dt>Fecha de despacho</dt><dd>{{ comprobante.fecha_despacho|date:"d/m/Y H:i" }}</dd>
+          <dt>Obra</dt><dd>{{ comprobante.obra.nombre }}</dd>
+          <dt>Artículo</dt><dd>{{ comprobante.articulo.sku }} · {{ comprobante.articulo.descripcion }}</dd>
+          <dt>Cantidad</dt><dd>{{ comprobante.cantidad }} {{ comprobante.articulo.unidad_medida }}</dd>
+          <dt>Responsable</dt><dd>{{ comprobante.usuario.get_full_name|default:comprobante.usuario.username }}</dd>
+          {% if recepcion_firmada %}
+            <dt>Recibido por</dt><dd>{{ recepcion_firmada.nombre_receptor }}</dd>
+            <dt>Fecha de recepción</dt><dd>{{ recepcion_firmada.fecha_recepcion|date:"d/m/Y H:i" }}</dd>
+          {% else %}
+            <dt>Recepción</dt><dd>Pendiente de firma</dd>
+          {% endif %}
+        </dl>
+        {% if recepcion_firmada %}
+          <svg class="firma-despacho" viewBox="0 0 600 220" role="img" aria-label="Firma de recepción">
+            {% for trazo in firma_trazos %}
+              <polyline points="{{ trazo }}" fill="none" stroke="#14213d" stroke-width="3"
+                        stroke-linecap="round" stroke-linejoin="round" />
+            {% endfor %}
+          </svg>
+        {% endif %}
+      </article>
+    {% endtimezone %}
+    <div class="comprobante-despacho firma-acciones">
+      <button type="button" class="boton boton-secundario" onclick="window.print()">Imprimir o guardar como PDF</button>
+    </div>
+    {% if form_firma %}
+      <form method="post" action="{% url 'registrar_recepcion' comprobante.pk %}"
+            class="comprobante-despacho despacho-formulario" id="form-recepcion">
+        {% csrf_token %}
+        {{ form_firma.firma }}
+        <div>
+          <p>Firma como <strong>{{ user.get_full_name|default:user.username }}</strong> para confirmar la recepción.</p>
+          <canvas class="firma-despacho" width="600" height="220" aria-label="Espacio para dibujar la firma"
+                  aria-describedby="estado-firma"></canvas>
+          <p id="estado-firma" class="despacho-ayuda" role="status">Dibuja tu firma con el dedo o el mouse.</p>
+        </div>
+        <div class="firma-acciones">
+          <button type="submit" disabled>Confirmar recepción</button>
+          <button type="button" class="boton boton-secundario" id="limpiar-firma">Borrar firma</button>
+        </div>
+        <noscript>Activa JavaScript para firmar en esta pantalla.</noscript>
+      </form>
+    {% endif %}
+  {% else %}
+    <div {% if perm.despachar %}class="despacho-grid"{% endif %}>
+      {% if perm.despachar %}
+      <section class="despacho-panel" aria-labelledby="nuevo-despacho">
+        <h2 id="nuevo-despacho">Nuevo despacho</h2>
+        <form method="post" action="{% url 'procesar_despacho' %}" class="despacho-formulario">
+          {% csrf_token %}
+          <div data-obra-autocomplete data-url="{% url 'obras_buscar' %}">
+            <label for="obra-destino">Obra de destino</label>
+            <input id="obra-destino" type="text" data-obra-texto autocomplete="off"
+                   placeholder="Escribe al menos 3 letras" aria-describedby="obra-mensaje" required>
+            <input type="hidden" name="obra" data-obra-id>
+            <ul data-obra-resultados class="despacho-resultados" hidden></ul>
+            <p id="obra-mensaje" class="despacho-ayuda" data-obra-mensaje role="status"></p>
+          </div>
+          <div>
+            <label for="input-articulo">Artículo</label>
+            <select id="input-articulo" name="articulo" required>
+              <option value="">Selecciona un artículo</option>
+              {% for articulo in articulos %}
+                <option value="{{ articulo.pk }}" data-sku="{{ articulo.sku }}">{{ articulo.sku }} · {{ articulo.descripcion }} ({{ articulo.stock_fisico }} disponibles)</option>
+              {% endfor %}
+            </select>
+            <details class="despacho-qr">
+              <summary>Simular lectura de QR</summary>
+              <button type="button" id="simular-qr">Usar artículo de prueba</button>
+              <p id="mensaje-qr" class="despacho-ayuda" role="status"></p>
+            </details>
+          </div>
+          <div>
+            <label for="cant-despacho">Cantidad</label>
+            <input id="cant-despacho" name="cantidad" type="number" min="1" step="1" value="1" inputmode="numeric" required>
+          </div>
+          <button type="submit">Confirmar despacho</button>
+        </form>
+      </section>
+      {% endif %}
+
+      <section class="despacho-panel" aria-labelledby="despachos-recientes">
+        <h2 id="despachos-recientes">{% if recepcion %}Recepciones{% else %}Despachos recientes{% endif %}</h2>
+        {% timezone "America/Santiago" %}
+          <ul class="despacho-registros">
+            {% for despacho in despachos_recientes %}
+              <li class="despacho-registro">
+                <strong>Despacho #{{ despacho.pk }}</strong>
+                <p><time datetime="{{ despacho.fecha_despacho|date:'c' }}">{{ despacho.fecha_despacho|date:'d/m/Y H:i' }}</time></p>
+                <p>{{ despacho.articulo.sku }} · {{ despacho.articulo.descripcion }}</p>
+                <dl>
+                  <dt>Obra</dt><dd>{{ despacho.obra.nombre|default:"Sin obra registrada" }}</dd>
+                  <dt>Cantidad</dt><dd>{{ despacho.cantidad }} {{ despacho.articulo.unidad_medida }}</dd>
+                  <dt>Responsable</dt><dd>{{ despacho.usuario.get_full_name|default:despacho.usuario.username }}</dd>
+                  <dt>Recepción</dt><dd>{% if despacho.recepcion %}Firmada por {{ despacho.recepcion.nombre_receptor }}{% else %}Pendiente de firma{% endif %}</dd>
+                </dl>
+                <a class="boton boton-secundario" href="{% url 'comprobante_despacho' despacho.pk %}">
+                  {% if recepcion and not despacho.recepcion %}Revisar y firmar{% else %}Ver comprobante{% endif %}
+                </a>
+              </li>
+            {% empty %}
+              <li class="despacho-ayuda">Aún no hay despachos registrados.</li>
+            {% endfor %}
+          </ul>
+        {% endtimezone %}
+        {% if pagina.has_other_pages %}
+          <nav class="despacho-paginacion" aria-label="Páginas de despachos">
+            {% if pagina.has_previous %}<a class="boton boton-secundario" href="?pagina={{ pagina.previous_page_number }}">Anterior</a>{% endif %}
+            <span>Página {{ pagina.number }} de {{ pagina.paginator.num_pages }}</span>
+            {% if pagina.has_next %}<a class="boton boton-secundario" href="?pagina={{ pagina.next_page_number }}">Siguiente</a>{% endif %}
+          </nav>
+        {% endif %}
+      </section>
+    </div>
+  {% endif %}
+{% endblock %}
+
+{% block extra_js %}
+  {% if form_firma %}
+    <script src="{% static 'js/firma_despacho.js' %}" defer></script>
+  {% endif %}
+  {% if perm.despachar and not comprobante %}
+    <script src="{% static 'js/obra_auto.js' %}" defer></script>
+    <script>
+      document.getElementById("simular-qr").addEventListener("click", () => {
+        const articulo = document.getElementById("input-articulo");
+        const mensaje = document.getElementById("mensaje-qr");
+        const prueba = articulo.querySelector('[data-sku="SKU-9901"]');
+        if (prueba) articulo.value = prueba.value;
+        mensaje.textContent = prueba
+          ? "Artículo de prueba seleccionado."
+          : "No hay un artículo de prueba con SKU-9901.";
+      });
+    </script>
+  {% endif %}
+{% endblock %}

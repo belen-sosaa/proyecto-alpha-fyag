@@ -1,8 +1,14 @@
 import re
 
+from django import VERSION as DJANGO_VERSION
 from django.conf import settings
 from django.core.exceptions import ValidationError
+from django.core.validators import MinValueValidator
 from django.db import models
+
+
+# Django 5.1 cambió el nombre del parámetro de CheckConstraint.
+PARAMETRO_CONDICION = "condition" if DJANGO_VERSION >= (5, 1) else "check"
 
 
 def normalizar_rut(valor):
@@ -45,15 +51,14 @@ class PerfilUsuario(models.Model):
         unique=True,
     )
 
-    intentos_fallidos = models.PositiveSmallIntegerField(default=0, editable=False)
-    bloqueado_hasta = models.DateTimeField(null=True, blank=True, editable=False)
-
     # Columna del esquema de Neon. Los permisos se consultan en los grupos de Django.
     rol = models.CharField(
         max_length=20,
         blank=True,
         editable=False,
     )
+    intentos_fallidos = models.PositiveSmallIntegerField(default=0, editable=False)
+    bloqueado_hasta = models.DateTimeField(blank=True, editable=False, null=True)
 
     class Meta:
         verbose_name = "Perfil de usuario"
@@ -162,12 +167,8 @@ class Articulo(models.Model):
         verbose_name_plural = "Insumos"
 
     @property
-    def es_stock_critico(self):
-        return self.stock_fisico <= self.stock_critico
-
-    @property
     def estado(self):
-        if self.es_stock_critico:
+        if self.stock_fisico <= self.stock_critico:
             return "Stock Crítico"
         return "Stock Normal"
 
@@ -193,44 +194,91 @@ class Obra(models.Model):
     nombre = models.CharField(max_length=200)
     latitud = models.FloatField(null=True, blank=True)
     longitud = models.FloatField(null=True, blank=True)
+    estado = models.CharField(max_length=20, default="ACTIVA")
+    presupuesto_asignado = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    cliente = models.ForeignKey("compras.EntidadComercial", on_delete=models.PROTECT, null=True, blank=True)
 
     def __str__(self):
         return self.nombre
 
 
-class Despacho(models.Model):
-    articulo = models.ForeignKey(
-        "Articulo",
-        on_delete=models.PROTECT,
-    )
+class RegistroInalterable(models.Model):
+    # Cardex y bitácora comparten esta protección en los métodos de instancia.
+    # Los triggers de la migración 0006 también protegen las escrituras directas en SQL.
+    class Meta:
+        abstract = True
 
-    obra = models.ForeignKey(
-        "Obra",
-        on_delete=models.PROTECT,
-    )
+    def save(self, *args, **kwargs):
+        if not self._state.adding:
+            raise ValueError(f"{self.nombre_registro} no permite modificaciones.")
+        return super().save(*args, **kwargs)
 
-    cantidad = models.IntegerField()
-
-    fecha_despacho = models.DateTimeField(
-        auto_now_add=True,
-    )
-
-    usuario = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.PROTECT,
-    )
-
-    mongodb_id = models.CharField(
-        max_length=100,
-        blank=True,
-        null=True,
-    )
-
-    def __str__(self):
-        return f"Despacho {self.pk} - {self.articulo.sku}"
+    def delete(self, *args, **kwargs):
+        raise ValueError(f"{self.nombre_registro} no permite eliminaciones.")
 
 
-class BitacoraAuditoria(models.Model):
+class MovimientoCardex(RegistroInalterable):
+    class Tipo(models.TextChoices):
+        INGRESO = "INGRESO", "Ingreso"
+        DESPACHO = "DESPACHO", "Despacho"
+        MERMA = "MERMA", "Merma"
+        DEVOLUCION = "DEVOLUCION", "Devolución"
+        AJUSTE = "AJUSTE", "Ajuste"
+        REVERSA = "REVERSA", "Reversa"
+
+    nombre_registro = "El movimiento del Cardex"
+
+    tipo = models.CharField(max_length=10, choices=Tipo.choices)
+    cantidad = models.PositiveIntegerField(validators=[MinValueValidator(1)])
+    articulo = models.ForeignKey(Articulo, on_delete=models.PROTECT)
+    usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    obra = models.ForeignKey(Obra, on_delete=models.PROTECT, null=True, blank=True)
+    proveedor = models.ForeignKey("compras.EntidadComercial", on_delete=models.PROTECT, null=True, blank=True)
+    fecha_hora = models.DateTimeField(auto_now_add=True)
+    # Guarda una foto del saldo después del movimiento para consultar el historial.
+    stock_resultante = models.PositiveIntegerField()
+    justificacion = models.TextField(null=True, blank=True)
+    documento_referencia = models.CharField(max_length=100, blank=True, default="")
+
+    class Meta:
+        # La base valida cantidad y tipo aunque la escritura omita la validación del modelo.
+        constraints = [
+            models.CheckConstraint(
+                name="cardex_cantidad_positiva",
+                **{PARAMETRO_CONDICION: models.Q(cantidad__gt=0)},
+            ),
+            models.CheckConstraint(
+                name="cardex_tipo_valido",
+                **{PARAMETRO_CONDICION: models.Q(
+                    tipo__in=["INGRESO", "DESPACHO", "MERMA", "DEVOLUCION", "AJUSTE", "REVERSA"]
+                )},
+            ),
+            models.CheckConstraint(
+                name="cardex_egreso_justificado",
+                **{PARAMETRO_CONDICION: (
+                    ~models.Q(tipo__in=["MERMA", "DEVOLUCION"])
+                    | models.Q(justificacion__isnull=False, justificacion__regex=r"\S")
+                )},
+            ),
+            models.CheckConstraint(
+                name="cardex_proveedor_devolucion",
+                **{PARAMETRO_CONDICION: (
+                    ~models.Q(tipo="DEVOLUCION") | models.Q(proveedor__isnull=False)
+                )},
+            ),
+        ]
+
+    def clean(self):
+        super().clean()
+        if self.tipo in (self.Tipo.MERMA, self.Tipo.DEVOLUCION) and not (self.justificacion or "").strip():
+            raise ValidationError({"justificacion": "Ingresa el motivo del egreso."})
+        if self.tipo == self.Tipo.DEVOLUCION and self.proveedor_id is None:
+            raise ValidationError({"proveedor": "Selecciona el proveedor de la devolución."})
+
+
+class BitacoraAuditoria(RegistroInalterable):
+    nombre_registro = "La bitácora"
+
     usuario = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
@@ -256,85 +304,23 @@ class BitacoraAuditoria(models.Model):
         auto_now_add=True,
     )
 
-    def save(self, *args, **kwargs):
-        if not self._state.adding:
-            raise ValueError(
-                "La bitácora no permite modificaciones."
-            )
 
-        return super().save(*args, **kwargs)
-
-    def delete(self, *args, **kwargs):
-        raise ValueError(
-            "La bitácora no permite eliminaciones."
-        )
-
-
-class Merma(models.Model):
-    articulo = models.ForeignKey(Articulo, on_delete=models.PROTECT)
-    cantidad = models.PositiveIntegerField()
-    motivo = models.TextField()
+class ConteoInventario(models.Model):
     usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
-    fecha = models.DateTimeField(auto_now_add=True)
+    fecha_hora = models.DateTimeField(auto_now_add=True)
 
 
-class Proveedor(models.Model):
-    nombre = models.CharField(max_length=150)
-    rut = models.CharField(max_length=20, blank=True)
-    contacto = models.CharField(max_length=150, blank=True)
-
-    def __str__(self):
-        return self.nombre
-
-
-class FacturaCompra(models.Model):
-    numero_factura = models.CharField(max_length=50)
-    proveedor = models.ForeignKey(Proveedor, on_delete=models.PROTECT)
-    fecha = models.DateTimeField(auto_now_add=True)
-    usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
-    total_neto = models.DecimalField(max_digits=12, decimal_places=2)
-
-
-class DetalleFacturaCompra(models.Model):
-    factura = models.ForeignKey(
-        FacturaCompra,
-        on_delete=models.PROTECT,
-        related_name="detalles",
-    )
-    articulo = models.ForeignKey(Articulo, on_delete=models.PROTECT)
-    cantidad = models.PositiveIntegerField()
-    precio_unitario = models.DecimalField(max_digits=12, decimal_places=2)
-    descuento_1 = models.DecimalField(max_digits=5, decimal_places=2, default=0)
-    descuento_2 = models.DecimalField(max_digits=5, decimal_places=2, default=0)
-    descuento_3 = models.DecimalField(max_digits=5, decimal_places=2, default=0)
-    subtotal_neto = models.DecimalField(max_digits=12, decimal_places=2)
-
-
-class DevolucionProveedor(models.Model):
-    proveedor = models.ForeignKey(Proveedor, on_delete=models.PROTECT)
-    articulo = models.ForeignKey(Articulo, on_delete=models.PROTECT)
-    cantidad = models.PositiveIntegerField()
-    motivo = models.TextField()
-    usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
-    fecha = models.DateTimeField(auto_now_add=True)
-
-
-class ConteoFisico(models.Model):
-    usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
-    fecha = models.DateTimeField(auto_now_add=True)
-    observacion = models.TextField(blank=True)
-
-
-class DetalleConteoFisico(models.Model):
-    conteo = models.ForeignKey(
-        ConteoFisico,
-        on_delete=models.CASCADE,
-        related_name="detalles",
-    )
+class DetalleConteoInventario(models.Model):
+    conteo = models.ForeignKey(ConteoInventario, related_name="detalles", on_delete=models.PROTECT)
     articulo = models.ForeignKey(Articulo, on_delete=models.PROTECT)
     stock_sistema = models.PositiveIntegerField()
-    stock_contado = models.PositiveIntegerField()
+    stock_fisico = models.PositiveIntegerField()
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["conteo", "articulo"], name="conteo_articulo_unico"),
+        ]
 
     @property
     def diferencia(self):
-        return self.stock_contado - self.stock_sistema
+        return self.stock_fisico - self.stock_sistema

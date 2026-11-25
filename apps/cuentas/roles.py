@@ -18,7 +18,7 @@ MODULOS = {
     "panel": ("Inicio", "fa-gauge-high", "inicio", "Alertas y resumen de la sesión"),
     "catalogo": ("Catálogo", "fa-boxes-stacked", "catalogo_listar", "Consulta de existencias"),
     "cardex": ("Cardex", "fa-clipboard-check", "cardex", "Auditoría de movimientos"),
-    "despacho": ("Despachos", "fa-truck-fast", "bodega_web", "Operaciones de bodega y recepción en obra"),
+    "despacho": ("Despachos", "fa-truck-fast", "despachos", "Salidas a obra"),
     "merma": ("Mermas", "fa-triangle-exclamation", "merma_crear", "Bajas con justificación"),
     "compras": ("Compras", "fa-file-invoice-dollar", "compras", "Presupuestos y órdenes"),
     "usuarios": ("Usuarios", "fa-users-gear", "usuarios", "Gestión de cuentas"),
@@ -40,12 +40,18 @@ FACULTADES = {
     "emitir_oc": (FINANZAS,),
     "crear_presupuesto": (BODEGUERO, ADMIN_BODEGA),
     "registrar_merma": (BODEGUERO, ADMIN_BODEGA),
+    "registrar_devolucion": (ADMIN_BODEGA,),
     "ingresar_articulo": (ADMIN_BODEGA, ADMIN_GENERAL_LEGADO),
     "editar_articulo": (ADMIN_BODEGA, ADMIN_GENERAL_LEGADO),
     "eliminar_articulo": (ADMIN_BODEGA, ADMIN_GENERAL_LEGADO),
     "gestionar_usuarios": (ADMIN_TI,),
     "ver_costos": (GERENTE, FINANZAS, ADMIN_BODEGA),
     "despachar": (BODEGUERO, ADMIN_BODEGA),
+    "firmar_recepcion": (SUPERVISOR,),
+    "registrar_conteo": (BODEGUERO, ADMIN_BODEGA),
+    "ver_conteos": (BODEGUERO, ADMIN_BODEGA, GERENTE, AUDITOR),
+    "registrar_factura": (FINANZAS, ADMIN_BODEGA),
+    "confirmar_ingreso": (BODEGUERO, ADMIN_BODEGA),
 }
 
 

@@ -1,0 +1,447 @@
+{
+  "datos_base": {
+    "categorias": [
+      {
+        "id": 1,
+        "nombre": "Refrigeración"
+      }
+    ],
+    "articulos": [
+      {
+        "id": 1,
+        "sku": "REF-001",
+        "codigo_barras": "7800000000012",
+        "descripcion": "Filtro secador",
+        "categoria_id": 1,
+        "unidad_medida": "unidad",
+        "ubicacion_fisica": "A-03",
+        "stock_fisico": 15,
+        "stock_minimo": 5,
+        "stock_critico": 2,
+        "estado": "Stock Normal"
+      }
+    ],
+    "obras": [
+      {
+        "id": 1,
+        "nombre": "Obra Frío Norte"
+      }
+    ],
+    "proveedores": [
+      {
+        "id": 1,
+        "rut": "11111111-1",
+        "razon_social": "Proveedor de ejemplo"
+      }
+    ]
+  },
+  "rutas_actuales": {
+    "buscar_obras": {
+      "metodo": "GET",
+      "ruta": "/obras/buscar/?q=fr",
+      "estado": 200,
+      "respuesta": []
+    },
+    "buscar_obras_con_resultados": {
+      "metodo": "GET",
+      "ruta": "/obras/buscar/?q=norte",
+      "estado": 200,
+      "respuesta": [
+        {
+          "id": 1,
+          "nombre": "Obra Frío Norte"
+        }
+      ]
+    },
+    "despacho_formulario": {
+      "metodo": "POST",
+      "ruta": "/despacho/procesar/",
+      "solicitud": {
+        "obra": 1,
+        "articulo": 1,
+        "cantidad": 2
+      },
+      "estado": 302,
+      "ubicacion": "/despachos/"
+    }
+  },
+  "rutas_propuestas": {
+    "proveedores": {
+      "metodo": "GET",
+      "ruta": "/api/proveedores/?q=ejemplo",
+      "estado": 200,
+      "respuesta": [
+        {
+          "id": 1,
+          "rut": "11111111-1",
+          "razon_social": "Proveedor de ejemplo"
+        }
+      ]
+    },
+    "factura": {
+      "metodo": "POST",
+      "ruta": "/api/facturas/",
+      "solicitud": {
+        "proveedor_id": 1,
+        "folio": "001234",
+        "fecha_emision": "2026-11-19",
+        "detalles": [
+          {
+            "articulo_id": 1,
+            "cantidad": 5,
+            "precio_unitario_neto": "10000.00",
+            "descuento_1": "10.00",
+            "descuento_2": "5.00",
+            "descuento_3": "0.00"
+          }
+        ]
+      },
+      "estado": 201,
+      "respuesta": {
+        "id": 101,
+        "proveedor_id": 1,
+        "folio": "001234",
+        "fecha_emision": "2026-11-19",
+        "detalles": [
+          {
+            "id": 301,
+            "articulo_id": 1,
+            "cantidad": 5,
+            "precio_unitario_neto": "10000.00",
+            "descuento_1": "10.00",
+            "descuento_2": "5.00",
+            "descuento_3": "0.00",
+            "costo_unitario_neto_final": "8550.00"
+          }
+        ]
+      }
+    },
+    "ingreso": {
+      "metodo": "POST",
+      "ruta": "/api/ingresos/",
+      "solicitud": {
+        "factura_id": 101
+      },
+      "estado": 201,
+      "respuesta": {
+        "factura_id": 101,
+        "movimientos": [
+          {
+            "id": 501,
+            "tipo": "INGRESO",
+            "articulo_id": 1,
+            "cantidad": 5,
+            "usuario_id": 7,
+            "obra_id": null,
+            "proveedor_id": 1,
+            "fecha_hora": "2026-11-19T14:00:00Z",
+            "stock_resultante": 15,
+            "justificacion": null,
+            "despacho_id": null,
+            "detalle_factura_id": 301,
+            "movimiento_original_id": null
+          }
+        ]
+      }
+    },
+    "ingreso_duplicado": {
+      "metodo": "POST",
+      "ruta": "/api/ingresos/",
+      "solicitud": {
+        "factura_id": 101
+      },
+      "estado": 409,
+      "respuesta": {
+        "codigo": "INGRESO_YA_CONFIRMADO",
+        "mensaje": "La factura ya tiene un ingreso confirmado.",
+        "campos": {}
+      }
+    },
+    "despacho": {
+      "metodo": "POST",
+      "ruta": "/api/despachos/",
+      "solicitud": {
+        "articulo_id": 1,
+        "obra_id": 1,
+        "cantidad": 2
+      },
+      "estado": 201,
+      "respuesta": {
+        "despacho_id": 42,
+        "movimiento": {
+          "id": 502,
+          "tipo": "DESPACHO",
+          "articulo_id": 1,
+          "cantidad": 2,
+          "usuario_id": 7,
+          "obra_id": 1,
+          "proveedor_id": null,
+          "fecha_hora": "2026-11-19T14:05:00Z",
+          "stock_resultante": 13,
+          "justificacion": null,
+          "despacho_id": 42,
+          "detalle_factura_id": null,
+          "movimiento_original_id": null
+        }
+      }
+    },
+    "despacho_sin_stock": {
+      "metodo": "POST",
+      "ruta": "/api/despachos/",
+      "solicitud": {
+        "articulo_id": 1,
+        "obra_id": 1,
+        "cantidad": 999
+      },
+      "estado": 409,
+      "respuesta": {
+        "codigo": "STOCK_INSUFICIENTE",
+        "mensaje": "Stock insuficiente para realizar el despacho.",
+        "campos": {}
+      }
+    },
+    "recepcion": {
+      "metodo": "POST",
+      "ruta": "/despachos/42/recepcion/",
+      "formulario": {
+        "firma": "[[[28,80],[45,52],[70,55]]]"
+      },
+      "estado": 302,
+      "redireccion": "/despachos/42/comprobante/",
+      "comprobante": {
+        "despacho_id": 42,
+        "nombre_receptor": "Supervisor de prueba",
+        "fecha_recepcion": "2026-11-19T14:08:00Z",
+        "firma": [[[28, 80], [45, 52], [70, 55]]]
+      }
+    },
+    "merma": {
+      "metodo": "POST",
+      "ruta": "/api/mermas/",
+      "solicitud": {
+        "articulo_id": 1,
+        "cantidad": 1,
+        "justificacion": "Material dañado durante el almacenamiento."
+      },
+      "estado": 201,
+      "respuesta": {
+        "id": 503,
+        "tipo": "MERMA",
+        "articulo_id": 1,
+        "cantidad": 1,
+        "usuario_id": 7,
+        "obra_id": null,
+        "proveedor_id": null,
+        "fecha_hora": "2026-11-19T14:10:00Z",
+        "stock_resultante": 12,
+        "justificacion": "Material dañado durante el almacenamiento.",
+        "despacho_id": null,
+        "detalle_factura_id": null,
+        "movimiento_original_id": null
+      }
+    },
+    "merma_sin_justificacion": {
+      "metodo": "POST",
+      "ruta": "/api/mermas/",
+      "solicitud": {
+        "articulo_id": 1,
+        "cantidad": 1,
+        "justificacion": ""
+      },
+      "estado": 400,
+      "respuesta": {
+        "codigo": "DATOS_INVALIDOS",
+        "mensaje": "Revisa los campos indicados.",
+        "campos": {
+          "justificacion": [
+            "La justificación es obligatoria."
+          ]
+        }
+      }
+    },
+    "devolucion": {
+      "metodo": "POST",
+      "ruta": "/api/devoluciones/",
+      "solicitud": {
+        "articulo_id": 1,
+        "proveedor_id": 1,
+        "cantidad": 2,
+        "justificacion": "Producto entregado fuera de especificación."
+      },
+      "estado": 201,
+      "respuesta": {
+        "id": 504,
+        "tipo": "DEVOLUCION",
+        "articulo_id": 1,
+        "cantidad": 2,
+        "usuario_id": 7,
+        "obra_id": null,
+        "proveedor_id": 1,
+        "fecha_hora": "2026-11-19T14:15:00Z",
+        "stock_resultante": 10,
+        "justificacion": "Producto entregado fuera de especificación.",
+        "despacho_id": null,
+        "detalle_factura_id": null,
+        "movimiento_original_id": null
+      }
+    },
+    "conteo": {
+      "metodo": "POST",
+      "ruta": "/api/conteos/",
+      "solicitud": {
+        "detalles": [
+          {
+            "articulo_id": 1,
+            "stock_fisico": 9
+          }
+        ]
+      },
+      "estado": 201,
+      "respuesta": {
+        "id": 601,
+        "usuario_id": 7,
+        "fecha_hora": "2026-11-19T14:20:00Z",
+        "detalles": [
+          {
+            "conteo_id": 601,
+            "articulo_id": 1,
+            "stock_sistema": 10,
+            "stock_fisico": 9,
+            "diferencia": -1
+          }
+        ]
+      }
+    },
+    "discrepancias": {
+      "metodo": "GET",
+      "ruta": "/api/conteos/601/discrepancias/",
+      "estado": 200,
+      "respuesta": [
+        {
+          "conteo_id": 601,
+          "articulo_id": 1,
+          "stock_sistema": 10,
+          "stock_fisico": 9,
+          "diferencia": -1
+        }
+      ]
+    },
+    "ultimos_precios": {
+      "metodo": "GET",
+      "ruta": "/api/articulos/1/ultimos-precios/",
+      "estado": 200,
+      "respuesta": [
+        {
+          "factura_id": 101,
+          "folio": "001234",
+          "proveedor_id": 1,
+          "fecha_emision": "2026-11-19",
+          "costo_unitario_neto_final": "8550.00"
+        },
+        {
+          "factura_id": 100,
+          "folio": "001230",
+          "proveedor_id": 1,
+          "fecha_emision": "2026-11-15",
+          "costo_unitario_neto_final": "8700.00"
+        },
+        {
+          "factura_id": 99,
+          "folio": "001224",
+          "proveedor_id": 1,
+          "fecha_emision": "2026-11-10",
+          "costo_unitario_neto_final": "9000.00"
+        }
+      ]
+    },
+    "cardex": {
+      "metodo": "GET",
+      "ruta": "/api/cardex/?articulo_id=1",
+      "estado": 200,
+      "respuesta": [
+        {
+          "id": 504,
+          "tipo": "DEVOLUCION",
+          "articulo_id": 1,
+          "cantidad": 2,
+          "usuario_id": 7,
+          "obra_id": null,
+          "proveedor_id": 1,
+          "fecha_hora": "2026-11-19T14:15:00Z",
+          "stock_resultante": 10,
+          "justificacion": "Producto entregado fuera de especificación.",
+          "despacho_id": null,
+          "detalle_factura_id": null,
+          "movimiento_original_id": null
+        },
+        {
+          "id": 503,
+          "tipo": "MERMA",
+          "articulo_id": 1,
+          "cantidad": 1,
+          "usuario_id": 7,
+          "obra_id": null,
+          "proveedor_id": null,
+          "fecha_hora": "2026-11-19T14:10:00Z",
+          "stock_resultante": 12,
+          "justificacion": "Material dañado durante el almacenamiento.",
+          "despacho_id": null,
+          "detalle_factura_id": null,
+          "movimiento_original_id": null
+        },
+        {
+          "id": 502,
+          "tipo": "DESPACHO",
+          "articulo_id": 1,
+          "cantidad": 2,
+          "usuario_id": 7,
+          "obra_id": 1,
+          "proveedor_id": null,
+          "fecha_hora": "2026-11-19T14:05:00Z",
+          "stock_resultante": 13,
+          "justificacion": null,
+          "despacho_id": 42,
+          "detalle_factura_id": null,
+          "movimiento_original_id": null
+        },
+        {
+          "id": 501,
+          "tipo": "INGRESO",
+          "articulo_id": 1,
+          "cantidad": 5,
+          "usuario_id": 7,
+          "obra_id": null,
+          "proveedor_id": 1,
+          "fecha_hora": "2026-11-19T14:00:00Z",
+          "stock_resultante": 15,
+          "justificacion": null,
+          "despacho_id": null,
+          "detalle_factura_id": 301,
+          "movimiento_original_id": null
+        }
+      ]
+    },
+    "bitacora": {
+      "metodo": "GET",
+      "ruta": "/api/bitacora/?usuario_id=7",
+      "estado": 200,
+      "respuesta": [
+        {
+          "id": 801,
+          "usuario_id": 7,
+          "accion": "CREAR",
+          "entidad": "MovimientoCardex",
+          "id_registro": 502,
+          "valor_anterior": {
+            "stock_fisico": 15
+          },
+          "valor_nuevo": {
+            "stock_fisico": 13
+          },
+          "detalle": "Despacho 42 confirmado.",
+          "fecha_hora": "2026-11-19T14:05:00Z"
+        }
+      ]
+    }
+  }
+}

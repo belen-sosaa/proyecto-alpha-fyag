@@ -1,25 +1,16 @@
-from decimal import Decimal
-
 from django.contrib import messages
 from django.db import IntegrityError, connection, transaction
 from django.db.models import Q
 from django.db.models.deletion import ProtectedError
-from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
-from django.contrib.auth.decorators import login_required
-from openpyxl import Workbook
+from pymongo.errors import PyMongoError
 
-from apps.bodega.models import (
-    Articulo,
-    BitacoraAuditoria,
-    Categoria,
-    Despacho,
-    DetalleFacturaCompra,
-)
+from apps.bodega.models import Articulo, BitacoraAuditoria, Categoria
 from apps.catalogo.especificaciones import guardar_especificaciones
 from apps.catalogo.forms import ArticuloCatalogoForm, ArticuloForm
 from apps.cuentas.decorators import facultad_requerida
 from apps.cuentas.roles import permisos_de
+from apps.despachos.models import Despacho
 
 
 def datos_articulo(articulo):
@@ -37,12 +28,23 @@ def datos_articulo(articulo):
     }
 
 
-def _guardar_especificaciones(articulo, datos):
-    if datos:
-        identificador = guardar_especificaciones(articulo.pk, datos)
-        Articulo.objects.filter(pk=articulo.pk).update(
-            mongodb_especificaciones_id=str(identificador)
+def _finalizar_guardado_catalogo(request, articulo, datos, mensaje):
+    try:
+        if datos:
+            identificador = guardar_especificaciones(articulo.pk, datos)
+            Articulo.objects.filter(pk=articulo.pk).update(
+                mongodb_especificaciones_id=str(identificador)
+            )
+    except PyMongoError:
+        messages.warning(
+            request,
+            "El insumo se guardó. La ficha técnica quedó pendiente. "
+            "Vuelve a ingresar las especificaciones para reintentar.",
         )
+        return redirect("catalogo_editar", pk=articulo.pk)
+
+    messages.success(request, mensaje)
+    return redirect("catalogo_listar")
 
 
 @facultad_requerida("ver_catalogo")
@@ -106,12 +108,13 @@ def catalogo_crear(request):
                     valor_nuevo=datos_articulo(articulo),
                     detalle="Creación desde el catálogo.",
                 )
-            _guardar_especificaciones(articulo, form.cleaned_data.get("especificaciones"))
         except IntegrityError:
             form.add_error(None, "No se pudo guardar. Revisa SKU y código de barras.")
         else:
-            messages.success(request, "Insumo creado correctamente.")
-            return redirect("catalogo_listar")
+            return _finalizar_guardado_catalogo(
+                request, articulo, form.cleaned_data.get("especificaciones"),
+                "Insumo creado correctamente.",
+            )
     return render(request, "catalogo/catalogo.html", {
         "form": form, "titulo": "Crear insumo", "perm": permisos_de(request.user),
     })
@@ -119,28 +122,37 @@ def catalogo_crear(request):
 
 @facultad_requerida("editar_articulo")
 def catalogo_editar(request, pk):
-    articulo = get_object_or_404(Articulo, pk=pk)
-    anterior = datos_articulo(articulo)
-    form = ArticuloCatalogoForm(
-        request.POST if request.method == "POST" else None,
-        instance=articulo,
-    )
-    if request.method == "POST" and form.is_valid():
+    if request.method == "POST":
+        form = None
         try:
             with transaction.atomic():
-                articulo = form.save()
-                BitacoraAuditoria.objects.create(
-                    usuario=request.user, accion="EDITAR", entidad="Articulo",
-                    id_registro=articulo.pk, valor_anterior=anterior,
-                    valor_nuevo=datos_articulo(articulo),
-                    detalle="Actualización desde el catálogo.",
+                # Lee el stock y el valor anterior con el mismo bloqueo que usa el despacho.
+                articulo = get_object_or_404(
+                    Articulo.objects.select_for_update(), pk=pk,
                 )
-            _guardar_especificaciones(articulo, form.cleaned_data.get("especificaciones"))
+                anterior = datos_articulo(articulo)
+                form = ArticuloCatalogoForm(request.POST, instance=articulo)
+                if form.is_valid():
+                    articulo = form.save()
+                    BitacoraAuditoria.objects.create(
+                        usuario=request.user, accion="EDITAR", entidad="Articulo",
+                        id_registro=articulo.pk, valor_anterior=anterior,
+                        valor_nuevo=datos_articulo(articulo),
+                        detalle="Actualización desde el catálogo.",
+                    )
         except IntegrityError:
+            if form is None:
+                raise
             form.add_error(None, "No se pudo guardar. Revisa SKU y código de barras.")
         else:
-            messages.success(request, "Insumo actualizado correctamente.")
-            return redirect("catalogo_listar")
+            if form.is_valid():
+                return _finalizar_guardado_catalogo(
+                    request, articulo, form.cleaned_data.get("especificaciones"),
+                    "Insumo actualizado correctamente.",
+                )
+    else:
+        articulo = get_object_or_404(Articulo, pk=pk)
+        form = ArticuloCatalogoForm(instance=articulo)
     return render(request, "catalogo/catalogo.html", {
         "form": form, "titulo": "Editar insumo", "perm": permisos_de(request.user),
     })
@@ -195,70 +207,11 @@ def catalogo_eliminar(request, pk):
     })
 
 
-@login_required
+
 @facultad_requerida("ver_catalogo")
 def articulo_detalle(request, pk):
-    articulo = get_object_or_404(Articulo, pk=pk)
-    precios = DetalleFacturaCompra.objects.filter(
-        articulo=articulo
-    ).select_related("factura", "factura__proveedor").order_by(
-        "-factura__fecha", "-id"
-    )[:3]
-    for detalle in precios:
-        detalle.precio_neto_unitario = (
-            detalle.subtotal_neto / detalle.cantidad
-        ).quantize(Decimal("0.01"))
+    articulo = get_object_or_404(Articulo.objects.select_related("categoria"), pk=pk)
     return render(request, "catalogo/articulo_detalle.html", {
         "articulo": articulo,
-        "precios": precios,
         "perm": permisos_de(request.user),
     })
-
-
-@login_required
-@facultad_requerida("ver_catalogo")
-def articulo_exportar_precios_excel(request, pk):
-    articulo = get_object_or_404(Articulo, pk=pk)
-    precios = DetalleFacturaCompra.objects.filter(
-        articulo=articulo
-    ).select_related("factura", "factura__proveedor").order_by(
-        "-factura__fecha", "-id"
-    )[:3]
-
-    libro = Workbook()
-    hoja = libro.active
-    hoja.title = "Precios"
-    hoja.append([
-        "Fecha",
-        "Factura",
-        "Proveedor",
-        "Precio Unitario",
-        "Descuentos",
-        "Precio Neto Final",
-    ])
-    for detalle in precios:
-        descuentos = "{}% / {}% / {}%".format(
-            detalle.descuento_1,
-            detalle.descuento_2,
-            detalle.descuento_3,
-        )
-        precio_neto_unitario = (
-            detalle.subtotal_neto / detalle.cantidad
-        ).quantize(Decimal("0.01"))
-        hoja.append([
-            detalle.factura.fecha.strftime("%d-%m-%Y %H:%M"),
-            detalle.factura.numero_factura,
-            detalle.factura.proveedor.nombre,
-            float(detalle.precio_unitario),
-            descuentos,
-            float(precio_neto_unitario),
-        ])
-
-    respuesta = HttpResponse(
-        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
-    respuesta["Content-Disposition"] = (
-        f'attachment; filename="precios_{articulo.sku}.xlsx"'
-    )
-    libro.save(respuesta)
-    return respuesta

@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block title %}Últimos precios de compra{% endblock %}
+
+{% block extra_head %}
+  <style>
+    .precios { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr)); gap: 12px; padding: 0; list-style: none; }
+    .precio { padding: 16px; border: 1px solid var(--borde); border-radius: 12px; background: #f8fafc; overflow-wrap: anywhere; }
+    .precio p { margin: 4px 0; }
+    .precio-costo { font-size: 1.25rem; font-weight: 700; }
+  </style>
+{% endblock %}
+
+{% block content %}
+  <h1>Últimos precios de compra</h1>
+  <form method="get" aria-label="Consultar precios por artículo">
+    {{ formulario.articulo.label_tag }}
+    {{ formulario.articulo }}
+    <button type="submit">Consultar</button>
+  </form>
+  {{ formulario.articulo.errors }}
+
+  {% if articulo_seleccionado %}
+    <h2>{{ articulo_seleccionado }}</h2>
+    <a class="boton boton-secundario" href="{% url 'articulo_exportar_precios_excel' articulo_seleccionado.pk %}">Exportar a Excel</a>
+    <ul class="precios">
+      {% for precio in precios %}
+        <li class="precio">
+          <p class="precio-costo">$ {{ precio.costo_unitario_neto_final|floatformat:"2g" }}</p>
+          <p>Costo unitario neto final</p>
+          <p>{{ precio.factura__proveedor__razon_social }}</p>
+          <p>Factura {{ precio.folio }} · <time datetime="{{ precio.fecha_emision|date:'Y-m-d' }}">{{ precio.fecha_emision|date:'d/m/Y' }}</time></p>
+        </li>
+      {% empty %}
+        <li>Este artículo aún no tiene compras registradas.</li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+
+  <a class="boton boton-secundario" href="{% url 'compras' %}">Volver a compras</a>
+{% endblock %}
