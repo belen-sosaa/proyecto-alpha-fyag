@@ -2,6 +2,25 @@
 
 {% block title %}Catálogo de insumos{% endblock %}
 
+{% block extra_head %}
+  {% if not form and not articulo %}
+    <style>
+      .inventario-herramientas { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 16px 0; }
+      .estado-stock { display: inline-block; padding: 4px 10px; border-radius: 999px; background: #dcfce7; color: #166534; font-size: .8rem; font-weight: 700; white-space: nowrap; }
+      .estado-stock-critico { background: #fee2e2; color: #991b1b; }
+      @media print {
+        .cabecera, .mensaje, .inventario-herramientas, .inventario-filtros, .inventario-acciones { display: none; }
+        body { background: white; }
+        .contenedor, .contenido { width: auto; max-width: none; margin: 0; padding: 0; box-shadow: none; border: 0; }
+        .inventario-tabla { overflow: visible; }
+        .inventario-tabla table { font-size: 11px; }
+        .inventario-tabla th, .inventario-tabla td { padding: 6px; overflow-wrap: anywhere; }
+        .inventario-tabla tr { break-inside: avoid; }
+      }
+    </style>
+  {% endif %}
+{% endblock %}
+
 {% block content %}
 
   {% if form %}
@@ -48,20 +67,18 @@
     <!-- Listado y filtros -->
     <h1>Catálogo de insumos</h1>
 
-    {% if perm.ingresar_articulo %}
-      <p>
+    <div class="inventario-herramientas">
+      {% if perm.ingresar_articulo %}
         <a class="boton" href="{% url 'catalogo_crear' %}">Crear insumo</a>
-      </p>
-    {% endif %}
+      {% endif %}
+      {% if mostrar_cardex %}<a class="boton boton-secundario" href="{% url 'cardex' %}">Ver movimientos del Cardex</a>{% endif %}
+      {% if perm.ver_conteos %}<a class="boton boton-secundario" href="{% url 'conteos' %}">Conteos y discrepancias</a>{% endif %}
+      {% if articulos %}
+        <button type="button" class="boton boton-secundario" onclick="window.print()">Imprimir o guardar como PDF</button>
+      {% endif %}
+    </div>
 
-    {% if mostrar_cardex or perm.ver_conteos %}
-      <p>
-        {% if mostrar_cardex %}<a class="boton boton-secundario" href="{% url 'cardex' %}">Ver movimientos del Cardex</a>{% endif %}
-        {% if perm.ver_conteos %}<a class="boton boton-secundario" href="{% url 'conteos' %}">Conteos y discrepancias</a>{% endif %}
-      </p>
-    {% endif %}
-
-    <form method="get">
+    <form method="get" class="inventario-filtros">
       <label for="q">Buscar</label>
       <input
         id="q"
@@ -93,7 +110,7 @@
 
     {% include "bodega/inventario.html" %}
 
-    <p>
+    <p class="inventario-herramientas">
       <a class="boton boton-secundario" href="{% url 'bodega_web' %}">Volver a bodega</a>
     </p>
   {% endif %}

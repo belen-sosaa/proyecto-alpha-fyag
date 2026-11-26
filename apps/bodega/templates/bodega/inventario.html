@@ -1,4 +1,4 @@
-<div class="tabla-desplazable" role="region" aria-label="Tabla de insumos" tabindex="0">
+<div class="tabla-desplazable inventario-tabla" role="region" aria-label="Tabla de insumos" tabindex="0">
   <table>
     <thead>
       <tr>
@@ -8,7 +8,8 @@
         <th>Categoría</th>
         <th>Unidad</th>
         <th>Stock</th>
-        <th>Acciones</th>
+        <th>Estado</th>
+        <th class="inventario-acciones">Acciones</th>
       </tr>
     </thead>
 
@@ -22,6 +23,9 @@
           <td>{{ articulo.unidad_medida }}</td>
           <td>{{ articulo.stock_fisico }}</td>
           <td>
+            <span class="estado-stock {% if articulo.es_stock_critico %}estado-stock-critico{% endif %}">{{ articulo.estado }}</span>
+          </td>
+          <td class="inventario-acciones">
             <a class="boton boton-secundario" href="{% url 'articulo_detalle' articulo.pk %}">Ver detalle</a>
             {% if perm.ver_costos %}
               <a class="boton boton-secundario" href="{% url 'ultimos_precios' %}?articulo={{ articulo.pk }}">
@@ -43,7 +47,7 @@
         </tr>
       {% empty %}
         <tr>
-          <td colspan="7">No se encontraron insumos.</td>
+          <td colspan="8">No se encontraron insumos.</td>
         </tr>
       {% endfor %}
     </tbody>

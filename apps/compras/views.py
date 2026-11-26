@@ -301,7 +301,7 @@ def vista_registrar_compra(request):
             return redirect("compras")
         datos_error = json.loads(resultado.content)
         formulario.add_error(None, datos_error["mensaje"])
-    return render(request, "compras/registrar.html", {"formulario": formulario})
+    return render(request, "compras/registrar.html", {"formulario": formulario, "tasa_iva": TASA_IVA})
 
 
 @facultad_requerida("confirmar_ingreso")

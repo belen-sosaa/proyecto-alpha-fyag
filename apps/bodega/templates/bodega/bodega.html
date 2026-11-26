@@ -7,6 +7,10 @@
     .panel { min-width: 0; padding: clamp(16px, 3vw, 24px); border: 1px solid var(--borde); border-radius: 15px; background: #fff; }
     .panel + .panel { margin-top: 16px; }
     .panel-cabecera { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; margin-bottom: 14px; }
+    .operaciones-bodega { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr)); gap: 16px; margin-bottom: 16px; }
+    .operaciones-bodega .panel { margin: 0; }
+    .operaciones-bodega h2 i { margin-right: 6px; color: var(--azul); }
+    .operaciones-bodega h2 .fa-triangle-exclamation { color: #b45309; }
     .accion { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 9px 14px; border-radius: 9px; background: var(--azul); color: #fff; font-weight: 650; text-decoration: none; }
     .accion:hover { background: #1a44a6; }
     .vacio { margin: 8px 0 0; color: var(--secundario); }
@@ -25,6 +29,29 @@
   {% if modulo_actual.clave == "inicio" %}
     {% include "cuentas/inicio.html" %}
   {% elif modulo_actual.clave == "bodega" %}
+    {% if perm.despachar or perm.registrar_merma %}
+      <div class="operaciones-bodega">
+        {% if perm.despachar %}
+          <section class="panel" aria-labelledby="salida-a-obra">
+            <div class="panel-cabecera">
+              <h2 id="salida-a-obra"><i class="fas fa-truck-fast" aria-hidden="true"></i> Despacho a obra</h2>
+              <a class="accion" href="{% url 'despachos' %}#nuevo-despacho">Nuevo despacho</a>
+            </div>
+          </section>
+        {% endif %}
+        {% if perm.registrar_merma %}
+          <section class="panel" aria-labelledby="otros-egresos">
+            <div class="panel-cabecera">
+              <h2 id="otros-egresos"><i class="fas fa-triangle-exclamation" aria-hidden="true"></i> Mermas y devoluciones</h2>
+              <a class="accion" href="{% url 'merma_crear' %}">Registrar merma</a>
+              {% if perm.registrar_devolucion %}
+                <a class="accion" href="{% url 'devolucion_crear' %}">Registrar devolución</a>
+              {% endif %}
+            </div>
+          </section>
+        {% endif %}
+      </div>
+    {% endif %}
     {% if perm.ver_conteos %}
       <section class="panel" aria-labelledby="conteos-fisicos">
         <div class="panel-cabecera">
@@ -50,17 +77,6 @@
         {% endfor %}
       </ul>
     </section>
-    {% if perm.registrar_merma %}
-      <section class="panel" aria-labelledby="otros-egresos">
-        <div class="panel-cabecera">
-          <h2 id="otros-egresos">Mermas y devoluciones</h2>
-          <a class="accion" href="{% url 'merma_crear' %}">Registrar merma</a>
-          {% if perm.registrar_devolucion %}
-            <a class="accion" href="{% url 'devolucion_crear' %}">Registrar devolución</a>
-          {% endif %}
-        </div>
-      </section>
-    {% endif %}
   {% elif modulo_actual.clave == "auditoria" %}
     {% include "bodega/auditoria.html" %}
   {% elif modulo_actual.clave == "compras" %}

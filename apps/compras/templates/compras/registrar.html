@@ -1,11 +1,64 @@
 {% extends "base.html" %}
+{% load l10n static %}
 {% block title %}Registrar factura{% endblock %}
+
+{% block extra_head %}
+  <style>
+    .compra-formulario { display: grid; gap: 18px; }
+    .compra-formulario fieldset { min-width: 0; border: 1px solid var(--borde); border-radius: 12px; padding: 16px; }
+    .compra-formulario legend { padding: 0 6px; font-weight: 700; }
+    .compra-campos { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr)); gap: 14px; }
+    .compra-campos :is(input, select) { width: 100%; }
+    .compra-descuentos { margin-top: 14px; }
+    .compra-resumen { padding: 18px; border-radius: 12px; background: #10224c; color: white; }
+    .compra-resumen h2 { margin: 0; font-size: 1.1rem; }
+    .compra-resumen dl { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 10rem), 1fr)); gap: 12px; margin-bottom: 0; }
+    .compra-resumen dd { margin: 4px 0 0; font-size: 1.2rem; font-weight: 750; overflow-wrap: anywhere; }
+    .compra-resumen [data-importe="total"] { color: #86efac; }
+  </style>
+{% endblock %}
+
 {% block content %}
   <h1>Registrar factura de compra</h1>
-  <form method="post">
+  <form method="post" class="compra-formulario" id="form-compra">
     {% csrf_token %}
-    {{ formulario.as_p }}
-    <button type="submit">Registrar factura</button>
-    <a class="boton boton-secundario" href="{% url 'compras' %}">Volver a compras</a>
+    {{ formulario.non_field_errors }}
+    <fieldset>
+      <legend>Datos de la factura</legend>
+      <div class="compra-campos">
+        <div>{{ formulario.proveedor_id.as_field_group }}</div>
+        <div>{{ formulario.folio.as_field_group }}</div>
+        <div>{{ formulario.fecha_emision.as_field_group }}</div>
+      </div>
+    </fieldset>
+    <fieldset>
+      <legend>Detalle del artículo</legend>
+      <div class="compra-campos">
+        <div>{{ formulario.articulo_id.as_field_group }}</div>
+        <div>{{ formulario.cantidad.as_field_group }}</div>
+        <div>{{ formulario.precio_unitario_neto.as_field_group }}</div>
+      </div>
+      <div class="compra-campos compra-descuentos">
+        <div>{{ formulario.descuento_1.as_field_group }}</div>
+        <div>{{ formulario.descuento_2.as_field_group }}</div>
+        <div>{{ formulario.descuento_3.as_field_group }}</div>
+      </div>
+    </fieldset>
+    <section class="compra-resumen" data-tasa-iva="{{ tasa_iva|unlocalize }}" aria-labelledby="titulo-importes" hidden>
+      <h2 id="titulo-importes">Vista previa de importes</h2>
+      <dl aria-live="polite">
+        <div><dt>Neto con descuentos</dt><dd data-importe="neto">—</dd></div>
+        <div><dt>IVA</dt><dd data-importe="iva">—</dd></div>
+        <div><dt>Total con IVA</dt><dd data-importe="total">—</dd></div>
+      </dl>
+    </section>
+    <div>
+      <button type="submit">Registrar factura</button>
+      <a class="boton boton-secundario" href="{% url 'compras' %}">Volver a compras</a>
+    </div>
   </form>
+{% endblock %}
+
+{% block extra_js %}
+  <script src="{% static 'js/resumen_compra.js' %}" defer></script>
 {% endblock %}

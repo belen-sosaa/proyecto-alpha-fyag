@@ -1,5 +1,11 @@
 <section class="despacho-panel" aria-labelledby="nuevo-despacho">
-  <h2 id="nuevo-despacho">Nuevo despacho</h2>
+  <div class="despacho-formulario-cabecera">
+    <h2 id="nuevo-despacho">Nuevo despacho</h2>
+    <button type="button" class="boton" data-abrir-lector
+            aria-haspopup="dialog" aria-controls="lector-codigo">
+      <i class="fas fa-qrcode" aria-hidden="true"></i> Escanear artículo
+    </button>
+  </div>
   <form method="post" action="{% url 'procesar_despacho' %}" class="despacho-formulario">
     {% csrf_token %}
     {% include "despachos/obra_auto.html" %}
@@ -11,8 +17,6 @@
           <option value="{{ articulo.pk }}">{{ articulo.sku }} · {{ articulo.descripcion }} ({{ articulo.stock_fisico }} disponibles)</option>
         {% endfor %}
       </select>
-      <button type="button" class="boton boton-secundario" data-abrir-lector
-              aria-haspopup="dialog" aria-controls="lector-codigo">Escanear código</button>
       <p id="articulo-escaneado" class="despacho-ayuda" role="status"></p>
     </div>
     <div>
