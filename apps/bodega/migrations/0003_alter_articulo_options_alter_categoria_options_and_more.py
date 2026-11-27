@@ -7,7 +7,7 @@ from apps.bodega.migration_operations import AddFieldIfMissing
 
 
 def asegurar_nombre_categoria_unico(apps, schema_editor):
-    """Conserva la unicidad existente o la crea si falta."""
+    # Conserva la unicidad existente o la crea si falta.
     Categoria = apps.get_model("bodega", "Categoria")
     tabla = Categoria._meta.db_table
     campo_actual = Categoria._meta.get_field("nombre")

@@ -1,19 +1,17 @@
-"""
-URL configuration for logistica_fyag project.
-
-The `urlpatterns` list routes URLs to views. For more information please see:
-    https://docs.djangoproject.com/en/4.2/topics/http/urls/
-Examples:
-Function views
-    1. Add an import:  from my_app import views
-    2. Add a URL to urlpatterns:  path('', views.home, name='home')
-Class-based views
-    1. Add an import:  from other_app.views import Home
-    2. Add a URL to urlpatterns:  path('', Home.as_view(), name='home')
-Including another URLconf
-    1. Import the include() function: from django.urls import include, path
-    2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
-"""
+# URL configuration for logistica_fyag project.
+#
+# The `urlpatterns` list routes URLs to views. For more information please see:
+#     https://docs.djangoproject.com/en/4.2/topics/http/urls/
+# Examples:
+# Function views
+#     1. Add an import:  from my_app import views
+#     2. Add a URL to urlpatterns:  path('', views.home, name='home')
+# Class-based views
+#     1. Add an import:  from other_app.views import Home
+#     2. Add a URL to urlpatterns:  path('', Home.as_view(), name='home')
+# Including another URLconf
+#     1. Import the include() function: from django.urls import include, path
+#     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 from django.contrib import admin
 from django.conf import settings
 from django.contrib.auth.views import LogoutView
@@ -51,6 +49,7 @@ from apps.catalogo.views import (
 from apps.despachos.views import (
     articulo_por_codigo,
     comprobante_despacho,
+    descargar_comprobante_despacho,
     obras_buscar,
     procesar_despacho,
     registrar_recepcion,
@@ -92,6 +91,11 @@ urlpatterns = [
     path('despachos/', vista_despacho, name='despachos'),
     path('despachos/', vista_despacho, name='despachos_web'),
     path('despachos/<int:despacho_id>/comprobante/', comprobante_despacho, name='comprobante_despacho'),
+    path(
+        'despachos/<int:despacho_id>/comprobante/pdf/',
+        descargar_comprobante_despacho,
+        name='descargar_comprobante_despacho',
+    ),
     path('despachos/<int:despacho_id>/recepcion/', registrar_recepcion, name='registrar_recepcion'),
     path('mobile/', RedirectView.as_view(pattern_name='despachos', query_string=True), name='bodega_mobile'),
     path('obras/buscar/', obras_buscar, name="obras_buscar"),

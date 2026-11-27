@@ -1,1 +1,1 @@
-"""Pruebas de la aplicación catálogo."""
+# Pruebas de la aplicación catálogo.

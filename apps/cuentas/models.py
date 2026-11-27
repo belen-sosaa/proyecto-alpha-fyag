@@ -1,1 +1,1 @@
-"""Modelos propios de cuentas; los perfiles actuales siguen en apps.bodega."""
+# Modelos propios de cuentas; los perfiles actuales siguen en apps.bodega.

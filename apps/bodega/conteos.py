@@ -20,6 +20,7 @@ logger = logging.getLogger(__name__)
 MAX_ARTICULOS = 50
 MAX_STOCK = 2**31 - 1
 ERROR_GUARDAR_CONTEO = "No se pudo guardar el conteo. Vuelve a intentarlo."
+# La comparación usa el saldo que quedó guardado al contar, aunque el stock cambie después.
 DISCREPANCIA = ~Q(stock_fisico=F("stock_sistema"))
 
 
@@ -44,6 +45,7 @@ class ObservacionConteoForm(forms.Form):
 
 
 def _guardar_conteo(usuario, lineas, observacion):
+    # El conteo deja evidencia de lo que había en bodega. Los ajustes de inventario se hacen por separado.
     cantidades = dict(lineas)
     if len(cantidades) != len(lineas):
         raise ValidationError("Ingresa cada artículo una sola vez por conteo.")
@@ -116,13 +118,11 @@ def nuevo_conteo(request):
 @require_GET
 def vista_discrepancias(request, conteo_id):
     conteo = get_object_or_404(ConteoInventario.objects.select_related("usuario"), pk=conteo_id)
-    detalles = list(conteo.detalles.select_related("articulo").order_by("pk"))
+    # El reporte enfoca la revisión en las diferencias. Todas las líneas del conteo siguen guardadas.
+    detalles = conteo.detalles.filter(DISCREPANCIA).select_related("articulo").order_by("pk")
     return render(request, "bodega/conteos.html", {
         "conteo": conteo,
-        "grupos": (
-            ("Discrepancias", [detalle for detalle in detalles if detalle.diferencia], "No hay diferencias de stock."),
-            ("Coincidencias", [detalle for detalle in detalles if not detalle.diferencia], "Ningún artículo coincidió con el stock del sistema."),
-        ),
+        "detalles": detalles,
     })
 
 

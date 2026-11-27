@@ -1,1 +1,1 @@
-"""Pruebas de la aplicación cuentas."""
+# Pruebas de la aplicación cuentas.

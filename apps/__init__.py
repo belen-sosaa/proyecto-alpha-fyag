@@ -1,1 +1,1 @@
-"""Aplicaciones del proyecto FYAG."""
+# Aplicaciones del proyecto FYAG.

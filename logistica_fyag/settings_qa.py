@@ -1,4 +1,4 @@
-"""Conexiones independientes para las pruebas de integración de FYAG."""
+# Conexiones independientes para las pruebas de integración de FYAG.
 
 import os
 from urllib.parse import unquote, urlsplit

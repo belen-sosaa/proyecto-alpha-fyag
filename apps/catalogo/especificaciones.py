@@ -6,7 +6,7 @@ from apps.catalogo.mongo import obtener_base
 
 
 def validar_id(articulo_id):
-    """Comprueba que el identificador sea un entero positivo."""
+    # Comprueba que el identificador sea un entero positivo.
     if (
         isinstance(articulo_id, bool)
         or not isinstance(articulo_id, int)
@@ -18,7 +18,7 @@ def validar_id(articulo_id):
 
 
 def validar_caracteristicas(caracteristicas):
-    """Valida las características antes de enviarlas a MongoDB."""
+    # Valida las características antes de enviarlas a MongoDB.
     if not isinstance(caracteristicas, dict) or not caracteristicas:
         raise ValueError(
             "Debes ingresar un diccionario con características."
@@ -53,7 +53,7 @@ def validar_caracteristicas(caracteristicas):
 
 
 def guardar_especificaciones(articulo_id, caracteristicas):
-    """Crea o actualiza la ficha de un artículo existente."""
+    # Crea o actualiza la ficha de un artículo existente.
     validar_id(articulo_id)
     validar_caracteristicas(caracteristicas)
 
@@ -83,7 +83,7 @@ def guardar_especificaciones(articulo_id, caracteristicas):
 
 
 def obtener_especificaciones(articulo_id):
-    """Devuelve la ficha o None si no tiene especificaciones."""
+    # Devuelve la ficha o None si no tiene especificaciones.
     validar_id(articulo_id)
 
     return obtener_base()["especificaciones_insumos"].find_one(

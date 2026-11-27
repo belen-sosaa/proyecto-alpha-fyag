@@ -1,4 +1,6 @@
 import json
+from contextlib import closing
+from io import BytesIO
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
@@ -7,6 +9,7 @@ from django.db import IntegrityError
 from django.test import TestCase
 from django.urls import reverse
 from pymongo.errors import ServerSelectionTimeoutError
+from pypdf import PdfReader
 
 from apps.bodega.models import Articulo, BitacoraAuditoria, Categoria, MovimientoCardex, Obra
 from apps.cuentas.roles import ADMIN_BODEGA, BODEGUERO, SUPERVISOR
@@ -165,6 +168,7 @@ class RecepcionDespachoTests(TestCase):
             articulo=cls.articulo, obra=obra, usuario=cls.bodeguero, cantidad=2,
         )
         cls.comprobante_url = reverse("comprobante_despacho", args=[cls.despacho.pk])
+        cls.pdf_url = reverse("descargar_comprobante_despacho", args=[cls.despacho.pk])
         cls.recepcion_url = reverse("registrar_recepcion", args=[cls.despacho.pk])
 
     def test_firma_vinculada_al_comprobante_y_auditada_sin_movimiento_de_stock(self):
@@ -216,6 +220,39 @@ class RecepcionDespachoTests(TestCase):
                 self.assertRedirects(respuesta, self.comprobante_url)
                 self.assertFalse(RecepcionDespacho.objects.exists())
         self.assertFalse(BitacoraAuditoria.objects.exists())
+
+    def test_pdf_descargable_con_firma_y_permisos_del_comprobante(self):
+        self.assertRedirects(self.client.get(self.pdf_url), f"{reverse('login')}?next={self.pdf_url}")
+        self.client.force_login(self.supervisor)
+        self.assertNotContains(self.client.get(self.comprobante_url), self.pdf_url)
+        self.assertEqual(self.client.get(self.pdf_url).status_code, 404)
+        self.client.post(self.recepcion_url, {"firma": json.dumps(self.firma)})
+
+        for usuario in (self.supervisor, self.bodeguero, self.admin):
+            with self.subTest(usuario=usuario):
+                self.client.force_login(usuario)
+                self.assertContains(self.client.get(self.comprobante_url), self.pdf_url)
+                with closing(self.client.get(self.pdf_url)) as respuesta:
+                    self.assertEqual(respuesta.status_code, 200)
+                    self.assertEqual(respuesta["Content-Type"], "application/pdf")
+                    self.assertIn(f'attachment; filename="despacho-{self.despacho.pk}-firmado.pdf"',
+                                  respuesta["Content-Disposition"])
+                    self.assertIn("no-store", respuesta["Cache-Control"])
+                    pdf = PdfReader(BytesIO(b"".join(respuesta.streaming_content)))
+                self.assertEqual(len(pdf.pages), 1)
+                pagina = pdf.pages[0]
+                texto = pagina.extract_text()
+                for dato in ("Obra Norte", "REF-002", "Válvula", "2 unidad", "bodeguero", "Ana", "Firma de recepción"):
+                    self.assertIn(dato, texto)
+                self.assertTrue(any(
+                    operador == b"l" and tuple(punto) == (29.25, 109.2)
+                    for punto, operador in pagina.get_contents().operations
+                ))
+
+        for usuario in (self.otro_supervisor, self.otro_bodeguero):
+            with self.subTest(usuario=usuario):
+                self.client.force_login(usuario)
+                self.assertEqual(self.client.get(self.pdf_url).status_code, 404)
 
     def test_segundo_envio_no_reemplaza_la_firma(self):
         self.client.force_login(self.supervisor)
