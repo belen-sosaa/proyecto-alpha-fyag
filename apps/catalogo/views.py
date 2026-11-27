@@ -100,7 +100,10 @@ def articulo_crear(request):
 
 @facultad_requerida("ingresar_articulo")
 def catalogo_crear(request):
-    form = ArticuloCatalogoForm(request.POST if request.method == "POST" else None)
+    permisos = permisos_de(request.user)
+    form = ArticuloCatalogoForm(
+        request.POST if request.method == "POST" else None, editar_precio=permisos["gestionar_precio_lista"],
+    )
     if request.method == "POST" and form.is_valid():
         try:
             with transaction.atomic():
@@ -119,13 +122,15 @@ def catalogo_crear(request):
                 "Insumo creado correctamente.",
             )
     return render(request, "catalogo/catalogo.html", {
-        "form": form, "titulo": "Crear insumo", "perm": permisos_de(request.user),
+        "form": form, "titulo": "Crear insumo", "perm": permisos,
         "alta_articulo": True,
     })
 
 
 @facultad_requerida("editar_articulo")
 def catalogo_editar(request, pk):
+    permisos = permisos_de(request.user)
+    editar_precio = permisos["gestionar_precio_lista"]
     if request.method == "POST":
         form = None
         try:
@@ -135,7 +140,7 @@ def catalogo_editar(request, pk):
                     Articulo.objects.select_for_update(), pk=pk,
                 )
                 anterior = datos_articulo(articulo)
-                form = ArticuloCatalogoForm(request.POST, instance=articulo)
+                form = ArticuloCatalogoForm(request.POST, instance=articulo, editar_precio=editar_precio)
                 if form.is_valid():
                     articulo = form.save()
                     BitacoraAuditoria.objects.create(
@@ -156,9 +161,9 @@ def catalogo_editar(request, pk):
                 )
     else:
         articulo = get_object_or_404(Articulo, pk=pk)
-        form = ArticuloCatalogoForm(instance=articulo)
+        form = ArticuloCatalogoForm(instance=articulo, editar_precio=editar_precio)
     return render(request, "catalogo/catalogo.html", {
-        "form": form, "titulo": "Editar insumo", "perm": permisos_de(request.user),
+        "form": form, "titulo": "Editar insumo", "perm": permisos,
     })
 
 

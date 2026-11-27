@@ -177,12 +177,12 @@ class RolesTests(TestCase):
 
     def test_bodega_puede_despachar_y_descontar_stock(self):
         self.assertIsNotNone(finders.find("js/obra_auto.js"))
-        obra = Obra.objects.create(nombre="Edificio A")
+        obra = Obra.objects.create(nombre="Edificio A", numero_presupuesto="P-01", tecnico_responsable="Técnico QA")
         categoria = Categoria.objects.create(nombre="Herramientas")
         for rol in (BODEGUERO, ADMIN_BODEGA):
             with self.subTest(rol=rol):
                 articulo = Articulo.objects.create(
-                    sku=rol, descripcion="Insumo de prueba", categoria=categoria, stock_fisico=10,
+                    sku=rol, descripcion="Insumo de prueba", categoria=categoria, stock_fisico=10, precio_lista=50,
                 )
                 usuario = self.usuarios[rol]
                 self.client.force_login(usuario)

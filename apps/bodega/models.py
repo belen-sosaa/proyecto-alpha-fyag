@@ -136,6 +136,10 @@ class Articulo(models.Model):
         default=0,
         verbose_name="Stock físico",
     )
+    precio_lista = models.DecimalField(
+        "precio de lista", max_digits=12, decimal_places=2, null=True, blank=True,
+        validators=[MinValueValidator(0)],
+    )
 
     stock_minimo = models.PositiveIntegerField(
         default=0,
@@ -200,6 +204,8 @@ class Obra(models.Model):
     longitud = models.FloatField(null=True, blank=True)
     estado = models.CharField(max_length=20, default="ACTIVA")
     presupuesto_asignado = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    numero_presupuesto = models.CharField("número de presupuesto", max_length=50, blank=True)
+    tecnico_responsable = models.CharField("técnico responsable", max_length=200, blank=True)
     cliente = models.ForeignKey("compras.EntidadComercial", on_delete=models.PROTECT, null=True, blank=True)
 
     def __str__(self):

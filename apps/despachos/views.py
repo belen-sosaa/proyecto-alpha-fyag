@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 @login_required
 def vista_despacho(request):
     contexto = contexto_operativo(request.user)
-    if not (contexto["perm"]["despachar"] or contexto["recepcion"]):
+    if "despacho" not in contexto["modulos_operativos"]:
         return redirect("bodega_web")
     modulo = contexto["modulos_operativos"]["despacho"]
     contexto.update(modulo_actual=modulo, titulo_panel=modulo["nombre"])
@@ -39,7 +39,7 @@ def _despachos_visibles(usuario, contexto):
     despachos = Despacho.objects.filter(tipo_movimiento__iexact="DESPACHO")
     if contexto["recepcion"]:
         despachos = despachos.filter(Q(recepcion__isnull=True) | Q(recepcion__receptor=usuario))
-    elif contexto["rol_actual"] != ADMIN_BODEGA:
+    elif contexto["rol_actual"] != ADMIN_BODEGA and not contexto["perm"]["consultar_despachos"]:
         despachos = despachos.filter(usuario=usuario)
     return despachos.select_related("articulo", "usuario", "obra", "recepcion").defer("recepcion__firma")
 
@@ -47,7 +47,7 @@ def _despachos_visibles(usuario, contexto):
 @login_required
 def comprobante_despacho(request, despacho_id):
     contexto = contexto_operativo(request.user)
-    if not (contexto["perm"]["despachar"] or contexto["recepcion"]):
+    if "despacho" not in contexto["modulos_operativos"]:
         raise PermissionDenied
 
     despacho = get_object_or_404(_despachos_visibles(request.user, contexto), pk=despacho_id)
@@ -167,11 +167,17 @@ def procesar_despacho(request):
         return redirect("despachos")
     try:
         with transaction.atomic():
-            obra = Obra.objects.get(pk=obra_id)
+            obra = Obra.objects.select_for_update().get(pk=obra_id)
             articulo = Articulo.objects.select_for_update().get(pk=articulo_id)
             stock_anterior = articulo.stock_fisico
             if stock_anterior < cantidad:
                 messages.error(request, "Stock insuficiente para realizar el despacho.")
+                return redirect("despachos")
+            if not obra.numero_presupuesto.strip() or not obra.tecnico_responsable.strip():
+                messages.error(request, "La obra necesita un número de presupuesto y un técnico responsable.")
+                return redirect("despachos")
+            if articulo.precio_lista is None:
+                messages.error(request, "El artículo necesita un precio de lista para confirmar el despacho.")
                 return redirect("despachos")
 
             articulo.stock_fisico = stock_anterior - cantidad
@@ -183,6 +189,10 @@ def procesar_despacho(request):
             despacho = Despacho.objects.create(
                 articulo=articulo, obra=obra, cantidad=cantidad, usuario=request.user,
                 mongodb_id=str(movimiento.pk),
+                numero_presupuesto=obra.numero_presupuesto,
+                presupuesto_aplicado=obra.presupuesto_asignado,
+                tecnico_responsable=obra.tecnico_responsable,
+                precio_unitario_aplicado=articulo.precio_lista,
             )
             BitacoraAuditoria.objects.create(
                 usuario=request.user, accion="CREAR", entidad="MovimientoCardex",
@@ -199,6 +209,9 @@ def procesar_despacho(request):
                 geo_ubicacion={"latitud": obra.latitud, "longitud": obra.longitud},
                 tag_iot=request.POST.get("tag_iot", ""), sku=articulo.sku,
                 descripcion=articulo.descripcion, obra=obra.nombre,
+                numero_presupuesto=despacho.numero_presupuesto,
+                tecnico_responsable=despacho.tecnico_responsable,
+                precio_unitario_aplicado=str(despacho.precio_unitario_aplicado),
             )
             # El respaldo se ejecuta solo si se confirma la transacción de inventario.
             transaction.on_commit(lambda: guardar_respaldo_cardex([documento]), robust=True)

@@ -1,4 +1,5 @@
 import json
+from decimal import Decimal
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
@@ -9,7 +10,8 @@ from django.urls import reverse
 from pymongo.errors import ServerSelectionTimeoutError
 
 from apps.bodega.models import Articulo, BitacoraAuditoria, Categoria, MovimientoCardex, Obra
-from apps.cuentas.roles import ADMIN_BODEGA, BODEGUERO, SUPERVISOR
+from apps.compras.models import EntidadComercial
+from apps.cuentas.roles import ADMIN_BODEGA, BODEGUERO, FINANZAS, SUPERVISOR
 from .models import Despacho, RecepcionDespacho
 
 
@@ -18,10 +20,13 @@ class DespachoTransaccionalTests(TestCase):
     def setUpTestData(cls):
         cls.usuario = get_user_model().objects.create_user(username="bodega")
         cls.usuario.groups.add(Group.objects.create(name=BODEGUERO))
-        cls.obra = Obra.objects.create(nombre="Obra de prueba")
+        cls.obra = Obra.objects.create(
+            nombre="Obra de prueba", numero_presupuesto="P-001",
+            presupuesto_asignado=2000, tecnico_responsable="Técnico original",
+        )
         categoria = Categoria.objects.create(nombre="Refrigeración")
         cls.articulo = Articulo.objects.create(
-            sku="REF-001", descripcion="Filtro", categoria=categoria, stock_fisico=10,
+            sku="REF-001", descripcion="Filtro", categoria=categoria, stock_fisico=10, precio_lista=125,
         )
 
     def setUp(self):
@@ -61,6 +66,7 @@ class DespachoTransaccionalTests(TestCase):
         self.assertEqual(documento["despacho_id"], despacho.pk)
         self.assertEqual(documento["_id"], despacho.mongodb_id)
         self.assertEqual(documento["stock_resultante"], 7)
+        self.assertEqual(documento["precio_unitario_aplicado"], "125.00")
 
         pagina = self.client.get(reverse("despachos"))
         self.assertTemplateUsed(pagina, "despachos/despacho.html")
@@ -68,6 +74,59 @@ class DespachoTransaccionalTests(TestCase):
         self.assertContains(pagina, "REF-001 · Filtro")
         self.assertContains(pagina, "Obra de prueba")
         self.assertContains(pagina, "3 unidad")
+
+    def test_historial_conserva_presupuesto_tecnico_y_precio_al_editar_sus_fichas(self):
+        self.assertRedirects(self.despachar(3), reverse("despachos"))
+        despacho = Despacho.objects.get()
+        comprobante = reverse("comprobante_despacho", args=[despacho.pk])
+        self.assertNotContains(self.client.get(comprobante), "Precio unitario aplicado")
+        editar_articulo = reverse("catalogo_editar", args=[self.articulo.pk])
+        self.assertEqual(self.client.post(editar_articulo, {"precio_lista": 500}).status_code, 403)
+
+        admin = get_user_model().objects.create_user(username="bodega_edicion")
+        admin.groups.add(Group.objects.create(name=ADMIN_BODEGA))
+        self.client.force_login(admin)
+        cliente = EntidadComercial.objects.create(rut="11111111-1", razon_social="Cliente", tipo_entidad="CLIENTE")
+        self.assertRedirects(self.client.post(reverse("obra_editar", args=[self.obra.pk]), {
+            "nombre": self.obra.nombre, "cliente": cliente.pk, "numero_presupuesto": "P-002",
+            "presupuesto_asignado": "4000", "tecnico_responsable": "Técnico nuevo",
+        }), reverse("obras"))
+        self.assertRedirects(self.client.post(editar_articulo, {
+            "sku": self.articulo.sku, "descripcion": self.articulo.descripcion,
+            "categoria": self.articulo.categoria_id, "unidad_medida": self.articulo.unidad_medida,
+            "stock_minimo": self.articulo.stock_minimo, "stock_critico": self.articulo.stock_critico,
+            "precio_lista": "500",
+        }), reverse("catalogo_listar"))
+        self.assertRedirects(self.despachar(1), reverse("despachos"))
+
+        finanzas = get_user_model().objects.create_user(username="finanzas_consulta")
+        finanzas.groups.add(Group.objects.create(name=FINANZAS))
+        self.client.force_login(finanzas)
+        despacho_nuevo = Despacho.objects.latest("pk")
+        self.assertContains(
+            self.client.get(reverse("comprobante_despacho", args=[despacho_nuevo.pk])), "P-002",
+        )
+        pagina = self.client.get(comprobante)
+        self.assertContains(pagina, "P-001")
+        self.assertContains(pagina, "Técnico original")
+        self.assertNotContains(pagina, "Técnico nuevo")
+        self.assertContains(pagina, "Precio unitario aplicado")
+        self.assertNotContains(pagina, reverse("procesar_despacho"))
+        despacho.refresh_from_db()
+        self.assertEqual(despacho.presupuesto_aplicado, Decimal("2000"))
+        self.assertEqual(despacho.precio_unitario_aplicado, Decimal("125"))
+        self.assertEqual(despacho.valor_aplicado, Decimal("375"))
+        self.assertEqual(despacho_nuevo.precio_unitario_aplicado, Decimal("500"))
+
+    def test_faltan_datos_de_la_obra_o_precio_y_no_se_registra_el_despacho(self):
+        Obra.objects.filter(pk=self.obra.pk).update(tecnico_responsable="")
+        self.assertRedirects(self.despachar(3), reverse("despachos"))
+        self.comprobar_reversion()
+
+        Obra.objects.filter(pk=self.obra.pk).update(tecnico_responsable="Técnico QA")
+        Articulo.objects.filter(pk=self.articulo.pk).update(precio_lista=None)
+        self.assertRedirects(self.despachar(3), reverse("despachos"))
+        self.comprobar_reversion()
 
     def test_lista_solo_muestra_despachos_autorizados(self):
         campos = {"articulo": self.articulo, "obra": self.obra, "cantidad": 1}

@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+
+{% block title %}{{ titulo_panel }}{% endblock %}
+{% block extra_head %}{% include "estilos_fichas.html" %}{% endblock %}
+
+{% block content %}
+  {% if form %}
+    <section class="ficha-operativa">
+      <form method="post">
+        {% csrf_token %}
+        {{ form.non_field_errors }}
+        <fieldset>
+          <legend>Datos tributarios</legend>
+          {% for campo in form.visible_fields|slice:":7" %}
+            <p>{{ campo.label_tag }} {{ campo }} {{ campo.errors }}</p>
+          {% endfor %}
+        </fieldset>
+        <fieldset id="datos-cliente">
+          <legend>Datos del cliente</legend>
+          {% for campo in form.visible_fields|slice:"7:10" %}
+            <p>{{ campo.label_tag }} {{ campo }} {{ campo.errors }}</p>
+          {% endfor %}
+        </fieldset>
+        <fieldset id="datos-proveedor">
+          <legend>Datos bancarios y de pago</legend>
+          {% for campo in form.visible_fields|slice:"10:" %}
+            <p>{{ campo.label_tag }} {{ campo }} {{ campo.errors }}</p>
+          {% endfor %}
+        </fieldset>
+        {{ contactos.management_form }}
+        {{ contactos.non_form_errors }}
+        <h3>Contactos</h3>
+        {% for contacto in contactos %}
+          <fieldset>
+            <legend>Contacto {{ forloop.counter }}</legend>
+            {{ contacto.as_p }}
+          </fieldset>
+        {% endfor %}
+        {% if entidad.contacto or entidad.datos_bancarios %}
+          <details>
+            <summary>Datos de la ficha anterior</summary>
+            {% if entidad.contacto %}<p>Contacto anterior: {{ entidad.contacto }}</p>{% endif %}
+            {% if entidad.datos_bancarios %}<p>Datos bancarios anteriores: {{ entidad.datos_bancarios }}</p>{% endif %}
+          </details>
+        {% endif %}
+        <div class="acciones-ficha">
+          <button type="submit">Guardar ficha</button>
+          <a class="boton boton-secundario" href="{% url 'entidades' %}">Volver a entidades</a>
+        </div>
+      </form>
+    </section>
+  {% else %}
+    <section class="ficha-operativa">
+      <div class="panel-cabecera">
+        <a class="boton boton-secundario" href="{% url 'finanzas' %}">Volver a Finanzas</a>
+        <a class="boton" href="{% url 'entidad_crear' %}">Nueva entidad</a>
+      </div>
+      <form method="get">
+        <label for="buscar-entidad">Buscar por razón social o RUT</label>
+        <input type="search" id="buscar-entidad" name="q" value="{{ consulta }}">
+        <button type="submit">Buscar</button>
+      </form>
+      <ul class="registros">
+        {% for ficha in entidades %}
+          <li class="registro">
+            <div>
+              <h2>{{ ficha.razon_social }}</h2>
+              <p>{{ ficha.rut }} · {{ ficha.get_tipo_entidad_display }}</p>
+            </div>
+            <a class="boton boton-secundario" href="{% url 'entidad_editar' ficha.pk %}" aria-label="Editar {{ ficha.razon_social }}">Editar</a>
+          </li>
+        {% empty %}
+          <li class="vacio">No se encontraron entidades.</li>
+        {% endfor %}
+      </ul>
+    </section>
+  {% endif %}
+{% endblock %}
+
+{% block extra_js %}
+  {% if form %}
+    <script>
+      const tipoEntidad = document.getElementById("{{ form.tipo_entidad.id_for_label }}");
+      const datosCliente = document.getElementById("datos-cliente");
+      const datosProveedor = document.getElementById("datos-proveedor");
+
+      function mostrarDatosDeEntidad() {
+        datosCliente.hidden = datosCliente.disabled = tipoEntidad.value === "PROVEEDOR";
+        datosProveedor.hidden = datosProveedor.disabled = tipoEntidad.value === "CLIENTE";
+      }
+
+      tipoEntidad.addEventListener("change", mostrarDatosDeEntidad);
+      mostrarDatosDeEntidad();
+    </script>
+  {% endif %}
+{% endblock %}

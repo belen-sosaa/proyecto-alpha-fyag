@@ -52,8 +52,14 @@ class ArticuloCatalogoForm(ArticuloForm):
     class Meta(ArticuloForm.Meta):
         fields = [
             "sku", "codigo_barras", "descripcion", "categoria", "unidad_medida",
-            "ubicacion_fisica", "stock_minimo", "stock_critico",
+            "ubicacion_fisica", "stock_minimo", "stock_critico", "precio_lista",
         ]
+        help_texts = {"precio_lista": "Precio unitario que se aplicará a los próximos despachos."}
+
+    def __init__(self, *args, editar_precio=False, **kwargs):
+        super().__init__(*args, **kwargs)
+        if not editar_precio or (self.is_bound and self.add_prefix("precio_lista") not in self.data):
+            self.fields.pop("precio_lista")
 
     def clean_especificaciones(self):
         datos = self.cleaned_data.get("especificaciones")

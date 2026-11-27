@@ -54,7 +54,14 @@
     {% if comprobante %}
       <a class="boton boton-secundario" href="{% url 'despachos' %}">Volver a despachos</a>
     {% else %}
-      <a class="boton boton-secundario" href="{% url 'bodega_web' %}">Volver a bodega</a>
+      {% if perm.consultar_despachos %}
+        <a class="boton boton-secundario" href="{% url 'finanzas' %}">Volver a finanzas</a>
+      {% else %}
+        <a class="boton boton-secundario" href="{% url 'bodega_web' %}">Volver a bodega</a>
+      {% endif %}
+      {% if perm.gestionar_obras %}
+        <a class="boton" href="{% url 'obras' %}">Gestionar obras</a>
+      {% endif %}
     {% endif %}
   </div>
 
@@ -64,10 +71,11 @@
         <h2>Comprobante de despacho #{{ comprobante.pk }}</h2>
         <dl>
           <dt>Fecha de despacho</dt><dd>{{ comprobante.fecha_despacho|date:"d/m/Y H:i" }}</dd>
-          <dt>Obra</dt><dd>{{ comprobante.obra.nombre }}</dd>
+          <dt>Obra</dt><dd>{{ comprobante.obra.nombre|default:"Sin obra registrada" }}</dd>
+          {% include "despachos/datos_aplicados.html" with despacho=comprobante %}
           <dt>Artículo</dt><dd>{{ comprobante.articulo.sku }} · {{ comprobante.articulo.descripcion }}</dd>
           <dt>Cantidad</dt><dd>{{ comprobante.cantidad }} {{ comprobante.articulo.unidad_medida }}</dd>
-          <dt>Responsable</dt><dd>{{ comprobante.usuario.get_full_name|default:comprobante.usuario.username }}</dd>
+          <dt>Despachado por</dt><dd>{{ comprobante.usuario.get_full_name|default:comprobante.usuario.username }}</dd>
           {% if recepcion_firmada %}
             <dt>Recibido por</dt><dd>{{ recepcion_firmada.nombre_receptor }}</dd>
             <dt>Fecha de recepción</dt><dd>{{ recepcion_firmada.fecha_recepcion|date:"d/m/Y H:i" }}</dd>
@@ -124,7 +132,7 @@
                 <dl>
                   <dt>Obra</dt><dd>{{ despacho.obra.nombre|default:"Sin obra registrada" }}</dd>
                   <dt>Cantidad</dt><dd>{{ despacho.cantidad }} {{ despacho.articulo.unidad_medida }}</dd>
-                  <dt>Responsable</dt><dd>{{ despacho.usuario.get_full_name|default:despacho.usuario.username }}</dd>
+                  <dt>Despachado por</dt><dd>{{ despacho.usuario.get_full_name|default:despacho.usuario.username }}</dd>
                   <dt>Recepción</dt><dd>{% if despacho.recepcion %}Firmada por {{ despacho.recepcion.nombre_receptor }}{% else %}Pendiente de firma{% endif %}</dd>
                 </dl>
                 <a class="boton boton-secundario" href="{% url 'comprobante_despacho' despacho.pk %}">
