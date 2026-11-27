@@ -27,6 +27,7 @@ from apps.bodega.conteos import (
 )
 from apps.bodega.egresos import registrar_egreso, vista_egreso
 from apps.bodega.views import vista_bodega, vista_cardex
+from apps.compras.entidades import gestionar_entidades
 from apps.compras.views import (
     confirmar_ingreso,
     consultar_ultimos_precios,
@@ -55,6 +56,7 @@ from apps.despachos.views import (
     registrar_recepcion,
     vista_despacho,
 )
+from apps.despachos.preparacion import gestionar_obras
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -77,6 +79,9 @@ urlpatterns = [
     path('catalogo/<int:pk>/precios/excel/', exportar_precios_excel, name='articulo_exportar_precios_excel'),
     path('compras/precios/', vista_ultimos_precios, name='ultimos_precios'),
     path('finanzas/', vista_bodega, {'modulo': 'finanzas'}, name='finanzas'),
+    path('finanzas/entidades/', gestionar_entidades, name='entidades'),
+    path('finanzas/entidades/nueva/', gestionar_entidades, {'nueva': True}, name='entidad_crear'),
+    path('finanzas/entidades/<int:pk>/', gestionar_entidades, name='entidad_editar'),
     path('articulos/nuevo/', articulo_crear, name="articulo_crear"),
     path('articulos/por-codigo/', articulo_por_codigo, name='articulo_por_codigo'),
     path('catalogo/', catalogo_listar, name='catalogo_listar'),
@@ -99,6 +104,9 @@ urlpatterns = [
     path('despachos/<int:despacho_id>/recepcion/', registrar_recepcion, name='registrar_recepcion'),
     path('mobile/', RedirectView.as_view(pattern_name='despachos', query_string=True), name='bodega_mobile'),
     path('obras/buscar/', obras_buscar, name="obras_buscar"),
+    path('obras/', gestionar_obras, name='obras'),
+    path('obras/nueva/', gestionar_obras, {'nueva': True}, name='obra_crear'),
+    path('obras/<int:pk>/', gestionar_obras, name='obra_editar'),
     path('despacho/procesar/', procesar_despacho, name='procesar_despacho'),
     path('api/proveedores/', listar_proveedores, name='listar_proveedores'),
     path('api/articulos/<int:articulo_id>/ultimos-precios/', consultar_ultimos_precios, name='api_ultimos_precios'),

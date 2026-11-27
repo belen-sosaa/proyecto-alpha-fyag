@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block title %}{{ titulo_panel }}{% endblock %}
+{% block extra_head %}{% include "estilos_fichas.html" %}{% endblock %}
+
+{% block content %}
+  <section class="ficha-operativa">
+    {% if form %}
+      <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <div class="acciones-ficha">
+          <button type="submit">Guardar obra</button>
+          <a class="boton boton-secundario" href="{% url 'obras' %}">Volver a obras</a>
+        </div>
+      </form>
+    {% else %}
+      <div class="panel-cabecera">
+        <a class="boton boton-secundario" href="{% url 'despachos' %}">Volver a despachos</a>
+        <a class="boton" href="{% url 'obra_crear' %}">Nueva obra</a>
+      </div>
+      <ul class="registros">
+        {% for obra in obras %}
+          <li class="registro">
+            <div>
+              <h2>{{ obra.nombre }}</h2>
+              {% if obra.cliente %}<p>{{ obra.cliente }}</p>{% endif %}
+              {% if obra.numero_presupuesto and obra.tecnico_responsable %}
+                <p>Presupuesto {{ obra.numero_presupuesto }} · {{ obra.tecnico_responsable }}</p>
+              {% else %}
+                <p>Falta completar el presupuesto o el técnico responsable.</p>
+              {% endif %}
+            </div>
+            <a class="boton boton-secundario" href="{% url 'obra_editar' obra.pk %}" aria-label="Editar {{ obra.nombre }}">Editar</a>
+          </li>
+        {% empty %}
+          <li class="vacio">Aún no hay obras registradas.</li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+  </section>
+{% endblock %}

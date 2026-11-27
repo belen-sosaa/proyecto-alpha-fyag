@@ -10,6 +10,10 @@ class Despacho(models.Model):
     usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
     mongodb_id = models.CharField(max_length=100, blank=True, null=True)
     tipo_movimiento = models.CharField(max_length=20, default="DESPACHO")
+    numero_presupuesto = models.CharField(max_length=50, blank=True, editable=False, db_default="")
+    presupuesto_aplicado = models.DecimalField(max_digits=12, decimal_places=2, null=True, editable=False)
+    tecnico_responsable = models.CharField(max_length=200, blank=True, editable=False, db_default="")
+    precio_unitario_aplicado = models.DecimalField(max_digits=12, decimal_places=2, null=True, editable=False)
 
     class Meta:
         # Mantiene la tabla y los despachos creados cuando el modelo pertenecía a bodega.
@@ -17,6 +21,11 @@ class Despacho(models.Model):
 
     def __str__(self):
         return f"Despacho {self.pk} - {self.articulo.sku}"
+
+    @property
+    def valor_aplicado(self):
+        if self.precio_unitario_aplicado is not None:
+            return self.cantidad * self.precio_unitario_aplicado
 
 
 class RecepcionDespacho(models.Model):

@@ -6,6 +6,7 @@
   <style>
     .panel { min-width: 0; padding: clamp(16px, 3vw, 24px); border: 1px solid var(--borde); border-radius: 15px; background: #fff; }
     .panel + .panel { margin-top: 16px; }
+    .acceso-entidades { margin-bottom: 20px; }
     .panel-cabecera { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; margin-bottom: 14px; }
     .operaciones-bodega { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr)); gap: 16px; margin-bottom: 16px; }
     .operaciones-bodega .panel { margin: 0; }
@@ -85,6 +86,9 @@
   {% elif modulo_actual.clave == "compras" %}
     {% include "bodega/compras.html" %}
   {% elif modulo_actual.clave == "finanzas" %}
+    {% if perm.gestionar_entidades %}
+      <p class="acceso-entidades"><a class="boton" href="{% url 'entidades' %}">Clientes y proveedores</a></p>
+    {% endif %}
     <section class="panel" aria-labelledby="resumen-compras">
       <div class="panel-cabecera">
         <h2 id="resumen-compras">Resumen de facturas de compra</h2>

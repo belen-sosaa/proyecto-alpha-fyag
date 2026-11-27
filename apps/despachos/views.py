@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 @login_required
 def vista_despacho(request):
     contexto = contexto_operativo(request.user)
-    if not (contexto["perm"]["despachar"] or contexto["recepcion"]):
+    if "despacho" not in contexto["modulos_operativos"]:
         return redirect("bodega_web")
     modulo = contexto["modulos_operativos"]["despacho"]
     contexto.update(modulo_actual=modulo, titulo_panel=modulo["nombre"])
@@ -43,7 +43,7 @@ def _despachos_visibles(usuario, contexto):
     # El bodeguero ve sus propios despachos. Administración de Bodega puede ver todos.
     if contexto["recepcion"]:
         despachos = despachos.filter(Q(recepcion__isnull=True) | Q(recepcion__receptor=usuario))
-    elif contexto["rol_actual"] != ADMIN_BODEGA:
+    elif contexto["rol_actual"] != ADMIN_BODEGA and not contexto["perm"]["consultar_despachos"]:
         despachos = despachos.filter(usuario=usuario)
     return despachos.select_related("articulo", "usuario", "obra", "recepcion").defer("recepcion__firma")
 
@@ -71,7 +71,7 @@ def comprobante_despacho(request, despacho_id):
 
 
 def _obtener_comprobante(usuario, contexto, despacho_id, *, firmado=False):
-    if not (contexto["perm"]["despachar"] or contexto["recepcion"]):
+    if "despacho" not in contexto["modulos_operativos"]:
         raise PermissionDenied
     # El enlace directo al PDF tiene los mismos permisos que la pantalla del comprobante.
     despachos = _despachos_visibles(usuario, contexto)
@@ -194,12 +194,22 @@ def procesar_despacho(request):
         return redirect("despachos")
     try:
         with transaction.atomic():
-            obra = Obra.objects.get(pk=obra_id)
+            obra = Obra.objects.select_for_update().get(pk=obra_id)
             # Otro despacho del mismo artículo debe esperar hasta que quede guardado el nuevo saldo.
             articulo = Articulo.objects.select_for_update().get(pk=articulo_id)
             stock_anterior = articulo.stock_fisico
             if stock_anterior < cantidad:
                 messages.error(request, "Stock insuficiente para realizar el despacho.")
+                return redirect("despachos")
+            numero_presupuesto = obra.numero_presupuesto.strip()
+            tecnico_responsable = obra.tecnico_responsable.strip()
+            # Las obras antiguas pueden seguir recibiendo despachos hasta que se prepare su ficha.
+            obra_preparada = bool(numero_presupuesto or tecnico_responsable)
+            if obra_preparada and not (numero_presupuesto and tecnico_responsable):
+                messages.error(request, "La obra necesita un número de presupuesto y un técnico responsable.")
+                return redirect("despachos")
+            if obra_preparada and articulo.precio_lista is None:
+                messages.error(request, "El artículo necesita un precio de lista para confirmar el despacho.")
                 return redirect("despachos")
 
             articulo.stock_fisico = stock_anterior - cantidad
@@ -211,6 +221,10 @@ def procesar_despacho(request):
             despacho = Despacho.objects.create(
                 articulo=articulo, obra=obra, cantidad=cantidad, usuario=request.user,
                 mongodb_id=str(movimiento.pk),
+                numero_presupuesto=numero_presupuesto,
+                presupuesto_aplicado=obra.presupuesto_asignado if obra_preparada else None,
+                tecnico_responsable=tecnico_responsable,
+                precio_unitario_aplicado=articulo.precio_lista,
             )
             BitacoraAuditoria.objects.create(
                 usuario=request.user, accion="CREAR", entidad="MovimientoCardex",
@@ -227,6 +241,11 @@ def procesar_despacho(request):
                 geo_ubicacion={"latitud": obra.latitud, "longitud": obra.longitud},
                 tag_iot=request.POST.get("tag_iot", ""), sku=articulo.sku,
                 descripcion=articulo.descripcion, obra=obra.nombre,
+                numero_presupuesto=despacho.numero_presupuesto,
+                tecnico_responsable=despacho.tecnico_responsable,
+                precio_unitario_aplicado=(
+                    str(despacho.precio_unitario_aplicado) if despacho.precio_unitario_aplicado is not None else None
+                ),
             )
             # El respaldo se ejecuta solo si se confirma la transacción de inventario.
             transaction.on_commit(lambda: guardar_respaldo_cardex([documento]), robust=True)

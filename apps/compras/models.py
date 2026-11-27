@@ -4,15 +4,35 @@ from django.db.models import Q
 
 
 class EntidadComercial(models.Model):
+    class Tipo(models.TextChoices):
+        CLIENTE = "CLIENTE", "Cliente"
+        PROVEEDOR = "PROVEEDOR", "Proveedor"
+        AMBOS = "AMBOS", "Cliente y proveedor"
+
     rut = models.CharField(max_length=12, unique=True)
     razon_social = models.CharField(max_length=200)
-    tipo_entidad = models.CharField(max_length=15, default="PROVEEDOR")
+    tipo_entidad = models.CharField(max_length=15, choices=Tipo.choices, default=Tipo.PROVEEDOR)
     contacto = models.CharField(max_length=150, blank=True, null=True)
     datos_bancarios = models.TextField(blank=True, null=True)
+    giro = models.CharField(max_length=200, blank=True, db_default="")
+    direccion = models.CharField("dirección", max_length=200, blank=True, db_default="")
+    region = models.CharField("región", max_length=100, blank=True, db_default="")
+    comuna = models.CharField(max_length=100, blank=True, db_default="")
+    ciudad = models.CharField(max_length=100, blank=True, db_default="")
+    representante_legal = models.CharField(max_length=200, blank=True, db_default="")
+    rut_representante = models.CharField("RUT del representante", max_length=12, blank=True, db_default="")
+    banco = models.CharField(max_length=100, blank=True, db_default="")
+    tipo_cuenta = models.CharField("tipo de cuenta", max_length=50, blank=True, db_default="")
+    numero_cuenta = models.CharField("número de cuenta", max_length=50, blank=True, db_default="")
+    correo_pagos = models.EmailField("correo para pagos", blank=True, db_default="")
 
     @classmethod
     def proveedores(cls):
         return cls.objects.filter(Q(tipo_entidad__iexact="PROVEEDOR") | Q(tipo_entidad__iexact="AMBOS"))
+
+    @classmethod
+    def clientes(cls):
+        return cls.objects.filter(Q(tipo_entidad__iexact="CLIENTE") | Q(tipo_entidad__iexact="AMBOS"))
 
     class Meta:
         db_table = "bodega_entidadcomercial"
@@ -20,6 +40,15 @@ class EntidadComercial(models.Model):
 
     def __str__(self):
         return self.razon_social
+
+
+class ContactoEntidad(models.Model):
+    entidad = models.ForeignKey(EntidadComercial, on_delete=models.CASCADE, related_name="contactos")
+    nombre = models.CharField(max_length=150)
+    rut = models.CharField("RUT", max_length=12, blank=True)
+    cargo = models.CharField(max_length=100, blank=True)
+    correo = models.EmailField(blank=True)
+    telefono = models.CharField("teléfono", max_length=30, blank=True)
 
 
 class FacturaCompra(models.Model):

@@ -2,6 +2,8 @@
 
 from django.db import migrations, models
 
+from apps.bodega.migration_operations import AddFieldIfMissing
+
 
 class Migration(migrations.Migration):
 
@@ -10,7 +12,7 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.AddField(
+        AddFieldIfMissing(
             model_name='articulo',
             name='precio_lista',
             field=models.DecimalField(blank=True, decimal_places=2, editable=False, max_digits=12, null=True),

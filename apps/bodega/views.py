@@ -31,7 +31,7 @@ def contexto_operativo(usuario):
     visibles = {
         "inicio": True,
         "bodega": permisos["despachar"] or permisos["registrar_merma"],
-        "despacho": permisos["despachar"] or recepcion,
+        "despacho": permisos["despachar"] or permisos["consultar_despachos"] or recepcion,
         "catalogo": permisos["ver_catalogo"],
         "auditoria": "cardex" in accesos,
         "compras": "compras" in accesos,

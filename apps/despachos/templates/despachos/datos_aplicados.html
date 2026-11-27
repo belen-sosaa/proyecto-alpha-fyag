@@ -1,0 +1,15 @@
+<dt>Presupuesto</dt>
+<dd>
+  {{ despacho.numero_presupuesto|default:"Sin registro" }}
+  {% if perm.ver_costos and despacho.presupuesto_aplicado != None %}
+    · $ {{ despacho.presupuesto_aplicado|floatformat:"2g" }}
+  {% endif %}
+</dd>
+<dt>Técnico responsable</dt><dd>{{ despacho.tecnico_responsable|default:"Sin registro" }}</dd>
+{% if perm.ver_costos %}
+  <dt>Precio unitario aplicado</dt>
+  <dd>{% if despacho.precio_unitario_aplicado != None %}$ {{ despacho.precio_unitario_aplicado|floatformat:"2g" }}{% else %}Sin registro{% endif %}</dd>
+  {% if despacho.valor_aplicado != None %}
+    <dt>Valor total aplicado</dt><dd>$ {{ despacho.valor_aplicado|floatformat:"2g" }}</dd>
+  {% endif %}
+{% endif %}

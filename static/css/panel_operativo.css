@@ -101,6 +101,16 @@
   padding-right: 2.75rem;
 }
 
+.menu-operativo .marca-logo {
+  display: block;
+  flex: 0 0 auto;
+  width: 3.25rem;
+  height: auto;
+  border-radius: 0.65rem;
+  filter: drop-shadow(0 0 1px rgb(255 255 255 / 85%))
+          drop-shadow(0 0 4px rgb(255 255 255 / 45%));
+}
+
 .menu-operativo .marca strong {
   font-size: 0.9rem;
   line-height: 1.3;
