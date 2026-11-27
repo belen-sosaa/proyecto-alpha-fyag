@@ -1,6 +1,9 @@
+from decimal import ROUND_HALF_UP, Decimal
+
 from django.conf import settings
 from django.db import models
 from django.db.models import Q
+from django.utils import timezone
 
 
 class EntidadComercial(models.Model):
@@ -54,6 +57,7 @@ class ContactoEntidad(models.Model):
 class FacturaCompra(models.Model):
     class TipoDocumento(models.TextChoices):
         FACTURA = "FACTURA", "Factura"
+        BOLETA = "BOLETA", "Boleta"
         GUIA = "GUIA_DESPACHO", "Guía de despacho"
         NOTA_CREDITO = "NOTA_CREDITO", "Nota de crédito"
 
@@ -70,6 +74,8 @@ class FacturaCompra(models.Model):
         "self", on_delete=models.PROTECT, related_name="documentos_asociados", null=True, blank=True,
     )
     fecha_emision = models.DateField()
+    fecha_ingreso = models.DateField(default=timezone.localdate, null=True, blank=True)
+    descuentos_generales = models.DecimalField(max_digits=12, decimal_places=2, default=0, db_default=0)
     subtotal_neto = models.DecimalField(max_digits=12, decimal_places=2)
     iva = models.DecimalField(max_digits=12, decimal_places=2)
     total = models.DecimalField(max_digits=12, decimal_places=2)
@@ -77,6 +83,17 @@ class FacturaCompra(models.Model):
     estado_ingreso = models.CharField(
         max_length=10, choices=EstadoIngreso.choices, default=EstadoIngreso.PENDIENTE,
     )
+
+    def calcular_totales(self):
+        subtotal = sum(
+            (Decimal(d.cantidad) * Decimal(d.costo_unitario_neto_final) for d in self.detalles.all()),
+            Decimal("0.00"),
+        )
+        neto = max(Decimal("0.00"), subtotal - Decimal(self.descuentos_generales or 0))
+        iva = Decimal("0.00") if self.tipo_documento == self.TipoDocumento.GUIA else (
+            neto * Decimal("0.19")
+        ).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        return neto, iva, neto + iva
 
     class Meta:
         db_table = "bodega_facturacompra"

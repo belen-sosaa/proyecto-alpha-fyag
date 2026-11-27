@@ -35,10 +35,14 @@ class EncabezadoFacturaForm(forms.Form):
     folio = forms.CharField(max_length=50)
     fecha_emision = forms.DateField(input_formats=["%Y-%m-%d"])
     documento_origen_id = forms.IntegerField(required=False, min_value=1, max_value=2**63 - 1)
+    descuentos_generales = forms.DecimalField(required=False, min_value=0, max_digits=12, decimal_places=2)
 
     def clean_tipo_documento(self):
         # Los formularios antiguos solo registraban facturas y no enviaban este campo.
         return self.cleaned_data["tipo_documento"] or TIPO.FACTURA
+
+    def clean_descuentos_generales(self):
+        return self.cleaned_data["descuentos_generales"] or Decimal("0.00")
 
 
 class DetalleFacturaForm(forms.Form):
@@ -246,6 +250,8 @@ def _registrar_factura_datos(usuario, datos):
         subtotal += linea["cantidad"] * linea["costo_unitario_neto_final"]
         lineas.append(linea)
 
+    descuentos_generales = datos_factura["descuentos_generales"]
+    subtotal = max(Decimal("0.00"), subtotal - descuentos_generales)
     # En este flujo, la guía respalda la recepción. El IVA se calcula en la factura o la nota de crédito.
     iva = Decimal("0.00") if tipo == TIPO.GUIA else (subtotal * TASA_IVA).quantize(CENTAVO, rounding=ROUND_HALF_UP)
     total = subtotal + iva
@@ -367,12 +373,21 @@ def _confirmar_ingreso_datos(usuario, datos):
                         if es_credito else "El ingreso supera el stock máximo admitido."
                     )
                     raise StockFueraDeRango(mensaje)
-                articulo.save(update_fields=["stock_fisico"])
+                campos_articulo = ["stock_fisico"]
+                if not es_credito and tipo in (TIPO.FACTURA, TIPO.BOLETA) and detalle.costo_unitario_neto_final > 0:
+                    articulo.actualizar_precio(
+                        detalle.costo_unitario_neto_final,
+                        cantidad_ingresada=detalle.cantidad,
+                        fecha=factura.fecha_emision,
+                    )
+                    campos_articulo.extend(["costo_promedio", "ultimo_costo_compra", "fecha_actualizacion_precio"])
+                articulo.save(update_fields=campos_articulo)
                 # La nota deja un movimiento nuevo que explica la rebaja. La factura original queda como respaldo.
                 justificacion = f"Nota de crédito sobre factura {origen.folio}." if es_credito else None
                 movimiento = MovimientoCardex.objects.create(
                     tipo=tipo_movimiento, articulo=articulo, usuario=usuario,
                     cantidad=detalle.cantidad, stock_resultante=articulo.stock_fisico,
+                    costo_unitario=detalle.costo_unitario_neto_final,
                     proveedor_id=factura.proveedor_id,
                     documento_referencia=f"{factura.get_tipo_documento_display()} {factura.folio}",
                     justificacion=justificacion,

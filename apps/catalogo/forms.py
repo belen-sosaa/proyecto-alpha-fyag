@@ -10,7 +10,7 @@ class ArticuloForm(forms.ModelForm):
         model = Articulo
         fields = [
             "sku", "codigo_barras", "descripcion", "categoria", "unidad_medida",
-            "ubicacion_fisica", "stock_fisico", "stock_minimo", "stock_critico",
+            "ubicacion_fisica", "sector_bodega", "stock_fisico", "stock_minimo", "stock_critico",
         ]
 
     def clean_sku(self):
@@ -52,7 +52,7 @@ class ArticuloCatalogoForm(ArticuloForm):
     class Meta(ArticuloForm.Meta):
         fields = [
             "sku", "codigo_barras", "descripcion", "categoria", "unidad_medida",
-            "ubicacion_fisica", "stock_minimo", "stock_critico",
+            "ubicacion_fisica", "sector_bodega", "stock_minimo", "stock_critico",
         ]
 
     def clean_especificaciones(self):

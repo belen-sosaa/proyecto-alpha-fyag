@@ -1,10 +1,13 @@
 import re
+from decimal import ROUND_HALF_UP, Decimal
 
 from django import VERSION as DJANGO_VERSION
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
 from django.db import models
+from django.db.models import F, Q
+from django.utils import timezone
 
 
 # Django 5.1 cambió el nombre del parámetro de CheckConstraint.
@@ -132,9 +135,21 @@ class Articulo(models.Model):
         verbose_name="Ubicación en bodega",
     )
 
+    sector_bodega = models.CharField(
+        max_length=50,
+        blank=True,
+        db_default="",
+        verbose_name="Sector o número de bodega",
+    )
+
     stock_fisico = models.PositiveIntegerField(
         default=0,
         verbose_name="Stock físico",
+    )
+    stock_comprometido = models.PositiveIntegerField(
+        default=0,
+        db_default=0,
+        verbose_name="Stock comprometido",
     )
     stock_minimo = models.PositiveIntegerField(
         default=0,
@@ -146,8 +161,33 @@ class Articulo(models.Model):
         verbose_name="Stock crítico",
     )
 
+    costo_promedio = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0,
+        db_default=0,
+        editable=False,
+        verbose_name="Costo promedio (PMP)",
+    )
+    ultimo_costo_compra = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        editable=False,
+        verbose_name="Último costo de compra",
+    )
+    fecha_actualizacion_precio = models.DateField(
+        null=True,
+        blank=True,
+        editable=False,
+        verbose_name="Fecha actualización de precio",
+    )
+
     # Compras cambia este precio al confirmar una factura que indica un valor nuevo.
     precio_lista = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True, editable=False)
+
+    activo = models.BooleanField(default=True, db_default=True)
 
     # Corresponde a la columna "estado" existente en Neon.
     estado_registrado = models.CharField(
@@ -171,6 +211,36 @@ class Articulo(models.Model):
     @property
     def es_stock_critico(self):
         return self.stock_fisico <= self.stock_critico
+
+    def hay_stock(self, cantidad=1):
+        return self.stock_fisico >= cantidad
+
+    def verificar_nivel_critico(self):
+        return self.es_stock_critico
+
+    def actualizar_stock(self, delta):
+        nuevo_stock = self.stock_fisico + delta
+        if nuevo_stock < 0:
+            raise ValidationError("El stock físico no puede quedar negativo.")
+        self.stock_fisico = nuevo_stock
+
+    def actualizar_precio(self, costo_unitario_neto, cantidad_ingresada=0, fecha=None):
+        """Actualiza el costo promedio ponderado (PMP) y el último costo de compra."""
+        costo = Decimal(costo_unitario_neto)
+        if cantidad_ingresada > 0:
+            stock_previo = max(0, self.stock_fisico - cantidad_ingresada)
+            base_anterior = Decimal(stock_previo) * Decimal(self.costo_promedio or 0)
+            nuevo_total = base_anterior + Decimal(cantidad_ingresada) * costo
+            if self.stock_fisico > 0:
+                self.costo_promedio = (nuevo_total / Decimal(self.stock_fisico)).quantize(
+                    Decimal("0.01"), rounding=ROUND_HALF_UP
+                )
+            else:
+                self.costo_promedio = costo.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        elif not self.costo_promedio:
+            self.costo_promedio = costo.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        self.ultimo_costo_compra = costo.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        self.fecha_actualizacion_precio = fecha or timezone.localdate()
 
     @property
     def es_stock_bajo(self):
@@ -205,14 +275,43 @@ class Articulo(models.Model):
 
 
 class Obra(models.Model):
+    class TipoServicio(models.TextChoices):
+        PROYECTO = "PROYECTO", "Proyecto"
+        MANTENCION = "MANTENCION", "Mantención"
+        CLIMATIZACION = "CLIMATIZACION", "Climatización"
+        ELECTRICO = "ELECTRICO", "Proyecto eléctrico"
+        EMERGENCIA = "EMERGENCIA", "Emergencia"
+        GARANTIA = "GARANTIA", "Garantía"
+        REPUESTOS = "REPUESTOS", "Venta de repuestos"
+        MEJORAS = "MEJORAS", "Mejoras"
+
+    class EstadoObra(models.TextChoices):
+        ACTIVA = "ACTIVA", "Activa"
+        EN_PROCESO = "EN_PROCESO", "En proceso"
+        FINALIZADA = "FINALIZADA", "Finalizada"
+        SUSPENDIDA = "SUSPENDIDA", "Suspendida"
+        CANCELADA = "CANCELADA", "Cancelada"
+
     nombre = models.CharField(max_length=200)
     latitud = models.FloatField(null=True, blank=True)
     longitud = models.FloatField(null=True, blank=True)
-    estado = models.CharField(max_length=20, default="ACTIVA")
+    estado = models.CharField(max_length=20, choices=EstadoObra.choices, default=EstadoObra.ACTIVA)
     presupuesto_asignado = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     numero_presupuesto = models.CharField("número de presupuesto", max_length=50, blank=True, db_default="")
+    fecha_creacion = models.DateField("fecha de creación", default=timezone.localdate, null=True, blank=True)
+    tipo_servicio = models.CharField(
+        "tipo de servicio", max_length=30, choices=TipoServicio.choices, blank=True, db_default="",
+    )
+    costo_materiales = models.DecimalField(
+        "costo de materiales", max_digits=14, decimal_places=2, default=0, db_default=0,
+    )
     tecnico_responsable = models.CharField("técnico responsable", max_length=200, blank=True, db_default="")
+    supervisor_responsable = models.CharField("supervisor responsable", max_length=200, blank=True, db_default="")
     cliente = models.ForeignKey("compras.EntidadComercial", on_delete=models.PROTECT, null=True, blank=True)
+
+    def sumar_costo_materiales(self, monto):
+        if monto is not None:
+            self.costo_materiales = Decimal(self.costo_materiales or 0) + Decimal(monto)
 
     def __str__(self):
         return self.nombre
@@ -241,18 +340,22 @@ class MovimientoCardex(RegistroInalterable):
         DEVOLUCION = "DEVOLUCION", "Devolución"
         AJUSTE = "AJUSTE", "Ajuste"
         REVERSA = "REVERSA", "Reversa"
+        USO_INTERNO = "USO_INTERNO", "Uso interno"
+        CAMBIO = "CAMBIO", "Cambio de artículo"
 
     nombre_registro = "El movimiento del Cardex"
 
-    tipo = models.CharField(max_length=10, choices=Tipo.choices)
+    tipo = models.CharField(max_length=15, choices=Tipo.choices)
     cantidad = models.PositiveIntegerField(validators=[MinValueValidator(1)])
     articulo = models.ForeignKey(Articulo, on_delete=models.PROTECT)
     usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
     obra = models.ForeignKey(Obra, on_delete=models.PROTECT, null=True, blank=True)
     proveedor = models.ForeignKey("compras.EntidadComercial", on_delete=models.PROTECT, null=True, blank=True)
+    conteo_origen = models.ForeignKey("ConteoInventario", on_delete=models.PROTECT, null=True, blank=True)
     fecha_hora = models.DateTimeField(auto_now_add=True)
     # Guarda una foto del saldo después del movimiento para consultar el historial.
     stock_resultante = models.PositiveIntegerField()
+    costo_unitario = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
     justificacion = models.TextField(null=True, blank=True)
     documento_referencia = models.CharField(max_length=100, blank=True, default="")
 
@@ -266,7 +369,10 @@ class MovimientoCardex(RegistroInalterable):
             models.CheckConstraint(
                 name="cardex_tipo_valido",
                 **{PARAMETRO_CONDICION: models.Q(
-                    tipo__in=["INGRESO", "DESPACHO", "MERMA", "DEVOLUCION", "AJUSTE", "REVERSA"]
+                    tipo__in=[
+                        "INGRESO", "DESPACHO", "MERMA", "DEVOLUCION",
+                        "AJUSTE", "REVERSA", "USO_INTERNO", "CAMBIO",
+                    ]
                 )},
             ),
             models.CheckConstraint(
@@ -322,9 +428,17 @@ class BitacoraAuditoria(RegistroInalterable):
 
 
 class ConteoInventario(models.Model):
+    class Estado(models.TextChoices):
+        EN_PROCESO = "EN_PROCESO", "En proceso"
+        FINALIZADO = "FINALIZADO", "Finalizado"
+
     usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
     fecha_hora = models.DateTimeField(auto_now_add=True)
+    estado = models.CharField(max_length=20, choices=Estado.choices, default=Estado.FINALIZADO, db_default="FINALIZADO")
     observacion = models.TextField(blank=True)
+
+    def procesar_discrepancias(self):
+        return self.detalles.filter(~Q(stock_fisico=F("stock_sistema")))
 
 
 class DetalleConteoInventario(models.Model):

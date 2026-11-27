@@ -2,6 +2,7 @@ from django import forms
 from django.contrib import messages
 from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
 from apps.bodega.models import Obra
@@ -17,14 +18,24 @@ class ObraForm(forms.ModelForm):
         model = Obra
         fields = [
             "nombre", "cliente", "numero_presupuesto", "presupuesto_asignado",
-            "tecnico_responsable",
+            "fecha_creacion", "tipo_servicio", "estado",
+            "tecnico_responsable", "supervisor_responsable",
         ]
+        widgets = {"fecha_creacion": forms.DateInput(attrs={"type": "date"})}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["cliente"].queryset = EntidadComercial.clientes().order_by("razon_social")
         for campo in ("cliente", "numero_presupuesto", "tecnico_responsable"):
             self.fields[campo].required = True
+        for campo in ("fecha_creacion", "tipo_servicio", "estado", "supervisor_responsable"):
+            self.fields[campo].required = False
+
+    def clean_estado(self):
+        return self.cleaned_data["estado"] or Obra.EstadoObra.ACTIVA
+
+    def clean_fecha_creacion(self):
+        return self.cleaned_data["fecha_creacion"] or timezone.localdate()
 
 
 @facultad_requerida("gestionar_obras")

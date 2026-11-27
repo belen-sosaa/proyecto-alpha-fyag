@@ -214,9 +214,13 @@ def procesar_despacho(request):
 
             articulo.stock_fisico = stock_anterior - cantidad
             articulo.save(update_fields=["stock_fisico"])
+            if articulo.precio_lista is not None:
+                obra.sumar_costo_materiales(cantidad * articulo.precio_lista)
+                obra.save(update_fields=["costo_materiales"])
             movimiento = MovimientoCardex.objects.create(
                 tipo=MovimientoCardex.Tipo.DESPACHO, articulo=articulo, obra=obra,
                 cantidad=cantidad, usuario=request.user, stock_resultante=articulo.stock_fisico,
+                costo_unitario=articulo.precio_lista,
             )
             despacho = Despacho.objects.create(
                 articulo=articulo, obra=obra, cantidad=cantidad, usuario=request.user,
