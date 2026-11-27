@@ -6,7 +6,7 @@
   id="lector-codigo"
   {% if campo_destino %}data-campo-destino="{{ campo_destino }}"{% else %}data-url="{% url 'articulo_por_codigo' %}"{% endif %}
   aria-labelledby="titulo-lector"
-  class="lector-codigo"
+  class="lector-codigo backdrop:backdrop-blur-sm"
 >
   <div class="lector-cabecera">
     <h2 id="titulo-lector">{% if campo_destino %}Agregar código{% else %}Buscar por código{% endif %}</h2>

@@ -3,11 +3,11 @@
     {# vista_inicio calcula estos indicadores al cargar la página y los entrega a los roles correspondientes. #}
     {% if resumen_stock %}
       <section aria-label="Resumen de inventario" class="grid gap-4 sm:grid-cols-2">
-        <a href="{% url 'inventario' %}" class="block rounded-2xl border border-slate-200 bg-white p-5 shadow-sm hover:border-blue-400">
+        <a href="{% url 'inventario' %}" class="block rounded-2xl border border-slate-200 bg-white p-5 shadow-sm hover:border-blue-400 hover:shadow-md motion-safe:transition motion-safe:duration-200 motion-safe:hover:-translate-y-px">
           <h2 class="text-sm font-semibold text-slate-600">Insumos registrados</h2>
           <p class="mt-2 text-3xl font-bold text-slate-900">{{ resumen_stock.total }}</p>
         </a>
-        <a href="{% url 'inventario' %}" class="block rounded-2xl border border-slate-200 bg-white p-5 shadow-sm hover:border-blue-400">
+        <a href="{% url 'inventario' %}" class="block rounded-2xl border border-slate-200 bg-white p-5 shadow-sm hover:border-blue-400 hover:shadow-md motion-safe:transition motion-safe:duration-200 motion-safe:hover:-translate-y-px">
           <h2 class="text-sm font-semibold text-slate-600">Insumos con stock crítico</h2>
           <p class="mt-2 text-3xl font-bold {% if resumen_stock.criticos %}text-red-700{% else %}text-slate-900{% endif %}">{{ resumen_stock.criticos }}</p>
         </a>

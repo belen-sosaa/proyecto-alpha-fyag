@@ -21,7 +21,7 @@
 {% endblock %}
 
 {% block content %}
-  <h1>Registrar factura, guía o nota de crédito</h1>
+  <h1><i class="fas fa-file-invoice" aria-hidden="true"></i> Registrar factura, guía o nota de crédito</h1>
   <form method="post" class="compra-formulario" id="form-compra">
     {% csrf_token %}
     {{ formulario.non_field_errors }}
@@ -56,8 +56,8 @@
         <div><dt>Total con IVA</dt><dd data-importe="total">—</dd></div>
       </dl>
     </section>
-    <div>
-      <button type="submit">Registrar documento</button>
+    <div class="compra-pie">
+      <button type="submit" class="boton-confirmar"><i class="fas fa-check" aria-hidden="true"></i> Registrar documento</button>
       <a class="boton boton-secundario" href="{% url 'compras' %}">Volver a compras</a>
     </div>
   </form>

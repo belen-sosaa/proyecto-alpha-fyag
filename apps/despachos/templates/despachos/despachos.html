@@ -1,6 +1,6 @@
 <section class="despacho-panel" aria-labelledby="nuevo-despacho">
   <div class="despacho-formulario-cabecera">
-    <h2 id="nuevo-despacho">Nuevo despacho</h2>
+    <h2 id="nuevo-despacho"><i class="fas fa-truck-fast" aria-hidden="true"></i> Nuevo despacho</h2>
     <button type="button" class="boton" data-abrir-lector
             aria-haspopup="dialog" aria-controls="lector-codigo">
       <i class="fas fa-qrcode" aria-hidden="true"></i> Escanear artículo
@@ -23,7 +23,7 @@
       <label for="cant-despacho">Cantidad</label>
       <input id="cant-despacho" name="cantidad" type="number" min="1" step="1" value="1" inputmode="numeric" required>
     </div>
-    <button type="submit">Confirmar despacho</button>
+    <button type="submit"><i class="fas fa-circle-check" aria-hidden="true"></i> Confirmar despacho</button>
   </form>
   {% include "lector_codigo.html" %}
 </section>

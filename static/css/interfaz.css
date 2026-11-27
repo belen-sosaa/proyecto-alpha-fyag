@@ -1,0 +1,282 @@
+/* Paleta y componentes compartidos por las vistas del sistema. */
+:root {
+  --fondo-ui: #f3f4f6;
+  --superficie-ui: #fff;
+  --campo-ui: #f8fafc;
+  --borde-ui: #e2e8f0;
+  --texto-ui: #172337;
+  --secundario-ui: #516075;
+  --radio-ui: 0.75rem;
+  --sombra-ui: 0 2px 6px rgb(15 23 42 / 5%);
+  --fuente-ui: Inter, system-ui, "Segoe UI", sans-serif;
+}
+
+body {
+  background: var(--fondo-ui);
+  color: var(--texto-ui);
+  font-family: var(--fuente-ui);
+  font-size: 0.9375rem;
+}
+
+.marca-icono {
+  flex: 0 0 2.5rem;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.65rem;
+  background-color: #2563eb;
+  color: white;
+  font-size: 1rem;
+}
+
+.cabecera {
+  min-height: 4.25rem;
+  padding: 0.75rem clamp(1rem, 4vw, 2rem);
+  background: #111e37;
+}
+
+.cabecera .marca strong { font-size: 1rem; }
+.cabecera .marca small { font-size: 0.75rem; }
+
+.contenedor {
+  width: min(88rem, calc(100% - 2 * clamp(0.75rem, 4vw, 2rem)));
+  margin: clamp(1rem, 3vw, 2rem) auto;
+}
+
+.contenido,
+.contenido-operativo .panel,
+.contenido-operativo .despacho-panel,
+.contenido-operativo .comprobante-despacho.despacho-registro,
+.contenido-operativo #form-recepcion {
+  padding: clamp(1rem, 2.5vw, 1.625rem);
+  border: 1px solid var(--borde-ui);
+  border-radius: var(--radio-ui);
+  background: var(--superficie-ui);
+  box-shadow: var(--sombra-ui);
+}
+
+.contenido:has(> :is(.formulario-centrado, .compra-formulario, #form-conteo)),
+.contenido:has(> .egreso-formulario):not(:has(.tabla-desplazable)) {
+  width: min(100%, 42rem);
+  margin-inline: auto;
+}
+
+.contenido :is(.compra-formulario, .formulario-centrado, #form-conteo, .egreso-formulario) {
+  width: 100%;
+  max-width: none;
+}
+
+.contenido:has(> .egreso-formulario .egreso-acciones) .egreso-formulario {
+  max-width: 38rem;
+  margin-inline: auto;
+}
+
+:is(.contenido, .contenido-operativo) h1 {
+  margin: 0 0 1.125rem;
+  font-size: clamp(1.25rem, 2vw, 1.625rem);
+  font-weight: 750;
+  letter-spacing: -0.025em;
+  line-height: 1.25;
+}
+
+:is(.contenido, .contenido-operativo) h2 {
+  color: inherit;
+  font-size: 1.04rem;
+  font-weight: 700;
+}
+
+:is(.contenido, .contenido-operativo) :is(h1, h2) i {
+  margin-inline-end: 0.4em;
+  color: #2563eb;
+}
+
+:is(.contenido, .contenido-operativo) h1 .fa-triangle-exclamation { color: #b45309; }
+:is(.contenido, .contenido-operativo) h1 .fa-file-invoice { color: #15803d; }
+
+/* Los mismos campos se usan en ambos tipos de vista, también en los diálogos. */
+:is(.contenido, .contenido-operativo, .lector-codigo) label {
+  margin-bottom: 0.375rem;
+  color: #334155;
+  font-size: 0.8125rem;
+  font-weight: 650;
+}
+
+:is(.contenido, .contenido-operativo, .lector-codigo)
+  :is(input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]), select, textarea) {
+  max-width: 100%;
+  border: 1px solid #dbe3ed;
+  border-radius: 0.5rem;
+  background-color: var(--campo-ui);
+  color: var(--texto-ui);
+}
+
+:is(.contenido, .contenido-operativo, .lector-codigo) :is(input, textarea, select):focus {
+  border-color: #2563eb;
+  outline: 2px solid #93c5fd;
+  outline-offset: 1px;
+}
+
+:is(.contenido, .contenido-operativo) :is(button, .boton, .accion) {
+  min-height: 2.75rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 650;
+}
+
+:is(.contenido, .contenido-operativo) :is(button, .boton, .accion) i {
+  margin-inline-end: 0.25em;
+}
+
+:is(.contenido, .contenido-operativo) :is(button, a).boton-secundario {
+  border: 1px solid #d8e0ec;
+  background: white;
+  color: #244579;
+}
+
+:is(.contenido, .contenido-operativo) :is(button, a).boton-secundario:hover {
+  border-color: #a9c4fa;
+  background: #eff6ff;
+}
+
+:is(.contenido, .contenido-operativo) .boton-confirmar {
+  border-color: transparent;
+  background: #15803d;
+  color: white;
+}
+
+:is(.contenido, .contenido-operativo) .boton-confirmar:hover { background: #166534; }
+
+:is(.contenido, .contenido-operativo) .boton-confirmar:disabled {
+  background: #e2e8f0;
+  color: #475569;
+  cursor: default;
+}
+
+:is(.contenido, .contenido-operativo) .boton-advertencia:not(:disabled) {
+  border-color: transparent;
+  background: #b45309;
+  color: white;
+}
+
+:is(.contenido, .contenido-operativo) .boton-advertencia:not(:disabled):hover { background: #92400e; }
+
+.contenido-operativo .despacho-formulario button[type="submit"]:not(.boton-confirmar) {
+  background: #2563eb;
+  color: white;
+}
+
+.contenido-operativo .despacho-formulario button[type="submit"]:not(.boton-confirmar):hover {
+  background: #1d4ed8;
+}
+
+:is(.compra-formulario, .egreso-formulario, .despacho-formulario, .formulario-centrado, #form-conteo)
+  button[type="submit"] {
+  width: 100%;
+}
+
+.compra-pie {
+  display: grid;
+  gap: 0.625rem;
+  justify-items: start;
+}
+
+.compra-formulario > fieldset,
+.compra-formulario .compra-linea,
+.contenido .conteo-linea {
+  padding: 0.875rem;
+  border-color: var(--borde-ui);
+  border-radius: var(--radio-ui);
+}
+
+@media (min-width: 34rem) {
+  .compra-formulario .compra-descuentos { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+.compra-formulario .compra-resumen,
+.contenido-operativo .resumen {
+  padding: 1.125rem;
+  border-radius: var(--radio-ui);
+  background: #172337;
+  color: #f8fafc;
+}
+
+.contenido-operativo .resumen .registro {
+  padding: 0.25rem;
+  border: 0;
+  background: transparent;
+}
+
+.contenido-operativo .resumen dt { color: #d4deec; }
+.contenido-operativo .resumen .registro:last-child dd { color: #86efac; }
+
+/* Encabezados suaves, filas legibles y tablas anchas desplazables. */
+:is(.contenido, .contenido-operativo) table {
+  margin-block: 1rem 0;
+  border: 1px solid var(--borde-ui);
+  border-collapse: separate;
+  border-spacing: 0;
+  border-radius: var(--radio-ui);
+  background-color: white;
+}
+
+:is(.contenido, .contenido-operativo) th,
+:is(.contenido, .contenido-operativo) td {
+  padding: 0.75rem;
+  font-size: 0.8125rem;
+}
+
+:is(.contenido, .contenido-operativo) thead th {
+  background-color: #f5f7fa;
+  color: var(--secundario-ui);
+  letter-spacing: 0.01em;
+  text-transform: none;
+}
+
+:is(.contenido, .contenido-operativo) thead th:first-child { border-start-start-radius: var(--radio-ui); }
+:is(.contenido, .contenido-operativo) thead th:last-child { border-start-end-radius: var(--radio-ui); }
+
+:is(.contenido, .contenido-operativo) :is(tbody th, tbody td) {
+  border-top: 1px solid #e8edf3;
+}
+
+:is(.contenido, .contenido-operativo) tbody th {
+  background-color: transparent;
+  color: var(--texto-ui);
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.inventario-tabla table { min-width: 52rem; }
+.inventario-tabla .columna-stock,
+.conteo-tabla [aria-label="Discrepancias"] :is(th, td):not(:first-child) {
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.inventario-tabla td.columna-stock,
+.conteo-tabla [aria-label="Discrepancias"] td:last-child { font-weight: 700; }
+
+.inventario-tabla .fila-stock-critico { background: #fff1f2; color: #9f1239; }
+.inventario-tabla .fila-stock-critico:hover { background: #ffe9ec; }
+.inventario-tabla .estado-stock { border-radius: 999px; }
+.inventario-tabla .inventario-acciones .boton { padding-inline: 0.55rem; font-size: 0.75rem; }
+
+.contenido-operativo .despacho-cabecera { margin-bottom: 0.875rem; }
+.contenido-operativo .despacho-grid { gap: clamp(0.75rem, 2vw, 1.25rem); }
+.contenido-operativo .despacho-formulario-cabecera [data-abrir-lector] {
+  border: 1px solid #d2e0fb;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+.contenido-operativo .despacho-formulario-cabecera [data-abrir-lector]:hover { background: #dbeafe; }
+
+@media (max-width: 47.999rem) {
+  .cabecera { flex-direction: row; align-items: center; flex-wrap: wrap; gap: 0.625rem; }
+  .contenido { padding: 1rem; }
+  .contenido-operativo .despacho-formulario-cabecera > :is(button, .boton) { width: 100%; }
+  .compra-pie { justify-items: stretch; }
+}
+
+@media print {
+  .contenido, .contenido-operativo { background: white; box-shadow: none; }
+  .inventario-tabla table { min-width: 0; }
+}
