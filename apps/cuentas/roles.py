@@ -56,7 +56,7 @@ FACULTADES = {
 
 
 def rol_principal(user):
-    """Devuelve el primer grupo reconocido en orden de creación."""
+    # Devuelve el primer grupo reconocido en orden de creación.
     if not user or not user.is_authenticated:
         return SIN_ROL
 
@@ -72,12 +72,12 @@ def rol_principal(user):
 
 
 def claves_de(user):
-    """Devuelve las claves de navegación del rol principal."""
+    # Devuelve las claves de navegación del rol principal.
     return ACCESO.get(rol_principal(user), ())
 
 
 def modulos_de(user):
-    """Prepara los módulos habilitados para las plantillas."""
+    # Prepara los módulos habilitados para las plantillas.
     modulos = []
     for clave in claves_de(user):
         etiqueta, icono, nombre_ruta, descripcion = MODULOS[clave]
@@ -96,7 +96,7 @@ def modulos_de(user):
 
 
 def permisos_de(user):
-    """Devuelve el rol y sus facultades para las plantillas."""
+    # Devuelve el rol y sus facultades para las plantillas.
     rol = rol_principal(user)
     return {"rol": rol, **{clave: rol in roles for clave, roles in FACULTADES.items()}}
 

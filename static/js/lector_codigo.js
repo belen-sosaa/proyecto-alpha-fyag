@@ -53,8 +53,6 @@ async function buscarCodigo(valor, formato) {
   consulta?.abort();
   const controlador = new AbortController();
   consulta = controlador;
-  articulos.value = "";
-  seleccion.textContent = "";
   mensaje.textContent = "Buscando artículo…";
 
   try {
@@ -81,6 +79,7 @@ async function buscarCodigo(valor, formato) {
     const articulo = await respuesta.json();
     if (controlador.signal.aborted || !lector.open) return;
     if (!respuesta.ok) {
+      // Si el código no sirve, dejamos seleccionado el artículo que la persona ya tenía elegido.
       mensaje.textContent = articulo.error || "No se pudo buscar el artículo. Intenta de nuevo.";
       return;
     }
@@ -144,7 +143,7 @@ async function iniciarCamara() {
       if (!resultado || !lector.open || lectura !== intento) return;
       intento.controles = control;
       codigoManual.value = resultado.getText();
-      aplicarCodigo(codigoManual.value, BarcodeFormat[resultado.getBarcodeFormat()]);
+      aplicarCodigo(codigoManual.value, BarcodeFormat?.[resultado.getBarcodeFormat()]);
     });
     if (lectura === intento) {
       intento.controles = controles;

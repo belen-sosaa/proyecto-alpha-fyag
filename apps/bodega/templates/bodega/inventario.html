@@ -23,7 +23,9 @@
           <td>{{ articulo.unidad_medida }}</td>
           <td>{{ articulo.stock_fisico }}</td>
           <td>
-            <span class="estado-stock {% if articulo.es_stock_critico %}estado-stock-critico{% endif %}">{{ articulo.estado }}</span>
+            <span class="estado-stock{% if articulo.es_stock_critico %} estado-stock-critico{% elif articulo.es_stock_bajo %} estado-stock-bajo{% endif %}">
+              {{ articulo.estado }}{% if articulo.es_stock_bajo %} · Reponer{% endif %}
+            </span>
           </td>
           <td class="inventario-acciones">
             <a class="boton boton-secundario" href="{% url 'articulo_detalle' articulo.pk %}">Ver detalle</a>

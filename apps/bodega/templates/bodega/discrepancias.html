@@ -3,30 +3,28 @@
 {% if conteo.observacion %}
   <p><strong>Observación</strong> {{ conteo.observacion|linebreaksbr }}</p>
 {% endif %}
-{% for nombre, detalles, vacio in grupos %}
-  <h2>{{ nombre }}</h2>
-  {% if detalles %}
-    <div class="conteo-tabla">
-      <table aria-label="{{ nombre }}">
-        <thead>
-          <tr><th scope="col">Artículo</th><th scope="col">Stock del sistema</th><th scope="col">Cantidad contada</th><th scope="col">Diferencia</th></tr>
-        </thead>
-        <tbody>
-          {% for detalle in detalles %}
-            <tr>
-              <th scope="row">{{ detalle.articulo }}</th>
-              <td>{{ detalle.stock_sistema }}</td>
-              <td>{{ detalle.stock_fisico }}</td>
-              <td>{% if detalle.diferencia > 0 %}+{% endif %}{{ detalle.diferencia }}</td>
-            </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  {% else %}
-    <p>{{ vacio }}</p>
-  {% endif %}
-{% endfor %}
+<h2>Discrepancias</h2>
+{% if detalles %}
+  <div class="conteo-tabla">
+    <table aria-label="Discrepancias">
+      <thead>
+        <tr><th scope="col">Artículo</th><th scope="col">Stock del sistema</th><th scope="col">Cantidad contada</th><th scope="col">Diferencia</th></tr>
+      </thead>
+      <tbody>
+        {% for detalle in detalles %}
+          <tr>
+            <th scope="row">{{ detalle.articulo }}</th>
+            <td>{{ detalle.stock_sistema }}</td>
+            <td>{{ detalle.stock_fisico }}</td>
+            <td>{% if detalle.diferencia > 0 %}+{% endif %}{{ detalle.diferencia }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% else %}
+  <p>No hay diferencias de stock.</p>
+{% endif %}
 <div class="conteos-acciones">
   <a class="boton boton-secundario" href="{% url 'conteos' %}">Volver a conteos</a>
 </div>

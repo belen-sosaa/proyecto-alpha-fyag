@@ -1,25 +1,30 @@
 <section class="panel" aria-labelledby="facturas-recientes">
   <div class="panel-cabecera">
-    <h2 id="facturas-recientes">Facturas registradas</h2>
-    {% if perm.registrar_factura %}<a class="accion" href="{% url 'vista_registrar_compra' %}">Registrar factura</a>{% endif %}
+    <h2 id="facturas-recientes">Documentos de compra</h2>
+    {% if perm.registrar_factura %}<a class="accion" href="{% url 'vista_registrar_compra' %}">Registrar documento</a>{% endif %}
     {% if perm.ver_costos %}<a class="accion" href="{% url 'ultimos_precios' %}">Últimos precios</a>{% endif %}
   </div>
   <ul class="registros">
     {% for factura in facturas %}
       <li class="registro">
-        <strong>Factura {{ factura.folio }}</strong>
-        <p>{{ factura.proveedor__razon_social }}</p>
-        <p>Ingreso {{ factura.estado_ingreso|lower }}</p>
+        <strong>{{ factura.get_tipo_documento_display }} {{ factura.folio }}</strong>
+        <p>{{ factura.proveedor.razon_social }}</p>
+        <p>{{ factura.get_estado_ingreso_display }}</p>
+        {% if factura.documento_origen %}
+          <p>Origen: {{ factura.documento_origen.get_tipo_documento_display }} {{ factura.documento_origen.folio }}</p>
+        {% endif %}
         {% if perm.confirmar_ingreso and factura.estado_ingreso == "PENDIENTE" %}
           <form method="post" action="{% url 'vista_confirmar_compra' factura.pk %}">
             {% csrf_token %}
-            <button type="submit" class="accion">Confirmar ingreso</button>
+            <button type="submit" class="accion">
+              {% if factura.tipo_documento == "NOTA_CREDITO" %}Aplicar nota de crédito{% elif factura.documento_origen_id %}Confirmar factura{% else %}Confirmar ingreso{% endif %}
+            </button>
           </form>
         {% endif %}
         <time datetime="{{ factura.fecha_emision|date:'Y-m-d' }}">{{ factura.fecha_emision|date:'d/m/Y' }}</time>
       </li>
     {% empty %}
-      <li class="vacio">Aún no hay facturas registradas.</li>
+      <li class="vacio">Aún no hay documentos registrados.</li>
     {% endfor %}
   </ul>
 </section>

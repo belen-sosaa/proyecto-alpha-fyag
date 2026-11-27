@@ -15,7 +15,7 @@ from apps.despachos.models import Despacho
 
 
 def datos_articulo(articulo):
-    """Serializa los datos relacionales del insumo para la auditoría."""
+    # Serializa los datos relacionales del insumo para la auditoría.
     return {
         "sku": articulo.sku,
         "codigo_barras": articulo.codigo_barras,
@@ -78,7 +78,7 @@ def catalogo_listar(request):
 
 @facultad_requerida("ingresar_articulo")
 def articulo_crear(request):
-    """Alta usada desde el panel de bodega, con ingreso de stock inicial."""
+    # Alta usada desde el panel de bodega, con ingreso de stock inicial.
     form = ArticuloForm(request.POST if request.method == "POST" else None)
     if request.method == "POST" and form.is_valid():
         try:

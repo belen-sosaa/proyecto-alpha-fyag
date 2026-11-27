@@ -6,6 +6,9 @@
     <dt>Categoría</dt><dd>{{ articulo.categoria.nombre }}</dd>
     <dt>Stock</dt><dd>{{ articulo.stock_fisico }} {{ articulo.unidad_medida }}</dd>
     <dt>Ubicación</dt><dd>{{ articulo.ubicacion_fisica|default:"Sin ubicación" }}</dd>
+    {% if perm.ver_costos %}
+      <dt>Precio de lista</dt><dd>{% if articulo.precio_lista is not None %}$ {{ articulo.precio_lista|floatformat:"2g" }}{% else %}Sin precio registrado{% endif %}</dd>
+    {% endif %}
   </dl>
   {% if perm.ver_costos %}
     <a class="boton" href="{% url 'ultimos_precios' %}?articulo={{ articulo.pk }}">Últimos precios</a>

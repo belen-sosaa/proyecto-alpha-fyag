@@ -175,6 +175,35 @@ class RolesTests(TestCase):
         self.client.force_login(self.usuarios[BODEGUERO])
         self.assertEqual(self.client.get(url).status_code, 403)
 
+    def test_bodega_y_catalogo_distinguen_stock_minimo_y_critico(self):
+        self.client.force_login(self.usuarios[ADMIN_BODEGA])
+        categoria = Categoria.objects.create(nombre="Insumos")
+        articulo = Articulo.objects.create(
+            sku="QA-STOCK", descripcion="Filtro", categoria=categoria,
+            stock_minimo=8, stock_critico=4, stock_fisico=9,
+        )
+        estados = (
+            (9, "Stock Normal", "", ""),
+            (8, "Stock Bajo", ' class="bajo"', " estado-stock-bajo"),
+            (5, "Stock Bajo", ' class="bajo"', " estado-stock-bajo"),
+            (4, "Stock Crítico", ' class="critico"', " estado-stock-critico"),
+        )
+        for saldo, estado, clase_bodega, clase_catalogo in estados:
+            with self.subTest(saldo=saldo):
+                articulo.stock_fisico = saldo
+                articulo.save(update_fields=["stock_fisico"])
+                articulo.refresh_from_db()
+                self.assertEqual(articulo.estado_registrado, estado)
+                texto = f"{estado} · Reponer" if estado == "Stock Bajo" else estado
+                self.assertContains(
+                    self.client.get(reverse("bodega_web")),
+                    f"<p{clase_bodega}>{saldo} unidad · {texto}</p>", html=True,
+                )
+                self.assertContains(
+                    self.client.get(reverse("catalogo_listar")),
+                    f'<span class="estado-stock{clase_catalogo}">{texto}</span>', html=True,
+                )
+
     def test_bodega_puede_despachar_y_descontar_stock(self):
         self.assertIsNotNone(finders.find("js/obra_auto.js"))
         obra = Obra.objects.create(nombre="Edificio A")

@@ -3,12 +3,10 @@ from django.db.migrations.exceptions import IrreversibleError
 
 
 class AddFieldIfMissing(migrations.AddField):
-    """
-    Registra el campo en el historial de Django.
-
-    En la base de datos, agrega la columna únicamente si no existe.
-    Se utiliza para reconciliar las columnas verificadas en Neon.
-    """
+    # Registra el campo en el historial de Django.
+    #
+    # En la base de datos, agrega la columna únicamente si no existe.
+    # Se utiliza para reconciliar las columnas verificadas en Neon.
 
     def database_forwards(
         self,

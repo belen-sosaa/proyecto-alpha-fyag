@@ -58,7 +58,7 @@ document.querySelectorAll("[data-obra-autocomplete]").forEach((root) => {
 
         const obras = await response.json();
 
-        // Evita mostrar respuestas de una consulta anterior.
+        // Si la persona ya escribió algo distinto, ignoramos la consulta vieja aunque haya terminado después.
         if (actual !== version) return;
 
         if (obras.length === 0) {

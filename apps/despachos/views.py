@@ -6,8 +6,9 @@ from django.core.exceptions import PermissionDenied
 from django.core.paginator import Paginator
 from django.db import DatabaseError, transaction
 from django.db.models import Q
-from django.http import JsonResponse
+from django.http import FileResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_GET, require_POST
 
 from apps.bodega.models import Articulo, BitacoraAuditoria, MovimientoCardex, Obra
@@ -15,6 +16,7 @@ from apps.bodega.respaldo import documento_cardex, guardar_respaldo_cardex
 from apps.bodega.views import contexto_operativo
 from apps.cuentas.decorators import facultad_requerida
 from apps.cuentas.roles import ADMIN_BODEGA
+from .comprobantes import generar_comprobante_firmado
 from .forms import RecepcionDespachoForm
 from .models import Despacho, RecepcionDespacho
 
@@ -37,6 +39,8 @@ def vista_despacho(request):
 
 def _despachos_visibles(usuario, contexto):
     despachos = Despacho.objects.filter(tipo_movimiento__iexact="DESPACHO")
+    # Supervisión ve las recepciones pendientes y las que firmó.
+    # El bodeguero ve sus propios despachos. Administración de Bodega puede ver todos.
     if contexto["recepcion"]:
         despachos = despachos.filter(Q(recepcion__isnull=True) | Q(recepcion__receptor=usuario))
     elif contexto["rol_actual"] != ADMIN_BODEGA:
@@ -47,10 +51,7 @@ def _despachos_visibles(usuario, contexto):
 @login_required
 def comprobante_despacho(request, despacho_id):
     contexto = contexto_operativo(request.user)
-    if not (contexto["perm"]["despachar"] or contexto["recepcion"]):
-        raise PermissionDenied
-
-    despacho = get_object_or_404(_despachos_visibles(request.user, contexto), pk=despacho_id)
+    despacho = _obtener_comprobante(request.user, contexto, despacho_id)
     recepcion_firmada = getattr(despacho, "recepcion", None)
     contexto.update(
         comprobante=despacho,
@@ -59,6 +60,7 @@ def comprobante_despacho(request, despacho_id):
         titulo_panel="Comprobante",
     )
     if recepcion_firmada:
+        # Convertimos los puntos guardados al formato que usa el dibujo de la firma en la pantalla.
         contexto["firma_trazos"] = [
             " ".join(f"{x},{y}" for x, y in (trazo if len(trazo) > 1 else trazo * 2))
             for trazo in recepcion_firmada.firma
@@ -66,6 +68,29 @@ def comprobante_despacho(request, despacho_id):
     elif contexto["recepcion"]:
         contexto["form_firma"] = RecepcionDespachoForm()
     return render(request, "despachos/despacho.html", contexto)
+
+
+def _obtener_comprobante(usuario, contexto, despacho_id, *, firmado=False):
+    if not (contexto["perm"]["despachar"] or contexto["recepcion"]):
+        raise PermissionDenied
+    # El enlace directo al PDF tiene los mismos permisos que la pantalla del comprobante.
+    despachos = _despachos_visibles(usuario, contexto)
+    if firmado:
+        despachos = despachos.filter(recepcion__isnull=False).defer(None)
+    return get_object_or_404(despachos, pk=despacho_id)
+
+
+@login_required
+@require_GET
+@never_cache
+def descargar_comprobante_despacho(request, despacho_id):
+    contexto = contexto_operativo(request.user)
+    despacho = _obtener_comprobante(request.user, contexto, despacho_id, firmado=True)
+    archivo = generar_comprobante_firmado(despacho, despacho.recepcion)
+    return FileResponse(
+        archivo, as_attachment=True, filename=f"despacho-{despacho.pk}-firmado.pdf",
+        content_type="application/pdf",
+    )
 
 
 @facultad_requerida("firmar_recepcion")
@@ -78,7 +103,7 @@ def registrar_recepcion(request, despacho_id):
 
     try:
         with transaction.atomic():
-            # El bloqueo serializa dos intentos de firmar el mismo despacho.
+            # Si dos personas intentan firmar a la vez, la segunda espera y encuentra la firma ya guardada.
             despacho = get_object_or_404(
                 Despacho.objects.select_for_update(), pk=despacho_id,
                 tipo_movimiento__iexact="DESPACHO",
@@ -90,6 +115,7 @@ def registrar_recepcion(request, despacho_id):
                     return redirect("despachos")
                 return redirect("comprobante_despacho", despacho_id=despacho_id)
 
+            # La sesión identifica a quien firma. Guardamos su nombre para que el comprobante lo conserve.
             recepcion = RecepcionDespacho.objects.create(
                 despacho=despacho,
                 receptor=request.user,
@@ -114,7 +140,7 @@ def registrar_recepcion(request, despacho_id):
 @facultad_requerida("despachar")
 @require_GET
 def articulo_por_codigo(request):
-    """Busca un artículo para seleccionarlo en un despacho."""
+    # Busca un artículo para seleccionarlo en un despacho.
     codigo = request.GET.get("codigo", "").strip()
     if not codigo or len(codigo) > Articulo._meta.get_field("codigo_barras").max_length:
         return JsonResponse({"error": "Ingresa un código de barras válido."}, status=400)
@@ -122,6 +148,7 @@ def articulo_por_codigo(request):
     # Los identificadores alfanuméricos del catálogo se comparan sin distinguir mayúsculas.
     filtro = Q(codigo_barras__iexact=codigo)
     formato = request.GET.get("formato")
+    # Algunos lectores devuelven el mismo código con un cero inicial según el formato detectado.
     if codigo.isascii() and codigo.isdecimal():
         if formato == "UPC_A" and len(codigo) == 12:
             filtro |= Q(codigo_barras="0" + codigo)
@@ -168,6 +195,7 @@ def procesar_despacho(request):
     try:
         with transaction.atomic():
             obra = Obra.objects.get(pk=obra_id)
+            # Otro despacho del mismo artículo debe esperar hasta que quede guardado el nuevo saldo.
             articulo = Articulo.objects.select_for_update().get(pk=articulo_id)
             stock_anterior = articulo.stock_fisico
             if stock_anterior < cantidad:
@@ -216,6 +244,7 @@ def procesar_despacho(request):
 @facultad_requerida("despachar")
 def obras_buscar(request):
     q = request.GET.get("q", "").strip()
+    # Las consultas cortas suelen traer demasiadas coincidencias para una lista de sugerencias.
     if len(q) < 3:
         return JsonResponse([], safe=False)
     obras = Obra.objects.filter(nombre__icontains=q).order_by("nombre", "id").values("id", "nombre")[:10]

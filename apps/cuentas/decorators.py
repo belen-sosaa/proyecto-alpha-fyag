@@ -29,7 +29,7 @@ def rol_requerido(*roles):
 
 
 def facultad_requerida(facultad):
-    """Protege una vista con una facultad declarada en roles.py."""
+    # Protege una vista con una facultad declarada en roles.py.
     def decorator(view):
         @login_required
         @wraps(view)

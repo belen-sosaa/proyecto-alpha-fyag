@@ -12,7 +12,7 @@ PARAMETRO_CONDICION = "condition" if DJANGO_VERSION >= (5, 1) else "check"
 
 
 def normalizar_rut(valor):
-    """Valida el dígito verificador y devuelve el RUT sin puntos."""
+    # Valida el dígito verificador y devuelve el RUT sin puntos.
     valor = valor.strip().upper()
 
     if re.fullmatch(
@@ -147,6 +147,9 @@ class Articulo(models.Model):
         verbose_name="Stock crítico",
     )
 
+    # Compras cambia este precio al confirmar una factura que indica un valor nuevo.
+    precio_lista = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True, editable=False)
+
     # Corresponde a la columna "estado" existente en Neon.
     estado_registrado = models.CharField(
         max_length=50,
@@ -171,9 +174,16 @@ class Articulo(models.Model):
         return self.stock_fisico <= self.stock_critico
 
     @property
+    def es_stock_bajo(self):
+        # Al llegar al mínimo conviene reponer. Si el saldo ya es crítico, se usa la alerta más urgente.
+        return self.stock_critico < self.stock_fisico <= self.stock_minimo
+
+    @property
     def estado(self):
         if self.es_stock_critico:
             return "Stock Crítico"
+        if self.es_stock_bajo:
+            return "Stock Bajo"
         return "Stock Normal"
 
     def save(self, *args, **kwargs):
@@ -182,6 +192,7 @@ class Articulo(models.Model):
         campos = kwargs.get("update_fields")
 
         if campos is not None:
+            # Los movimientos suelen guardar solo el saldo. Incluimos el estado para que quede actualizado.
             campos = set(campos)
 
             if campos:

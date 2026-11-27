@@ -1,4 +1,4 @@
-"""Ajustes para ejecutar las pruebas de Django con SQLite en memoria."""
+# Ajustes para ejecutar las pruebas de Django con SQLite en memoria.
 
 from .settings import *  # noqa: F401,F403
 

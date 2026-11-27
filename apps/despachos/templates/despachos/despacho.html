@@ -86,7 +86,10 @@
       </article>
     {% endtimezone %}
     <div class="comprobante-despacho firma-acciones">
-      <button type="button" class="boton boton-secundario" onclick="window.print()">Imprimir o guardar como PDF</button>
+      {% if recepcion_firmada %}
+        <a class="boton" href="{% url 'descargar_comprobante_despacho' comprobante.pk %}">Descargar PDF firmado</a>
+      {% endif %}
+      <button type="button" class="boton boton-secundario" onclick="window.print()">Imprimir</button>
     </div>
     {% if form_firma %}
       <form method="post" action="{% url 'registrar_recepcion' comprobante.pk %}"

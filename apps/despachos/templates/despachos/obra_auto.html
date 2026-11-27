@@ -2,6 +2,7 @@
   <label for="obra-destino">Obra de destino</label>
   <input id="obra-destino" type="text" data-obra-texto autocomplete="off"
          placeholder="Escribe al menos 3 letras" aria-describedby="obra-mensaje" required>
+  {# La persona ve el nombre. Este campo envía el identificador de la obra que eligió en la lista. #}
   <input type="hidden" name="obra" data-obra-id>
   <ul data-obra-resultados class="despacho-resultados" hidden></ul>
   <p id="obra-mensaje" class="despacho-ayuda" data-obra-mensaje role="status"></p>
