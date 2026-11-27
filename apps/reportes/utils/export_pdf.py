@@ -1,5 +1,6 @@
 from io import BytesIO
 from datetime import datetime
+from xml.sax.saxutils import escape
 
 from django.http import HttpResponse
 from django.utils import timezone
@@ -24,6 +25,7 @@ def _filters_text(filters):
         ("proveedor", "Proveedor"), ("articulo", "Artículo"),
         ("tipo_documento", "Tipo documento"), ("tipo", "Tipo"),
         ("obra", "Obra"), ("categoria", "Categoría"),
+        ("usuario", "Usuario"), ("conteo", "Conteo"), ("observacion", "Observación"),
         ("estado", "Estado"), ("estado_stock", "Estado stock"), ("q", "Búsqueda"),
     )
     items = []
@@ -51,8 +53,8 @@ def export_pdf(title, user, headers, rows, totals_row, filters, filename):
     content = [
         Paragraph("Logística FYAG", styles["Title"]),
         Paragraph(title, styles["Heading2"]),
-        Paragraph(f"Emitido: {emitted} · Usuario: {username}", styles["Normal"]),
-        Paragraph(f"Filtros: {_filters_text(filters)}", styles["Normal"]),
+        Paragraph(f"Emitido: {emitted} · Usuario: {escape(username)}", styles["Normal"]),
+        Paragraph(f"Filtros: {escape(_filters_text(filters))}", styles["Normal"]),
         Spacer(1, 6 * mm),
     ]
 
@@ -65,23 +67,23 @@ def export_pdf(title, user, headers, rows, totals_row, filters, filename):
     data = [[Paragraph(str(header), header_style) for header in headers]]
     for row in rows:
         data.append([
-            Paragraph("" if value is None else str(_pdf_value(value)), styles["BodyText"])
+            Paragraph("" if value is None else escape(str(_pdf_value(value))), styles["BodyText"])
             for value in row
         ])
     if totals_row:
         data.append([
-            Paragraph(str(_pdf_value(value)), styles["BodyText"])
+            Paragraph(escape(str(_pdf_value(value))), styles["BodyText"])
             for value in totals_row
         ])
 
-    table = Table(data, repeatRows=1, hAlign="LEFT")
+    table = Table(data, repeatRows=1, splitInRow=1, hAlign="LEFT")
     table_style = [
         ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#10224C")),
         ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
         ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
         ("GRID", (0, 0), (-1, -1), 0.35, colors.HexColor("#CBD5E1")),
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("ROWBACKGROUNDS", (0, 1), (-1, -2), [colors.white, colors.HexColor("#F1F5F9")]),
+        ("ROWBACKGROUNDS", (0, 1), (-1, -2 if totals_row else -1), [colors.white, colors.HexColor("#F1F5F9")]),
         ("LEFTPADDING", (0, 0), (-1, -1), 4),
         ("RIGHTPADDING", (0, 0), (-1, -1), 4),
         ("TOPPADDING", (0, 0), (-1, -1), 4),

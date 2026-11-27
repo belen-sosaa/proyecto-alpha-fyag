@@ -1,6 +1,8 @@
 from decimal import Decimal, ROUND_HALF_UP
 
-from django.db.models import F, Prefetch, Q
+from django.db.models import F, Prefetch, Q, Value
+from django.db.models.functions import Concat
+from django.utils import timezone
 
 from apps.bodega.models import Articulo, MovimientoCardex
 from apps.compras.models import DetalleFactura, FacturaCompra
@@ -8,6 +10,47 @@ from apps.cuentas.roles import permisos_de
 
 
 CENT = Decimal("0.01")
+
+CARDEX_COLUMNAS = (
+    "Fecha", "Movimiento", "Artículo", "Obra", "Usuario", "Proveedor",
+    "Cantidad", "Saldo", "Stock actual", "Referencia", "Justificación",
+)
+
+
+def movimientos_cardex(filtros):
+    movimientos = MovimientoCardex.objects.select_related(
+        "articulo", "obra", "usuario", "proveedor",
+    ).order_by("-fecha_hora", "-pk")
+    if tipo := filtros.get("tipo"):
+        movimientos = movimientos.filter(tipo=tipo)
+    if articulo := filtros.get("articulo"):
+        movimientos = movimientos.filter(
+            Q(articulo__sku__icontains=articulo) | Q(articulo__descripcion__icontains=articulo),
+        )
+    if obra := filtros.get("obra"):
+        movimientos = movimientos.filter(obra__nombre__icontains=obra)
+    if usuario := filtros.get("usuario"):
+        movimientos = movimientos.alias(
+            nombre_usuario=Concat("usuario__first_name", Value(" "), "usuario__last_name"),
+        ).filter(Q(usuario__username__icontains=usuario) | Q(nombre_usuario__icontains=usuario))
+    if filtros.get("fecha_desde"):
+        movimientos = movimientos.filter(fecha_hora__date__gte=filtros["fecha_desde"])
+    if filtros.get("fecha_hasta"):
+        movimientos = movimientos.filter(fecha_hora__date__lte=filtros["fecha_hasta"])
+    return movimientos
+
+
+def filas_cardex(movimientos):
+    for movimiento in movimientos:
+        yield (
+            timezone.localtime(movimiento.fecha_hora).strftime("%d/%m/%Y %H:%M"),
+            movimiento.get_tipo_display(), str(movimiento.articulo),
+            movimiento.obra.nombre if movimiento.obra else "",
+            movimiento.usuario.get_full_name() or movimiento.usuario.get_username(),
+            str(movimiento.proveedor) if movimiento.proveedor else "",
+            movimiento.cantidad, movimiento.stock_resultante, movimiento.articulo.estado,
+            movimiento.documento_referencia, movimiento.justificacion or "",
+        )
 
 
 class ReportQueryService:
@@ -205,6 +248,7 @@ class ReportQueryService:
                 MovimientoCardex.Tipo.MERMA,
                 MovimientoCardex.Tipo.DEVOLUCION,
                 MovimientoCardex.Tipo.REVERSA,
+                MovimientoCardex.Tipo.USO_INTERNO,
             )
         ).order_by("-fecha_hora", "-pk")
         if filters.get("fecha_desde"):

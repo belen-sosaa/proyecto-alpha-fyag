@@ -1,3 +1,4 @@
+from io import BytesIO
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
@@ -5,6 +6,8 @@ from django.contrib.auth.models import Group
 from django.db import IntegrityError, transaction
 from django.test import TestCase
 from django.urls import reverse
+from openpyxl import load_workbook
+from pypdf import PdfReader
 
 from apps.cuentas.roles import AUDITOR, BODEGUERO
 from .models import Articulo, BitacoraAuditoria, Categoria, ConteoInventario, DetalleConteoInventario, MovimientoCardex
@@ -58,6 +61,13 @@ class ConteosInventarioTests(TestCase):
         self.assertContains(reporte, "<td>+3</td>", html=True)
         self.assertNotContains(reporte, str(self.b))
         self.assertTrue(DetalleConteoInventario.objects.filter(conteo_id=datos["id"], articulo=self.b).exists())
+        excel = self.client.get(reverse("discrepancias_conteo_excel", args=[datos["id"]]))
+        hoja = load_workbook(BytesIO(excel.content)).active
+        self.assertEqual(list(hoja.values)[6:], [(str(self.a), 10, 0, -10), (str(self.c), 4, 7, 3)])
+        pdf = self.client.get(reverse("discrepancias_conteo_pdf", args=[datos["id"]]))
+        texto = PdfReader(BytesIO(pdf.content)).pages[0].extract_text()
+        self.assertIn(str(self.a), texto)
+        self.assertNotIn(str(self.b), texto)
         self.assertContains(reporte, reverse("conteos"))
         historial = self.client.get(reverse("conteos"))
         self.assertEqual(historial.context["pagina"].object_list[0].discrepancias, 2)

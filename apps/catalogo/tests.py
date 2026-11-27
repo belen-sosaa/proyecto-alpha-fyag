@@ -133,6 +133,11 @@ class CatalogoInsumosCRUDTests(TestCase):
 
         # 3. Verificar: Lectura permitida (200) y escritura denegada (403)
         self.assertEqual(resp_listar.status_code, 200)
+        self.assertContains(resp_listar, 'id="menu-operativo"')
+        enlace_activo = rf'<a href="{reverse("catalogo_listar")}"[^>]* aria-current="page">'
+        self.assertRegex(resp_listar.content.decode(), enlace_activo)
+        detalle = self.client.get(reverse("articulo_detalle", args=[self.insumo_sin_movimientos.pk]))
+        self.assertRegex(detalle.content.decode(), enlace_activo)
         self.assertEqual(resp_crear.status_code, 403)
         self.assertEqual(resp_eliminar.status_code, 403)
 

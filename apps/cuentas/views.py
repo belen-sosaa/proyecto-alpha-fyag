@@ -1,8 +1,10 @@
 from django.contrib.auth.views import LoginView
-from django.urls import reverse
+from django.shortcuts import render
+from django.utils.http import url_has_allowed_host_and_scheme
+from django.views.csrf import csrf_failure
+from django.views.decorators.cache import never_cache
 
 from apps.cuentas.forms import AccesoRUTForm
-from apps.cuentas.roles import BODEGUERO, SUPERVISOR, rol_principal
 
 
 class AccesoView(LoginView):
@@ -10,7 +12,16 @@ class AccesoView(LoginView):
     template_name = "cuentas/login.html"
     authentication_form = AccesoRUTForm
 
-    def get_default_redirect_url(self):
-        if rol_principal(self.request.user) in (BODEGUERO, SUPERVISOR):
-            return reverse("despachos")
-        return super().get_default_redirect_url()
+
+@never_cache
+def fallo_csrf(request, reason=""):
+    if request.method != "POST" or not request.resolver_match or request.resolver_match.url_name != "login":
+        return csrf_failure(request, reason=reason)
+
+    destino = request.POST.get("next", "")
+    if not url_has_allowed_host_and_scheme(destino, {request.get_host()}, require_https=request.is_secure()):
+        destino = ""
+    return render(request, AccesoView.template_name, {
+        "error_csrf": True,
+        "next": destino,
+    }, status=403)

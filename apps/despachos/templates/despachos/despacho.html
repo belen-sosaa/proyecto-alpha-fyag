@@ -124,7 +124,7 @@
       {% endif %}
 
       <section class="despacho-panel" aria-labelledby="despachos-recientes">
-        <h2 id="despachos-recientes"><i class="fas fa-clipboard-list" aria-hidden="true"></i> {% if recepcion %}Recepciones{% else %}Despachos recientes{% endif %}</h2>
+        <h2 id="despachos-recientes"><i class="fas fa-clipboard-list" aria-hidden="true"></i> {% if recepcion and not perm.despachar %}Recepciones{% else %}Despachos recientes{% endif %}</h2>
         {% timezone "America/Santiago" %}
           <ul class="despacho-registros">
             {% for despacho in despachos_recientes %}

@@ -341,11 +341,18 @@ class MovimientoCardex(RegistroInalterable):
         AJUSTE = "AJUSTE", "Ajuste"
         REVERSA = "REVERSA", "Reversa"
         USO_INTERNO = "USO_INTERNO", "Uso interno"
+<<<<<<< HEAD
         CAMBIO = "CAMBIO", "Cambio de artículo"
 
     nombre_registro = "El movimiento del Cardex"
 
     tipo = models.CharField(max_length=15, choices=Tipo.choices)
+=======
+
+    nombre_registro = "El movimiento del Cardex"
+
+    tipo = models.CharField(max_length=11, choices=Tipo.choices)
+>>>>>>> 7cb0d2c7ab6b5031e4fb113264973b5e8bd33ca9
     cantidad = models.PositiveIntegerField(validators=[MinValueValidator(1)])
     articulo = models.ForeignKey(Articulo, on_delete=models.PROTECT)
     usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
@@ -369,10 +376,14 @@ class MovimientoCardex(RegistroInalterable):
             models.CheckConstraint(
                 name="cardex_tipo_valido",
                 **{PARAMETRO_CONDICION: models.Q(
+<<<<<<< HEAD
                     tipo__in=[
                         "INGRESO", "DESPACHO", "MERMA", "DEVOLUCION",
                         "AJUSTE", "REVERSA", "USO_INTERNO", "CAMBIO",
                     ]
+=======
+                    tipo__in=["INGRESO", "DESPACHO", "MERMA", "DEVOLUCION", "AJUSTE", "REVERSA", "USO_INTERNO"]
+>>>>>>> 7cb0d2c7ab6b5031e4fb113264973b5e8bd33ca9
                 )},
             ),
             models.CheckConstraint(

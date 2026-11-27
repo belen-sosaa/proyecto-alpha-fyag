@@ -28,6 +28,7 @@ def _filters_text(filters):
         "proveedor": "Proveedor", "articulo": "Artículo",
         "tipo_documento": "Tipo documento", "tipo": "Tipo",
         "obra": "Obra", "categoria": "Categoría",
+        "usuario": "Usuario", "conteo": "Conteo", "observacion": "Observación",
         "estado": "Estado", "estado_stock": "Estado stock", "q": "Búsqueda",
     }
     items = []
@@ -60,9 +61,13 @@ def export_workbook(title, headers, rows, totals, filters, filename, ver_costos=
 
     for row in rows:
         ws.append([_excel_value(value) for value in row])
+        for cell in ws[ws.max_row]:
+            if isinstance(cell.value, str):
+                cell.data_type = "s"
 
-    ws.append([])
-    ws.append([_excel_value(value) for value in totals])
+    if totals:
+        ws.append([])
+        ws.append([_excel_value(value) for value in totals])
 
     for index in range(1, ws.max_column + 1):
         column_letter = get_column_letter(index)

@@ -1,0 +1,36 @@
+{% extends "reportes/inicio.html" %}
+
+{% block contenido_reporte %}
+  <form method="get" class="inventario-filtros">
+    {{ formulario.as_p }}
+    <button type="submit" class="boton-confirmar">Filtrar</button>
+    <a class="boton boton-secundario" href="{% url 'reportes:cardex' %}">Limpiar</a>
+  </form>
+  {% if filtros_validos %}
+    <div class="flex flex-wrap gap-3">
+      <a class="boton" href="{% url 'reportes:cardex_excel' %}?{{ request.GET.urlencode }}">Excel</a>
+      <a class="boton boton-peligro" href="{% url 'reportes:cardex_pdf' %}?{{ request.GET.urlencode }}">PDF</a>
+    </div>
+  {% endif %}
+  <div class="tabla-desplazable inventario-tabla" role="region" aria-label="Movimientos del Cardex" tabindex="0">
+    <table>
+      <thead><tr>{% for columna in columnas %}<th scope="col">{{ columna }}</th>{% endfor %}</tr></thead>
+      <tbody>
+        {% for fila in filas %}
+          <tr{% if fila.8 == "Stock Crítico" %} class="fila-stock-critico"{% endif %}>
+            {% for valor in fila %}<td>{{ valor }}</td>{% endfor %}
+          </tr>
+        {% empty %}
+          <tr><td colspan="{{ columnas|length }}">No hay movimientos para esta consulta.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if pagina.has_other_pages %}
+    <nav class="mt-4 flex flex-wrap items-center gap-3" aria-label="Páginas del Cardex">
+      {% if pagina.has_previous %}<a class="boton boton-secundario" href="{% querystring pagina=pagina.previous_page_number %}">Anterior</a>{% endif %}
+      <span>Página {{ pagina.number }} de {{ pagina.paginator.num_pages }}</span>
+      {% if pagina.has_next %}<a class="boton boton-secundario" href="{% querystring pagina=pagina.next_page_number %}">Siguiente</a>{% endif %}
+    </nav>
+  {% endif %}
+{% endblock %}
