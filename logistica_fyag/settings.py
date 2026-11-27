@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     "apps.catalogo.apps.CatalogoConfig",
     "apps.despachos.apps.DespachosConfig",
     "apps.compras",
+    "apps.reportes",
 ]
 
 MIDDLEWARE = [

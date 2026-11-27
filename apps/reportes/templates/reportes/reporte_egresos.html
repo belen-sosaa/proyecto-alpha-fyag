@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block title %}Reporte de egresos · FYAG{% endblock %}
+
+{% block content %}
+  <h1>Reporte de egresos</h1>
+  <form method="get" class="inventario-filtros">
+    {{ reporte.form.as_p }}
+    <button type="submit" class="boton">Filtrar</button>
+    <a class="boton boton-secundario" href="{% url 'reportes:egresos' %}">Limpiar</a>
+  </form>
+  {% if reporte.valid is False %}{{ reporte.form.non_field_errors }}{% endif %}
+
+  <div class="inventario-herramientas">
+    <a class="boton" href="{% url 'reportes:egresos_excel' %}?{{ request.GET.urlencode }}">Excel</a>
+    <a class="boton boton-peligro" href="{% url 'reportes:egresos_pdf' %}?{{ request.GET.urlencode }}">PDF</a>
+  </div>
+
+  <div class="tabla-desplazable" role="region" tabindex="0" aria-label="Reporte de egresos">
+    <table>
+      <thead><tr>
+        <th>Fecha</th><th>Tipo Movimiento</th><th>Artículo</th><th>Cantidad</th>
+        <th>Obra / Proveedor destino</th><th>Usuario</th><th>Justificación / Ref.</th><th>Saldo Resultante</th>
+      </tr></thead>
+      <tbody>
+        {% for row in reporte.rows %}
+          <tr>
+            <td>{{ row.fecha }}</td><td>{{ row.tipo_display }}</td><td>{{ row.articulo }}</td>
+            <td>{{ row.cantidad }}</td><td>{{ row.destino }}</td><td>{{ row.usuario }}</td>
+            <td>{% if row.referencia %}{{ row.referencia }} · {% endif %}{{ row.justificacion }}</td><td>{{ row.saldo }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="8">No hay egresos con los filtros seleccionados.</td></tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr>
+          <td colspan="2"><strong>Total general</strong></td>
+          <td></td><td><strong>{{ reporte.totals.general }}</strong></td>
+          <td colspan="4">
+            {% for tipo, cantidad in reporte.totals.por_tipo.items %}<strong>{{ tipo }}:</strong> {{ cantidad }}{% if not forloop.last %} · {% endif %}{% endfor %}
+          </td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+{% endblock %}

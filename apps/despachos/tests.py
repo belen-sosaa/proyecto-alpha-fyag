@@ -378,11 +378,14 @@ class ArticuloPorCodigoTests(TestCase):
         self.assertEqual(self.client.get(url, {"codigo": "1" * 101}).status_code, 400)
         self.assertEqual(self.client.post(url).status_code, 405)
 
-    def test_consulta_requiere_sesion_y_permiso_de_despacho(self):
+    def test_consulta_requiere_sesion_y_perm_solo_de_despacho_o_recepcion(self):
         url = reverse("articulo_por_codigo")
         self.assertRedirects(self.client.get(url), f"{reverse('login')}?next={url}")
         self.client.force_login(self.supervisor)
-        self.assertEqual(self.client.get(url, {"codigo": self.articulo.codigo_barras}).status_code, 403)
+        consulta = self.client.get(url, {"codigo": self.articulo.codigo_barras})
+        self.assertEqual(consulta.status_code, 200)
+        self.assertEqual(consulta.json()["id"], self.articulo.pk)
+        self.assertEqual(self.client.post(reverse("procesar_despacho")).status_code, 403)
 
     def test_lector_se_muestra_en_nuevo_despacho_segun_el_rol(self):
         url = reverse("despachos")

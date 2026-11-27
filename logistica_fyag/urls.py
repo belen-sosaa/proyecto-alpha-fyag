@@ -16,7 +16,7 @@ from django.contrib import admin
 from django.conf import settings
 from django.contrib.auth.views import LogoutView
 from django.conf.urls.static import static
-from django.urls import path
+from django.urls import include, path
 from django.views.generic import RedirectView
 from apps.bodega.conteos import (
     consultar_discrepancias,
@@ -60,6 +60,7 @@ from apps.despachos.preparacion import gestionar_obras
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path("reportes/", include("apps.reportes.urls")),
     path('', AccesoView.as_view(), name='login'),
     path('logout/', LogoutView.as_view(http_method_names=["post", "options"]), name='logout'),
     path('inicio/', vista_bodega, {'modulo': 'inicio'}, name='inicio'),

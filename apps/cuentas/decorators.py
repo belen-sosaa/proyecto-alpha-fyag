@@ -28,14 +28,14 @@ def rol_requerido(*roles):
     return decorator
 
 
-def facultad_requerida(facultad):
+def facultad_requerida(*facultades):
     # Protege una vista con una facultad declarada en roles.py.
     def decorator(view):
         @login_required
         @wraps(view)
         def wrapper(request, *args, **kwargs):
             # login_required lleva al login sin sesión. Con sesión y sin facultad, Django responde 403.
-            if not puede(request.user, facultad):
+            if not any(puede(request.user, facultad) for facultad in facultades):
                 raise PermissionDenied("Tu rol no tiene permiso para esta acción.")
             return view(request, *args, **kwargs)
 

@@ -136,8 +136,8 @@ def registrar_recepcion(request, despacho_id):
     return redirect("comprobante_despacho", despacho_id=despacho_id)
 
 
-# La misma facultad que protege el formulario autoriza esta consulta.
-@facultad_requerida("despachar")
+# Quien despacha o firma recepciones puede consultar artículos; solo despachar autoriza el registro.
+@facultad_requerida("despachar", "firmar_recepcion")
 @require_GET
 def articulo_por_codigo(request):
     # Busca un artículo para seleccionarlo en un despacho.
