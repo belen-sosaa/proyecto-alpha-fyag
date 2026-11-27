@@ -28,7 +28,7 @@
     <!-- Formulario para crear o editar -->
     <h1>{{ titulo }}</h1>
 
-    <form method="post">
+    <form method="post" class="formulario-centrado">
       {% csrf_token %}
       {% if alta_articulo %}
         {% include "catalogo/campos_alta_articulo.html" %}
@@ -36,7 +36,7 @@
         {{ form.as_p }}
       {% endif %}
 
-      <button type="submit">Guardar</button>
+      <button type="submit" class="boton-confirmar"><i class="fas fa-check" aria-hidden="true"></i> Guardar</button>
       <a class="boton boton-secundario" href="{% url 'catalogo_listar' %}">Cancelar</a>
     </form>
     {% if alta_articulo %}
@@ -57,10 +57,10 @@
       y sin movimientos asociados.
     </p>
 
-    <form method="post">
+    <form method="post" class="formulario-centrado">
       {% csrf_token %}
 
-      <button type="submit" class="boton-peligro">Confirmar eliminación</button>
+      <button type="submit" class="boton-peligro"><i class="fas fa-trash" aria-hidden="true"></i> Confirmar eliminación</button>
       <a class="boton boton-secundario" href="{% url 'catalogo_listar' %}">Cancelar</a>
     </form>
 

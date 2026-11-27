@@ -12,12 +12,12 @@
 {% endblock %}
 
 {% block content %}
-  <h1>{{ titulo }}</h1>
+  <h1><i class="fas fa-triangle-exclamation" aria-hidden="true"></i> {{ titulo }}</h1>
   <form method="post" class="egreso-formulario" id="form-egreso">
     {% csrf_token %}
     {{ form.as_p }}
     <div class="egreso-acciones">
-      <button type="submit">Confirmar egreso</button>
+      <button type="submit" class="boton-advertencia"><i class="fas fa-box-archive" aria-hidden="true"></i> Confirmar egreso</button>
       <a class="boton boton-secundario" href="{% url 'bodega_web' %}">Volver a bodega</a>
     </div>
   </form>

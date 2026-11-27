@@ -103,7 +103,7 @@
           <p id="estado-firma" class="despacho-ayuda" role="status">Dibuja tu firma con el dedo o el mouse.</p>
         </div>
         <div class="firma-acciones">
-          <button type="submit" disabled>Confirmar recepción</button>
+          <button type="submit" class="boton-confirmar" disabled><i class="fas fa-check" aria-hidden="true"></i> Confirmar recepción</button>
           <button type="button" class="boton boton-secundario" id="limpiar-firma">Borrar firma</button>
         </div>
         <noscript>Activa JavaScript para firmar en esta pantalla.</noscript>
@@ -116,7 +116,7 @@
       {% endif %}
 
       <section class="despacho-panel" aria-labelledby="despachos-recientes">
-        <h2 id="despachos-recientes">{% if recepcion %}Recepciones{% else %}Despachos recientes{% endif %}</h2>
+        <h2 id="despachos-recientes"><i class="fas fa-clipboard-list" aria-hidden="true"></i> {% if recepcion %}Recepciones{% else %}Despachos recientes{% endif %}</h2>
         {% timezone "America/Santiago" %}
           <ul class="despacho-registros">
             {% for despacho in despachos_recientes %}

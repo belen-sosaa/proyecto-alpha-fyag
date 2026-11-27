@@ -6,11 +6,11 @@
   <h1>Nuevo artículo</h1>
 
   {# El alta registra la ficha del insumo y permite indicar sus existencias iniciales. #}
-  <form method="post">
+  <form method="post" class="formulario-centrado">
     {% csrf_token %}
     {% include "catalogo/campos_alta_articulo.html" %}
 
-    <button type="submit">Guardar artículo</button>
+    <button type="submit" class="boton-confirmar"><i class="fas fa-check" aria-hidden="true"></i> Guardar artículo</button>
     <a class="boton boton-secundario" href="{% url 'bodega_web' %}">Cancelar</a>
   </form>
 
