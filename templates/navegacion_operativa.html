@@ -2,7 +2,7 @@
 <div class="fondo-menu backdrop-blur-sm" data-cerrar-menu hidden></div>
 <aside id="menu-operativo" class="menu-operativo" aria-label="Menú operativo">
   <div class="marca">
-    <img class="marca-logo bg-gradient-to-br from-blue-500 to-indigo-700 shadow-md" src="{% static 'images/logo_fyag.png' %}"
+    <img class="marca-logo" src="{% static 'images/logo_fyag.png' %}"
          width="1533" height="1026" alt="Frío y Agroindustria SpA">
     <div>
       <strong>Logística FYAG</strong>
@@ -21,19 +21,6 @@
         <i class="fas {{ modulo.icono }}" aria-hidden="true"></i> {{ modulo.nombre }}
       </a>
     {% endfor %}
-    {% if rol_actual == "Gerente" or rol_actual == "Auditor" or rol_actual == "Administrativo de Finanzas" or rol_actual == "Administrador de Bodega" %}
-      <a href="{% url 'reportes:ingresos' %}" class="motion-safe:transition-colors motion-safe:duration-200 focus-visible:ring-2 focus-visible:ring-blue-300">
-        <i class="fas fa-file-invoice-dollar" aria-hidden="true"></i> Reporte de ingresos
-      </a>
-    {% endif %}
-    {% if rol_actual == "Gerente" or rol_actual == "Auditor" or rol_actual == "Administrador de Bodega" or rol_actual == "Bodeguero" %}
-      <a href="{% url 'reportes:egresos' %}" class="motion-safe:transition-colors motion-safe:duration-200 focus-visible:ring-2 focus-visible:ring-blue-300">
-        <i class="fas fa-arrow-up-from-bracket" aria-hidden="true"></i> Reporte de egresos
-      </a>
-      <a href="{% url 'reportes:inventario' %}" class="motion-safe:transition-colors motion-safe:duration-200 focus-visible:ring-2 focus-visible:ring-blue-300">
-        <i class="fas fa-boxes-stacked" aria-hidden="true"></i> Reporte de inventario
-      </a>
-    {% endif %}
   </nav>
 
   <div class="perfil-operativo">

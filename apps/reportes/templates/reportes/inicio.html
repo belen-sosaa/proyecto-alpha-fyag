@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+
+{% block title %}{{ titulo_panel }} · FYAG{% endblock %}
+
+{% block extra_head %}
+  <style>
+    .tipos-reportes {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .tarjetas-reportes {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .tarjeta-reporte {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 12px;
+      padding: clamp(18px, 3vw, 28px);
+      border: 1px solid var(--borde);
+      border-radius: 16px;
+      background: #fff;
+      color: var(--texto);
+      text-decoration: none;
+      box-shadow: 0 2px 6px rgb(15 23 42 / 5%);
+    }
+
+    .tarjeta-reporte:hover, .tarjeta-reporte:focus-visible {
+      border-color: #7da6ef;
+      color: var(--texto);
+      box-shadow: 0 6px 16px rgb(15 23 42 / 10%);
+    }
+
+    .tarjeta-reporte-icono {
+      display: grid;
+      width: 44px;
+      height: 44px;
+      place-items: center;
+      border-radius: 12px;
+      background: #e9f1ff;
+      color: #1d4ed8;
+    }
+
+    .tarjeta-reporte h2 { font-size: 1.125rem; font-weight: 700; }
+    .tarjeta-reporte p { color: #475569; }
+    .tarjeta-reporte-accion {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: auto;
+      color: #1d4ed8;
+      font-weight: 600;
+    }
+
+    @media (max-width: 620px) {
+      .tarjetas-reportes { grid-template-columns: minmax(0, 1fr); }
+    }
+  </style>
+{% endblock %}
+
+{% block content %}
+  {% if report_type %}
+    <nav class="tipos-reportes" aria-label="Tipos de reporte">
+      {% for tipo, etiqueta, ruta, icono, descripcion in opciones_reportes %}
+        <a class="boton{% if tipo != report_type %} boton-secundario{% endif %}" href="{% url ruta %}"{% if tipo == report_type %} aria-current="page"{% endif %}>{{ etiqueta }}</a>
+      {% endfor %}
+    </nav>
+  {% else %}
+    <nav class="tarjetas-reportes" aria-label="Tipos de reporte">
+      {% for tipo, etiqueta, ruta, icono, descripcion in opciones_reportes %}
+        <a class="tarjeta-reporte" href="{% url ruta %}" aria-labelledby="titulo-{{ tipo }}" aria-describedby="descripcion-{{ tipo }}">
+          <span class="tarjeta-reporte-icono" aria-hidden="true"><i class="fas {{ icono }}"></i></span>
+          <h2 id="titulo-{{ tipo }}">{{ etiqueta }}</h2>
+          <p id="descripcion-{{ tipo }}">{{ descripcion }}</p>
+          <span class="tarjeta-reporte-accion" aria-hidden="true">Ver reporte <i class="fas fa-arrow-right"></i></span>
+        </a>
+      {% endfor %}
+    </nav>
+  {% endif %}
+  {% block contenido_reporte %}{% endblock %}
+{% endblock %}

@@ -1,6 +1,27 @@
+import re
+
 from django.contrib.auth import get_user_model
 from django.test import Client, TestCase
 from django.urls import reverse
+
+from apps.bodega.models import PerfilUsuario
+
+
+class AccesoCsrfTests(TestCase):
+    def test_formulario_desactualizado_permite_reintentar_con_un_token_valido(self):
+        usuario = get_user_model().objects.create_user(username="seguridad_login", password="clave-de-prueba")
+        perfil = PerfilUsuario.objects.create(usuario=usuario, rut="11.111.111-1")
+        cliente = Client(enforce_csrf_checks=True)
+        login = reverse("login")
+        formulario = cliente.get(login)
+        token = re.search(rb'name="csrfmiddlewaretoken" value="([^"]+)"', formulario.content)[1].decode()
+        credenciales = {"rut": perfil.rut, "password": "clave-de-prueba", "csrfmiddlewaretoken": token}
+        self.assertRedirects(cliente.post(login, credenciales), reverse("inicio"))
+
+        rechazo = cliente.post(login, credenciales)
+        self.assertContains(rechazo, "El formulario de acceso se actualizó.", status_code=403)
+        token_nuevo = re.search(rb'name="csrfmiddlewaretoken" value="([^"]+)"', rechazo.content)[1].decode()
+        self.assertRedirects(cliente.post(login, {**credenciales, "csrfmiddlewaretoken": token_nuevo}), reverse("inicio"))
 
 
 class SalidaTests(TestCase):

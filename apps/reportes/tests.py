@@ -1,6 +1,8 @@
 from datetime import date
 from decimal import Decimal
 from io import BytesIO
+import re
+from zoneinfo import ZoneInfo
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
@@ -192,24 +194,63 @@ class ReportesTests(TestCase):
             self.assertEqual(self.client.get(reverse("reportes:egresos")).status_code, 200)
             self.assertEqual(self.client.get(reverse("reportes:inventario")).status_code, 200)
 
-    def test_menu_muestra_reportes_segun_los_permisos_del_rol(self):
+    def test_menu_agrupa_los_reportes_segun_los_permisos_del_rol(self):
         reportes_por_rol = {
-            GERENTE: ("ingresos", "egresos", "inventario"),
-            AUDITOR: ("ingresos", "egresos", "inventario"),
-            FINANZAS: ("ingresos",),
-            ADMIN_BODEGA: ("ingresos", "egresos", "inventario"),
+            GERENTE: ("ingresos", "egresos", "inventario", "cardex"),
+            AUDITOR: ("ingresos", "egresos", "inventario", "cardex"),
+            FINANZAS: ("ingresos", "cardex"),
+            ADMIN_BODEGA: ("ingresos", "egresos", "inventario", "cardex"),
             BODEGUERO: ("egresos", "inventario"),
         }
         for rol, reportes_visibles in reportes_por_rol.items():
             with self.subTest(rol=rol):
                 self.login_as(rol)
                 pagina = self.client.get(reverse("inicio"))
-                for reporte in ("ingresos", "egresos", "inventario"):
+                modulo = reverse("reportes:inicio")
+                self.assertContains(pagina, f'href="{modulo}"', count=1)
+                panel = self.client.get(modulo)
+                menu = re.search(rb'<nav class="modulos-operativos".*?</nav>', pagina.content, re.S)[0]
+                self.assertEqual(menu.count(f'href="{modulo}"'.encode()), 1)
+                for reporte in ("ingresos", "egresos", "inventario", "cardex"):
                     enlace = f'href="{reverse("reportes:" + reporte)}"'
+                    self.assertNotIn(enlace.encode(), menu)
                     if reporte in reportes_visibles:
-                        self.assertContains(pagina, enlace)
+                        self.assertContains(panel, enlace)
+                        detalle = self.client.get(reverse("reportes:" + reporte))
+                        self.assertContains(detalle, f'{enlace} aria-current="page"')
                     else:
-                        self.assertNotContains(pagina, enlace)
+                        self.assertNotContains(panel, enlace)
+
+        self.client.force_login(get_user_model().objects.create_user(username="sin_reportes"))
+        self.assertNotContains(self.client.get(reverse("inicio")), f'href="{modulo}"')
+        self.assertEqual(self.client.get(modulo).status_code, 403)
+
+    def test_cardex_filtra_y_exporta_el_mismo_movimiento(self):
+        MovimientoCardex.objects.create(
+            tipo=MovimientoCardex.Tipo.USO_INTERNO, cantidad=1, articulo=self.articulo,
+            usuario=self.usuarios[AUDITOR], stock_resultante=9, documento_referencia="=1+1",
+        )
+        self.login_as(GERENTE)
+        url = reverse("reportes:cardex")
+        fecha = timezone.localtime(self.despacho.fecha_hora, ZoneInfo("America/Santiago")).date()
+        filtros = {"tipo": "DESPACHO", "articulo": self.articulo.sku, "obra": self.obra.nombre,
+                   "usuario": self.usuarios[BODEGUERO].username, "fecha_desde": fecha.isoformat(),
+                   "fecha_hasta": fecha.isoformat()}
+        Articulo.objects.filter(pk=self.articulo.pk).update(stock_fisico=0)
+        pagina = self.client.get(url, filtros)
+        self.assertContains(pagina, "DESP-1")
+        self.assertContains(pagina, 'class="fila-stock-critico"')
+        self.assertNotContains(pagina, "=1+1")
+        pdf = self.client.get(reverse("reportes:cardex_pdf"), filtros)
+        self.assertIn("DESP-1", PdfReader(BytesIO(pdf.content)).pages[0].extract_text())
+        excel = self.client.get(reverse("reportes:cardex_excel"), {"tipo": "USO_INTERNO"})
+        libro = load_workbook(BytesIO(excel.content))
+        self.assertEqual(libro.active["B7"].value, "Uso interno")
+        self.assertEqual(libro.active["J7"].value, "=1+1")
+        self.assertEqual(libro.active["J7"].data_type, "s")
+        self.login_as(BODEGUERO)
+        for ruta in ("cardex", "cardex_excel", "cardex_pdf"):
+            self.assertEqual(self.client.get(reverse(f"reportes:{ruta}")).status_code, 403)
 
     def test_bodeguero_no_ve_costos_en_html_excel_pdf(self):
         self.login_as(BODEGUERO)

@@ -61,6 +61,7 @@ from apps.despachos.preparacion import gestionar_obras
 urlpatterns = [
     path('admin/', admin.site.urls),
     path("reportes/", include("apps.reportes.urls")),
+    path("administracion/recursos-humanos/", include("apps.empleados.urls")),
     path('', AccesoView.as_view(), name='login'),
     path('logout/', LogoutView.as_view(http_method_names=["post", "options"]), name='logout'),
     path('inicio/', vista_bodega, {'modulo': 'inicio'}, name='inicio'),
@@ -71,6 +72,8 @@ urlpatterns = [
     path('bodega/conteos/', vista_conteos, name='conteos'),
     path('bodega/conteos/nuevo/', nuevo_conteo, name='nuevo_conteo'),
     path('bodega/conteos/<int:conteo_id>/', vista_discrepancias, name='discrepancias_conteo'),
+    path('bodega/conteos/<int:conteo_id>/exportar/xlsx/', vista_discrepancias, {"formato": "xlsx"}, name='discrepancias_conteo_excel'),
+    path('bodega/conteos/<int:conteo_id>/exportar/pdf/', vista_discrepancias, {"formato": "pdf"}, name='discrepancias_conteo_pdf'),
     path('bodega/mermas/', vista_egreso, {'tipo': 'MERMA'}, name='merma_crear'),
     path('bodega/devoluciones/', vista_egreso, {'tipo': 'DEVOLUCION'}, name='devolucion_crear'),
     path('auditoria/', vista_bodega, {'modulo': 'auditoria'}, name='auditoria'),

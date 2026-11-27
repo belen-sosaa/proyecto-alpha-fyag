@@ -1,8 +1,10 @@
+{% if perm.ver_costos %}
+  <p class="acceso-panel"><a class="boton" href="{% url 'ultimos_precios' %}">Últimos precios</a></p>
+{% endif %}
 <section class="panel" aria-labelledby="facturas-recientes">
   <div class="panel-cabecera">
     <h2 id="facturas-recientes">Documentos de compra</h2>
     {% if perm.registrar_factura %}<a class="accion" href="{% url 'vista_registrar_compra' %}">Registrar documento</a>{% endif %}
-    {% if perm.ver_costos %}<a class="accion" href="{% url 'ultimos_precios' %}">Últimos precios</a>{% endif %}
   </div>
   <ul class="registros">
     {% for factura in facturas %}

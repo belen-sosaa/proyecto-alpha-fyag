@@ -41,7 +41,7 @@ def _despachos_visibles(usuario, contexto):
     despachos = Despacho.objects.filter(tipo_movimiento__iexact="DESPACHO")
     # Supervisión ve las recepciones pendientes y las que firmó.
     # El bodeguero ve sus propios despachos. Administración de Bodega puede ver todos.
-    if contexto["recepcion"]:
+    if contexto["recepcion"] and not contexto["perm"]["consultar_despachos"]:
         despachos = despachos.filter(Q(recepcion__isnull=True) | Q(recepcion__receptor=usuario))
     elif contexto["rol_actual"] != ADMIN_BODEGA and not contexto["perm"]["consultar_despachos"]:
         despachos = despachos.filter(usuario=usuario)

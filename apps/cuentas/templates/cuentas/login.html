@@ -205,7 +205,11 @@
           </div>
         </div>
 
-        {% if form.errors %}
+        {% if error_csrf %}
+          <p role="alert" class="text-red-600">
+            El formulario de acceso se actualizó. Escribe tu RUT y contraseña y vuelve a ingresar.
+          </p>
+        {% elif form.errors %}
           <p role="alert" class="text-red-600">
             RUT o contraseña incorrectos, o cuenta inactiva.
           </p>

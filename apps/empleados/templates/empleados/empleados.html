@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+
+{% block title %}{{ titulo_panel }} · FYAG{% endblock %}
+{% block extra_head %}{% include "estilos_fichas.html" %}{% endblock %}
+
+{% block content %}
+<section class="ficha-operativa" aria-label="Recursos Humanos">
+  {% if form %}
+    <form method="post">
+      {% csrf_token %}
+      {{ form.as_p }}
+      <div class="acciones-ficha">
+        <button type="submit" class="boton-confirmar">Guardar</button>
+        {% if volver %}
+          <a class="boton boton-secundario" href="{% url 'empleados:detalle' volver.pk %}">Cancelar</a>
+        {% else %}
+          <a class="boton boton-secundario" href="{% url 'empleados:empleados' %}">Cancelar</a>
+        {% endif %}
+      </div>
+    </form>
+  {% elif empleado %}
+    <div class="panel-cabecera">
+      <h2>{{ empleado }}</h2>
+      <div class="acciones-ficha">
+        {% if perm.gestionar_empleados %}
+          <a class="boton" href="{% url 'empleados:editar' empleado.pk %}">Editar ficha</a>
+        {% endif %}
+        <a class="boton boton-secundario" href="{% url 'empleados:empleados' %}">Volver a empleados</a>
+      </div>
+    </div>
+    <div class="tabla-desplazable" role="region" aria-label="Datos del empleado" tabindex="0">
+      <table>
+        <tbody>
+          <tr><th scope="row">RUT</th><td>{{ empleado.rut }}</td></tr>
+          <tr><th scope="row">Cargo</th><td>{{ empleado.cargo }}</td></tr>
+          <tr><th scope="row">Estado</th><td>{{ empleado.activo|yesno:"Activo,Inactivo" }}</td></tr>
+          <tr><th scope="row">Correo laboral</th><td>{{ empleado.correo|default:"—" }}</td></tr>
+          <tr><th scope="row">Teléfono</th><td>{{ empleado.telefono|default:"—" }}</td></tr>
+          <tr><th scope="row">Fecha de ingreso</th><td>{{ empleado.fecha_ingreso|date:"d/m/Y" }}</td></tr>
+          <tr><th scope="row">Tipo de contrato</th><td>{{ empleado.tipo_contrato|default:"—" }}</td></tr>
+          <tr><th scope="row">Término del contrato</th><td>{{ empleado.fecha_termino_contrato|date:"d/m/Y"|default:"—" }}</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="panel-cabecera">
+      <h2 id="vacaciones-empleado">Vacaciones</h2>
+      {% if perm.gestionar_empleados %}
+        <a class="boton boton-secundario" href="{% url 'empleados:crear_vacacion' empleado.pk %}">Registrar vacaciones</a>
+      {% endif %}
+    </div>
+    <ul class="registros" aria-labelledby="vacaciones-empleado">
+      {% for vacacion in empleado.vacaciones.all %}
+        <li class="registro">
+          <span>{{ vacacion.desde|date:"d/m/Y" }} al {{ vacacion.hasta|date:"d/m/Y" }}</span>
+          {% if perm.gestionar_empleados %}
+            <a class="boton boton-secundario" href="{% url 'empleados:editar_vacacion' empleado.pk vacacion.pk %}">Editar período</a>
+          {% endif %}
+        </li>
+      {% empty %}
+        <li>Sin vacaciones registradas.</li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    {% if perm.gestionar_empleados %}
+      <div class="panel-cabecera">
+        <a class="boton" href="{% url 'empleados:crear' %}">Nuevo empleado</a>
+      </div>
+    {% endif %}
+    <form method="get">
+      <label for="buscar-empleado">Buscar por nombre, RUT o cargo</label>
+      <input type="search" id="buscar-empleado" name="q" maxlength="120" value="{{ consulta }}">
+      <button type="submit" class="boton-confirmar">Buscar</button>
+    </form>
+    <ul class="registros">
+      {% for ficha in pagina %}
+        <li class="registro">
+          <div>
+            <h2>{{ ficha }}</h2>
+            <p>{{ ficha.rut }} · {{ ficha.cargo }} · {{ ficha.activo|yesno:"Activo,Inactivo" }}</p>
+          </div>
+          <a class="boton boton-secundario" href="{% url 'empleados:detalle' ficha.pk %}" aria-label="Ver ficha de {{ ficha }}">Ver ficha</a>
+        </li>
+      {% empty %}
+        <li>{% if consulta %}No se encontraron empleados.{% else %}Aún no hay fichas de empleados.{% endif %}</li>
+      {% endfor %}
+    </ul>
+    {% if pagina.has_other_pages %}
+      <nav class="acciones-ficha" aria-label="Páginas de empleados">
+        {% if pagina.has_previous %}<a class="boton boton-secundario" href="{% querystring pagina=pagina.previous_page_number %}">Anterior</a>{% endif %}
+        <span>Página {{ pagina.number }} de {{ pagina.paginator.num_pages }}</span>
+        {% if pagina.has_next %}<a class="boton boton-secundario" href="{% querystring pagina=pagina.next_page_number %}">Siguiente</a>{% endif %}
+      </nav>
+    {% endif %}
+  {% endif %}
+</section>
+{% endblock %}
