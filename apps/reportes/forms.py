@@ -1,6 +1,6 @@
 from django import forms
 
-from apps.bodega.models import Categoria
+from apps.bodega.models import Categoria, MovimientoCardex
 from apps.compras.models import EntidadComercial, FacturaCompra
 
 
@@ -37,7 +37,7 @@ class ReporteIngresosForm(RangoFechasForm):
 class ReporteEgresosForm(RangoFechasForm):
     tipo = forms.ChoiceField(
         choices=(("", "Todos"), ("DESPACHO", "Despacho"), ("MERMA", "Merma"),
-                 ("DEVOLUCION", "Devolución"), ("REVERSA", "Reversa")),
+                 ("DEVOLUCION", "Devolución"), ("REVERSA", "Reversa"), ("USO_INTERNO", "Uso interno")),
         required=False,
     )
     obra = forms.CharField(required=False, max_length=200)
@@ -59,3 +59,10 @@ class ReporteInventarioForm(forms.Form):
         required=False,
     )
     q = forms.CharField(required=False, max_length=200)
+
+
+class ReporteCardexForm(RangoFechasForm):
+    tipo = forms.ChoiceField(choices=[("", "Todos"), *MovimientoCardex.Tipo.choices], required=False)
+    articulo = forms.CharField(label="Artículo", required=False, max_length=200)
+    obra = forms.CharField(required=False, max_length=200)
+    usuario = forms.CharField(required=False, max_length=150)

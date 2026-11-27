@@ -1,9 +1,6 @@
-{% extends "base.html" %}
+{% extends "reportes/inicio.html" %}
 
-{% block title %}Reporte de egresos · FYAG{% endblock %}
-
-{% block content %}
-  <h1>Reporte de egresos</h1>
+{% block contenido_reporte %}
   <form method="get" class="inventario-filtros">
     {{ reporte.form.as_p }}
     <button type="submit" class="boton">Filtrar</button>

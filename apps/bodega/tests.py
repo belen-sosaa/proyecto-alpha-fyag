@@ -19,7 +19,9 @@ from apps.cuentas.roles import (
     AUDITOR,
     BODEGUERO,
     FINANZAS,
+    FACULTADES,
     GERENTE,
+    RRHH,
     SIN_ROL,
     SUPERVISOR,
     claves_de,
@@ -33,28 +35,46 @@ class RolesTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         cls.usuarios = {}
-        for rol in (GERENTE, ADMIN_TI, ADMIN_BODEGA, BODEGUERO, FINANZAS, SUPERVISOR, AUDITOR):
+        for rol in (GERENTE, ADMIN_TI, ADMIN_BODEGA, BODEGUERO, FINANZAS, SUPERVISOR, AUDITOR, RRHH):
             grupo = Group.objects.create(name=rol)
             usuario = get_user_model().objects.create_user(username=f"usuario_{grupo.pk}")
             usuario.groups.add(grupo)
             cls.usuarios[rol] = usuario
 
-    def test_reconoce_los_siete_roles(self):
+    def test_reconoce_los_roles_operativos(self):
         self.assertCountEqual(roles_validos(), self.usuarios)
         for rol, usuario in self.usuarios.items():
             with self.subTest(rol=rol):
                 self.assertEqual(rol_principal(usuario), rol)
 
-    def test_solo_finanzas_emite_orden_de_compra(self):
+    def test_finanzas_y_gerente_pueden_emitir_orden_de_compra(self):
         for rol, usuario in self.usuarios.items():
             with self.subTest(rol=rol):
-                self.assertEqual(puede(usuario, "emitir_oc"), rol == FINANZAS)
+                self.assertEqual(puede(usuario, "emitir_oc"), rol in (FINANZAS, GERENTE))
 
-    def test_solo_ti_gestiona_usuarios(self):
+    def test_ti_y_gerente_pueden_gestionar_usuarios(self):
         for rol, usuario in self.usuarios.items():
             with self.subTest(rol=rol):
-                self.assertEqual(puede(usuario, "gestionar_usuarios"), rol == ADMIN_TI)
+                self.assertEqual(puede(usuario, "gestionar_usuarios"), rol in (ADMIN_TI, GERENTE))
         self.assertEqual(claves_de(self.usuarios[ADMIN_TI]), ("panel", "usuarios"))
+
+    def test_gerente_tiene_todas_las_facultades_operativas(self):
+        gerente = self.usuarios[GERENTE]
+        gerente.groups.add(self.usuarios[RRHH].groups.get())
+        self.assertEqual(rol_principal(gerente), GERENTE)
+        for facultad in FACULTADES:
+            with self.subTest(facultad=facultad):
+                self.assertTrue(puede(gerente, facultad))
+        self.assertFalse(puede(gerente, "facultad_inexistente"))
+        self.client.force_login(gerente)
+        for ruta in (
+            "inicio", "bodega_web", "catalogo_listar", "despachos", "obras",
+            "auditoria", "cardex", "compras", "finanzas", "entidades",
+            "empleados:empleados", "empleados:crear", "reportes:ingresos",
+            "reportes:egresos", "reportes:inventario",
+        ):
+            with self.subTest(ruta=ruta):
+                self.assertEqual(self.client.get(reverse(ruta)).status_code, 200)
 
     def test_bodeguero_puede_crear_presupuesto_desde_compras(self):
         usuario = self.usuarios[BODEGUERO]
@@ -149,7 +169,7 @@ class RolesTests(TestCase):
         self.assertNotContains(compras, "119.00")
 
     def test_roles_ajenos_a_bodega_no_pueden_despachar_ni_buscar_obras(self):
-        for rol in (ADMIN_TI, SUPERVISOR, FINANZAS, GERENTE, AUDITOR):
+        for rol in (ADMIN_TI, SUPERVISOR, FINANZAS, AUDITOR, RRHH):
             with self.subTest(rol=rol):
                 self.client.force_login(self.usuarios[rol])
                 self.assertEqual(self.client.post(reverse("procesar_despacho")).status_code, 403)
@@ -247,20 +267,20 @@ class AccesoRUTTests(TestCase):
         respuesta = self.client.post(reverse("login"), {
             "rut": "11.111.111-1", "password": "clave-de-test",
         }, follow=True)
-        self.assertRedirects(respuesta, reverse("bodega_web"))
+        self.assertRedirects(respuesta, reverse("inicio"))
         self.assertContains(respuesta, "Camila Fuentes")
         self.assertContains(respuesta, ADMIN_BODEGA)
         self.assertNotContains(respuesta, "Usuario de Sistema")
         self.assertEqual(self.client.get(reverse("articulo_crear")).status_code, 200)
 
-    def test_login_por_rut_sin_puntos_abre_despachos_segun_el_rol(self):
+    def test_login_por_rut_sin_puntos_abre_inicio_para_bodega_y_supervision(self):
         for rol in (BODEGUERO, SUPERVISOR):
             with self.subTest(rol=rol):
                 self.usuario.groups.set([Group.objects.create(name=rol)])
                 respuesta = self.client.post(reverse("login"), {
                     "rut": "11111111-1", "password": "clave-de-test",
                 }, follow=True)
-                self.assertRedirects(respuesta, reverse("despachos"))
+                self.assertRedirects(respuesta, reverse("inicio"))
                 self.assertContains(respuesta, "Camila Fuentes")
                 self.assertContains(respuesta, rol)
                 self.client.logout()
@@ -287,7 +307,7 @@ class AccesoRUTTests(TestCase):
         respuesta = self.client.post(reverse("login"), {
             "rut": "22.222.222-2", "password": "clave-de-test",
         }, follow=True)
-        self.assertRedirects(respuesta, reverse("bodega_web"))
+        self.assertRedirects(respuesta, reverse("inicio"))
         self.assertContains(respuesta, "cuenta_ti")
         self.assertContains(respuesta, ADMIN_TI)
         self.assertEqual(self.client.get(reverse("articulo_crear")).status_code, 403)
@@ -339,7 +359,7 @@ class AccesoRUTTests(TestCase):
             self.assertEqual(perfil.bloqueado_hasta, vence)
 
             reloj.return_value = vence
-            self.assertRedirects(self.client.post(url, credenciales), reverse("bodega_web"))
+            self.assertRedirects(self.client.post(url, credenciales), reverse("inicio"))
 
         perfil.refresh_from_db()
         self.assertEqual(perfil.intentos_fallidos, 0)

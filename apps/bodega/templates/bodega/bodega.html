@@ -6,10 +6,38 @@
   <style>
     .panel { min-width: 0; padding: clamp(16px, 3vw, 24px); border: 1px solid var(--borde); border-radius: 15px; background: #fff; }
     .panel + .panel { margin-top: 16px; }
-    .acceso-entidades { margin-bottom: 20px; }
+    .tarjeta-inicio { position: relative; }
+    .enlace-tarjeta-inicio::after { content: ""; position: absolute; inset: 0; border-radius: 1rem; }
+    .enlace-secundario-inicio { position: relative; z-index: 1; }
+    .tarjeta-inicio:has(.enlace-tarjeta-inicio:hover), .tarjeta-inicio-enlazada:hover { border-color: #60a5fa; }
+    .tarjeta-inicio-enlazada, .tarjeta-inicio-enlazada:hover { color: inherit; }
+    .tarjetas-detalle-inicio { column-width: 25rem; column-count: 2; column-gap: 1rem; }
+    .tarjetas-detalle-inicio:empty { display: none; }
+    .tarjetas-detalle-inicio > * {
+      display: inline-block; width: 100%; margin-bottom: 1rem;
+      break-inside: avoid; vertical-align: top;
+    }
+    .distribucion-stock { display: grid; gap: 16px; margin-top: 18px; }
+    .distribucion-stock-fila { --color-stock: #15803d; }
+    .distribucion-stock-critico { --color-stock: #b91c1c; }
+    .distribucion-stock-bajo { --color-stock: #b45309; }
+    .uso-materiales-fila { --color-stock: #2563eb; }
+    .distribucion-stock-datos {
+      display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+      margin-bottom: 6px; color: var(--texto);
+    }
+    .distribucion-stock-etiqueta { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+    .distribucion-stock-etiqueta::before {
+      content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--color-stock);
+    }
+    .distribucion-stock-cifra { color: #475569; font-variant-numeric: tabular-nums; }
+    .barra-stock { height: 8px; background: #edf1f6; border-radius: 999px; overflow: hidden; }
+    .barra-stock span { display: block; height: 100%; background: var(--color-stock); border-radius: inherit; }
+    .acceso-panel { margin-bottom: 20px; }
     .panel-cabecera { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; margin-bottom: 14px; }
     .operaciones-bodega { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr)); gap: 16px; margin-bottom: 16px; }
     .operaciones-bodega .panel { margin: 0; }
+    .acciones-egresos { display: grid; gap: 10px; }
     .operaciones-bodega h2 i { margin-right: 6px; color: var(--azul); }
     .operaciones-bodega h2 .fa-triangle-exclamation { color: #b45309; }
     .accion { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 9px 14px; border-radius: 9px; background: var(--azul); color: #fff; font-weight: 650; text-decoration: none; }
@@ -45,10 +73,12 @@
           <section class="panel" aria-labelledby="otros-egresos">
             <div class="panel-cabecera">
               <h2 id="otros-egresos"><i class="fas fa-triangle-exclamation" aria-hidden="true"></i> Mermas y devoluciones</h2>
-              <a class="accion" href="{% url 'merma_crear' %}">Registrar merma</a>
-              {% if perm.registrar_devolucion %}
-                <a class="accion" href="{% url 'devolucion_crear' %}">Registrar devolución</a>
-              {% endif %}
+              <div class="acciones-egresos">
+                <a class="accion" href="{% url 'merma_crear' %}">Registrar merma</a>
+                {% if perm.registrar_devolucion %}
+                  <a class="accion" href="{% url 'devolucion_crear' %}">Registrar devolución</a>
+                {% endif %}
+              </div>
             </div>
           </section>
         {% endif %}
@@ -87,7 +117,7 @@
     {% include "bodega/compras.html" %}
   {% elif modulo_actual.clave == "finanzas" %}
     {% if perm.gestionar_entidades %}
-      <p class="acceso-entidades"><a class="boton" href="{% url 'entidades' %}">Clientes y proveedores</a></p>
+      <p class="acceso-panel"><a class="boton" href="{% url 'entidades' %}">Clientes y proveedores</a></p>
     {% endif %}
     <section class="panel" aria-labelledby="resumen-compras">
       <div class="panel-cabecera">

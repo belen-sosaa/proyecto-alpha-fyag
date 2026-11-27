@@ -26,5 +26,7 @@
   <p>No hay diferencias de stock.</p>
 {% endif %}
 <div class="conteos-acciones">
+  <a class="boton" href="{% url 'discrepancias_conteo_excel' conteo.pk %}">Exportar a Excel</a>
+  <a class="boton boton-peligro" href="{% url 'discrepancias_conteo_pdf' conteo.pk %}">Exportar a PDF</a>
   <a class="boton boton-secundario" href="{% url 'conteos' %}">Volver a conteos</a>
 </div>

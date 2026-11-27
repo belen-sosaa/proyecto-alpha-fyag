@@ -8,9 +8,10 @@ BODEGUERO = "Bodeguero"
 FINANZAS = "Administrativo de Finanzas"
 SUPERVISOR = "Supervisor de Obra"
 AUDITOR = "Auditor"
+RRHH = "Encargado de Recursos Humanos"
 ADMIN_GENERAL_LEGADO = "Administrador General"
 
-ROLES = (GERENTE, ADMIN_TI, ADMIN_BODEGA, BODEGUERO, FINANZAS, SUPERVISOR, AUDITOR)
+ROLES = (GERENTE, ADMIN_TI, ADMIN_BODEGA, BODEGUERO, FINANZAS, SUPERVISOR, AUDITOR, RRHH)
 SIN_ROL = "Sin rol"
 
 # Cada módulo define su etiqueta, icono, ruta y descripción.
@@ -22,10 +23,12 @@ MODULOS = {
     "merma": ("Mermas", "fa-triangle-exclamation", "merma_crear", "Bajas con justificación"),
     "compras": ("Compras", "fa-file-invoice-dollar", "compras", "Presupuestos y órdenes"),
     "usuarios": ("Usuarios", "fa-users-gear", "usuarios", "Gestión de cuentas"),
+    "administracion": ("Empleados", "fa-users", "empleados:empleados", "Recursos Humanos"),
 }
 
 ACCESO = {
-    GERENTE: ("panel", "catalogo", "cardex", "compras"),
+    GERENTE: tuple(MODULOS),
+    RRHH: ("panel", "administracion"),
     ADMIN_TI: ("panel", "usuarios"),
     ADMIN_BODEGA: ("panel", "catalogo", "cardex", "despacho", "merma", "compras"),
     BODEGUERO: ("panel", "catalogo", "despacho", "merma", "compras"),
@@ -45,6 +48,8 @@ FACULTADES = {
     "editar_articulo": (ADMIN_BODEGA, ADMIN_GENERAL_LEGADO),
     "eliminar_articulo": (ADMIN_BODEGA, ADMIN_GENERAL_LEGADO),
     "gestionar_usuarios": (ADMIN_TI,),
+    "ver_empleados": (RRHH, GERENTE),
+    "gestionar_empleados": (RRHH,),
     "ver_costos": (GERENTE, FINANZAS, ADMIN_BODEGA),
     "despachar": (BODEGUERO, ADMIN_BODEGA),
     "consultar_despachos": (FINANZAS, GERENTE),
@@ -55,6 +60,10 @@ FACULTADES = {
     "ver_conteos": (BODEGUERO, ADMIN_BODEGA, GERENTE, AUDITOR),
     "registrar_factura": (FINANZAS, ADMIN_BODEGA),
     "confirmar_ingreso": (BODEGUERO, ADMIN_BODEGA),
+    "reporte_ingresos": (GERENTE, AUDITOR, FINANZAS, ADMIN_BODEGA),
+    "reporte_egresos": (GERENTE, AUDITOR, ADMIN_BODEGA, BODEGUERO),
+    "reporte_inventario": (GERENTE, AUDITOR, ADMIN_BODEGA, BODEGUERO),
+    "reporte_cardex": (AUDITOR, ADMIN_BODEGA, FINANZAS, ADMIN_GENERAL_LEGADO),
 }
 
 
@@ -68,6 +77,8 @@ def rol_principal(user):
         .order_by("pk")
         .values_list("name", flat=True)
     )
+    if GERENTE in grupos:
+        return GERENTE
     for grupo in grupos:
         if grupo in ROLES:
             return grupo
@@ -101,8 +112,8 @@ def modulos_de(user):
 def permisos_de(user):
     # Devuelve el rol y sus facultades para las plantillas.
     rol = rol_principal(user)
-    return {"rol": rol, **{clave: rol in roles for clave, roles in FACULTADES.items()}}
+    return {"rol": rol, **{clave: rol == GERENTE or rol in roles for clave, roles in FACULTADES.items()}}
 
 
 def puede(user, facultad):
-    return rol_principal(user) in FACULTADES.get(facultad, ())
+    return permisos_de(user).get(facultad, False) is True

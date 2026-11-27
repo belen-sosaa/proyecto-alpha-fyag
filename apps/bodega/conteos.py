@@ -13,6 +13,8 @@ from django.views.decorators.http import require_GET, require_http_methods, requ
 
 from apps.cuentas.decorators import facultad_requerida
 from apps.cuentas.roles import puede
+from apps.reportes.utils.export_excel import export_workbook
+from apps.reportes.utils.export_pdf import export_pdf
 from .models import Articulo, BitacoraAuditoria, ConteoInventario, DetalleConteoInventario
 
 
@@ -116,10 +118,22 @@ def nuevo_conteo(request):
 
 @facultad_requerida("ver_conteos")
 @require_GET
-def vista_discrepancias(request, conteo_id):
+def vista_discrepancias(request, conteo_id, formato=None):
     conteo = get_object_or_404(ConteoInventario.objects.select_related("usuario"), pk=conteo_id)
     # El reporte enfoca la revisión en las diferencias. Todas las líneas del conteo siguen guardadas.
     detalles = conteo.detalles.filter(DISCREPANCIA).select_related("articulo").order_by("pk")
+    if formato:
+        titulo = f"Discrepancias del conteo #{conteo.pk}"
+        columnas = ("Artículo", "Stock del sistema", "Cantidad contada", "Diferencia")
+        filas = [
+            (str(detalle.articulo), detalle.stock_sistema, detalle.stock_fisico, detalle.diferencia)
+            for detalle in detalles
+        ]
+        datos = {"conteo": conteo.pk, "observacion": conteo.observacion}
+        archivo = f"discrepancias-conteo-{conteo.pk}.{formato}"
+        if formato == "xlsx":
+            return export_workbook(titulo, columnas, filas, None, datos, archivo)
+        return export_pdf(titulo, request.user, columnas, filas, None, datos, archivo)
     return render(request, "bodega/conteos.html", {
         "conteo": conteo,
         "detalles": detalles,
