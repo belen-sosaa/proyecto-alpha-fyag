@@ -1,18 +1,20 @@
 {% extends "base.html" %}
 
-{% block title %}Catálogo de insumos{% endblock %}
+{% block title %}{{ titulo_panel }}{% endblock %}
 
 {% block extra_head %}
+  {% include "estilos_fichas.html" %}
   {% if not form and not articulo %}
     <style>
+      .catalogo-panel { max-width: none; }
       .inventario-herramientas { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 16px 0; }
       .estado-stock { display: inline-block; padding: 4px 10px; border-radius: 999px; background: #dcfce7; color: #166534; font-size: .8rem; font-weight: 700; white-space: nowrap; }
       .estado-stock-bajo { background: #fef3c7; color: #92400e; }
       .estado-stock-critico { background: #fee2e2; color: #991b1b; }
       @media print {
-        .cabecera, .mensaje, .inventario-herramientas, .inventario-filtros, .inventario-acciones { display: none; }
+        .menu-operativo, .fondo-menu, [data-abrir-menu], .mensaje, .inventario-herramientas, .inventario-filtros, .inventario-acciones { display: none; }
         body { background: white; }
-        .contenedor, .contenido { width: auto; max-width: none; margin: 0; padding: 0; box-shadow: none; border: 0; }
+        .contenido-operativo, .catalogo-panel { width: auto; max-width: none; margin: 0; padding: 0; box-shadow: none; border: 0; }
         .inventario-tabla { overflow: visible; }
         .inventario-tabla table { font-size: 11px; }
         .inventario-tabla th, .inventario-tabla td { padding: 6px; overflow-wrap: anywhere; }
@@ -23,10 +25,8 @@
 {% endblock %}
 
 {% block content %}
-
+  <section class="ficha-operativa{% if not form and not articulo %} catalogo-panel{% endif %}">
   {% if form %}
-    <!-- Formulario para crear o editar -->
-    <h1>{{ titulo }}</h1>
 
     <form method="post" class="formulario-centrado">
       {% csrf_token %}
@@ -36,16 +36,16 @@
         {{ form.as_p }}
       {% endif %}
 
-      <button type="submit" class="boton-confirmar"><i class="fas fa-check" aria-hidden="true"></i> Guardar</button>
-      <a class="boton boton-secundario" href="{% url 'catalogo_listar' %}">Cancelar</a>
+      <div class="acciones-ficha">
+        <button type="submit" class="boton-confirmar"><i class="fas fa-check" aria-hidden="true"></i> Guardar</button>
+        <a class="boton boton-secundario" href="{% url 'catalogo_listar' %}">Cancelar</a>
+      </div>
     </form>
     {% if alta_articulo %}
       {% include "lector_codigo.html" with campo_destino=form.codigo_barras.id_for_label only %}
     {% endif %}
 
   {% elif articulo %}
-    <!-- Confirmación de eliminación -->
-    <h1>Eliminar insumo</h1>
 
     <p>
       ¿Deseas eliminar
@@ -60,13 +60,13 @@
     <form method="post" class="formulario-centrado">
       {% csrf_token %}
 
-      <button type="submit" class="boton-peligro"><i class="fas fa-trash" aria-hidden="true"></i> Confirmar eliminación</button>
-      <a class="boton boton-secundario" href="{% url 'catalogo_listar' %}">Cancelar</a>
+      <div class="acciones-ficha">
+        <button type="submit" class="boton-peligro"><i class="fas fa-trash" aria-hidden="true"></i> Confirmar eliminación</button>
+        <a class="boton boton-secundario" href="{% url 'catalogo_listar' %}">Cancelar</a>
+      </div>
     </form>
 
   {% else %}
-    <!-- Listado y filtros -->
-    <h1>Catálogo de insumos</h1>
 
     <div class="inventario-herramientas">
       {% if perm.ingresar_articulo %}
@@ -105,15 +105,12 @@
         {% endfor %}
       </select>
 
-      <button type="submit">Filtrar</button>
+      <button type="submit" class="boton">Filtrar</button>
       <a class="boton boton-secundario" href="{% url 'catalogo_listar' %}">Limpiar filtros</a>
     </form>
 
     {% include "bodega/inventario.html" %}
 
-    <p class="inventario-herramientas">
-      <a class="boton boton-secundario" href="{% url 'bodega_web' %}">Volver a bodega</a>
-    </p>
   {% endif %}
-
+  </section>
 {% endblock %}
