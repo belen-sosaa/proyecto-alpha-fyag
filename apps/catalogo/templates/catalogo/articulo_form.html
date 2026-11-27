@@ -1,18 +1,21 @@
 {% extends "base.html" %}
 
 {% block title %}Nuevo artículo{% endblock %}
+{% block extra_head %}{% include "estilos_fichas.html" %}{% endblock %}
 
 {% block content %}
-  <h1>Nuevo artículo</h1>
-
+  <section class="ficha-operativa">
   {# El alta registra la ficha del insumo y permite indicar sus existencias iniciales. #}
   <form method="post">
     {% csrf_token %}
     {% include "catalogo/campos_alta_articulo.html" %}
 
-    <button type="submit">Guardar artículo</button>
-    <a class="boton boton-secundario" href="{% url 'bodega_web' %}">Cancelar</a>
+    <div class="acciones-ficha">
+      <button type="submit" class="boton">Guardar artículo</button>
+      <a class="boton boton-secundario" href="{% url 'bodega_web' %}">Cancelar</a>
+    </div>
   </form>
 
   {% include "lector_codigo.html" with campo_destino=form.codigo_barras.id_for_label only %}
+  </section>
 {% endblock %}

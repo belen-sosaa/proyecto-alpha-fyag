@@ -6,12 +6,18 @@ from django.shortcuts import get_object_or_404, redirect, render
 from pymongo.errors import PyMongoError
 
 from apps.bodega.models import Articulo, BitacoraAuditoria, Categoria
+from apps.bodega.views import contexto_operativo
 from apps.catalogo.especificaciones import guardar_especificaciones
 from apps.catalogo.forms import ArticuloCatalogoForm, ArticuloForm
 from apps.compras.views import ultimas_compras
 from apps.cuentas.decorators import facultad_requerida
-from apps.cuentas.roles import ACCESO, permisos_de
 from apps.despachos.models import Despacho
+
+
+def contexto_catalogo(usuario, titulo="Catálogo de insumos"):
+    contexto = contexto_operativo(usuario)
+    contexto.update(modulo_actual=contexto["modulos_operativos"]["catalogo"], titulo_panel=titulo)
+    return contexto
 
 
 def datos_articulo(articulo):
@@ -65,14 +71,14 @@ def catalogo_listar(request):
             articulos.filter(categoria_id=int(categoria_id))
             if categoria_id.isdecimal() else articulos.none()
         )
-    permisos = permisos_de(request.user)
+    contexto = contexto_catalogo(request.user)
     return render(request, "catalogo/catalogo.html", {
+        **contexto,
         "articulos": articulos,
         "categorias": Categoria.objects.order_by("nombre"),
         "q": busqueda,
         "categoria_seleccionada": categoria_id,
-        "perm": permisos,
-        "mostrar_cardex": "cardex" in ACCESO.get(permisos["rol"], ()),
+        "mostrar_cardex": "auditoria" in contexto["modulos_operativos"],
     })
 
 
@@ -95,14 +101,16 @@ def articulo_crear(request):
         else:
             messages.success(request, "Artículo creado correctamente.")
             return redirect("bodega_web")
-    return render(request, "catalogo/articulo_form.html", {"form": form})
+    return render(request, "catalogo/articulo_form.html", {
+        **contexto_catalogo(request.user, "Nuevo artículo"), "form": form,
+    })
 
 
 @facultad_requerida("ingresar_articulo")
 def catalogo_crear(request):
-    permisos = permisos_de(request.user)
+    contexto = contexto_catalogo(request.user, "Crear insumo")
     form = ArticuloCatalogoForm(
-        request.POST if request.method == "POST" else None, editar_precio=permisos["gestionar_precio_lista"],
+        request.POST if request.method == "POST" else None, editar_precio=contexto["perm"]["gestionar_precio_lista"],
     )
     if request.method == "POST" and form.is_valid():
         try:
@@ -122,15 +130,15 @@ def catalogo_crear(request):
                 "Insumo creado correctamente.",
             )
     return render(request, "catalogo/catalogo.html", {
-        "form": form, "titulo": "Crear insumo", "perm": permisos,
+        **contexto, "form": form,
         "alta_articulo": True,
     })
 
 
 @facultad_requerida("editar_articulo")
 def catalogo_editar(request, pk):
-    permisos = permisos_de(request.user)
-    editar_precio = permisos["gestionar_precio_lista"]
+    contexto = contexto_catalogo(request.user, "Editar insumo")
+    editar_precio = contexto["perm"]["gestionar_precio_lista"]
     if request.method == "POST":
         form = None
         try:
@@ -163,7 +171,7 @@ def catalogo_editar(request, pk):
         articulo = get_object_or_404(Articulo, pk=pk)
         form = ArticuloCatalogoForm(instance=articulo, editar_precio=editar_precio)
     return render(request, "catalogo/catalogo.html", {
-        "form": form, "titulo": "Editar insumo", "perm": permisos,
+        **contexto, "form": form,
     })
 
 
@@ -212,7 +220,7 @@ def catalogo_eliminar(request, pk):
             messages.success(request, "Insumo eliminado correctamente.")
         return redirect("catalogo_listar")
     return render(request, "catalogo/catalogo.html", {
-        "articulo": articulo, "perm": permisos_de(request.user),
+        **contexto_catalogo(request.user, "Eliminar insumo"), "articulo": articulo,
     })
 
 
@@ -220,8 +228,8 @@ def catalogo_eliminar(request, pk):
 @facultad_requerida("ver_catalogo")
 def articulo_detalle(request, pk):
     articulo = get_object_or_404(Articulo.objects.select_related("categoria"), pk=pk)
-    permisos = permisos_de(request.user)
-    contexto = {"articulo": articulo, "perm": permisos}
-    if permisos["ver_costos"]:
+    contexto = contexto_catalogo(request.user, "Detalle del artículo")
+    contexto["articulo"] = articulo
+    if contexto["perm"]["ver_costos"]:
         contexto["precios"] = ultimas_compras(articulo.pk).select_related("factura__proveedor")
     return render(request, "catalogo/articulo_detalle.html", contexto)

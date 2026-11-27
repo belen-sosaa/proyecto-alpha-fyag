@@ -1,7 +1,9 @@
 {% extends "base.html" %}
 {% block title %}Detalle del artículo{% endblock %}
+{% block extra_head %}{% include "estilos_fichas.html" %}{% endblock %}
 {% block content %}
-  <h1>{{ articulo }}</h1>
+  <section class="ficha-operativa">
+  <h2>{{ articulo }}</h2>
   <dl>
     <dt>Categoría</dt><dd>{{ articulo.categoria.nombre }}</dd>
     <dt>Stock</dt><dd>{{ articulo.stock_fisico }} {{ articulo.unidad_medida }}</dd>
@@ -43,4 +45,5 @@
     </div>
   {% endif %}
   <a class="boton boton-secundario" href="{% url 'catalogo_listar' %}">Volver al catálogo</a>
+  </section>
 {% endblock %}
