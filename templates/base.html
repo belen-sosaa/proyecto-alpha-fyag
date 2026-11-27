@@ -358,26 +358,28 @@
     }
   </style>
 
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
   {% if panel_operativo %}
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="{% static 'css/panel_operativo.css' %}">
   {% endif %}
   {% block extra_head %}{% endblock %}
+  <link rel="stylesheet" href="{% static 'css/interfaz.css' %}">
 </head>
 
 <body>
-  <div{% if panel_operativo %} class="panel-operativo{% if request.resolver_match.url_name == 'inicio' %} panel-inicio{% endif %}"{% endif %}>
+  <div{% if panel_operativo %} class="panel-operativo panel-inicio"{% endif %}>
     {% if panel_operativo %}
       {% include "navegacion_operativa.html" %}
     {% endif %}
     <div{% if panel_operativo %} class="pagina-operativa"{% endif %}>
       {% if panel_operativo %}
         <header class="cabecera-operativa">
-          <button type="button" data-abrir-menu aria-controls="menu-operativo" aria-expanded="false">
+          <button type="button" class="motion-safe:transition-colors motion-safe:duration-200" data-abrir-menu aria-controls="menu-operativo" aria-expanded="false">
             <span aria-hidden="true">☰</span> Menú
           </button>
           <h1>{{ titulo_panel }}</h1>
+          <i class="fas fa-bell cabecera-campana" aria-hidden="true"></i>
         </header>
       {% else %}
         <header class="cabecera">
@@ -399,7 +401,20 @@
         {% for message in messages %}
           <p class="mensaje {{ message.tags }}" role="status">{{ message }}</p>
         {% endfor %}
-        <main class="{% if panel_operativo %}contenido-operativo{% else %}contenido{% endif %}">
+        <main class="{% if panel_operativo %}contenido-operativo{% else %}contenido{% endif %}
+          motion-safe:[&_:is(button,.boton,.accion,select,textarea,input)]:transition
+          motion-safe:[&_:is(button,.boton,.accion,select,textarea,input)]:duration-200
+          motion-safe:[&_:is(button,.boton,.accion):not(:disabled):hover]:-translate-y-px
+          motion-safe:[&_:is(button,.boton,.accion):not(:disabled):active]:scale-[.98]
+          [&_:is(input,select,textarea):focus]:ring-2 [&_:is(input,select,textarea):focus]:ring-blue-500/40
+          [&>form_button[type=submit]:not([class])]:bg-blue-600
+          [&>form_button[type=submit]:not([class])]:text-white
+          [&>form_button[type=submit]:not([class]):hover]:bg-blue-700
+          motion-safe:[&_:is(.panel,.despacho-panel,.precio)]:transition-shadow
+          motion-safe:[&_:is(.panel,.despacho-panel,.precio)]:duration-200
+          [&_:is(.panel,.despacho-panel,.precio):hover]:shadow-md
+          motion-safe:[&_tbody_tr]:transition-colors motion-safe:[&_tbody_tr]:duration-200
+          [&_tbody_tr:not(.fila-stock-critico):hover]:bg-slate-50">
           {% block content %}{% endblock %}
         </main>
       </div>

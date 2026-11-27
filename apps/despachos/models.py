@@ -10,9 +10,9 @@ class Despacho(models.Model):
     usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
     mongodb_id = models.CharField(max_length=100, blank=True, null=True)
     tipo_movimiento = models.CharField(max_length=20, default="DESPACHO")
-    numero_presupuesto = models.CharField(max_length=50, blank=True, editable=False)
+    numero_presupuesto = models.CharField(max_length=50, blank=True, editable=False, db_default="")
     presupuesto_aplicado = models.DecimalField(max_digits=12, decimal_places=2, null=True, editable=False)
-    tecnico_responsable = models.CharField(max_length=200, blank=True, editable=False)
+    tecnico_responsable = models.CharField(max_length=200, blank=True, editable=False, db_default="")
     precio_unitario_aplicado = models.DecimalField(max_digits=12, decimal_places=2, null=True, editable=False)
 
     class Meta:

@@ -6,7 +6,7 @@ from django.db import migrations, models
 
 
 class AdoptarEsquemaArticulo(migrations.SeparateDatabaseAndState):
-    """Reutiliza las columnas existentes en PostgreSQL."""
+    # Reutiliza las columnas existentes en PostgreSQL.
 
     reversible = False
 

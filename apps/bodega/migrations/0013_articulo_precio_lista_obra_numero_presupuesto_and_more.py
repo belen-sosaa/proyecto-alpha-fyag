@@ -3,6 +3,8 @@
 import django.core.validators
 from django.db import migrations, models
 
+from apps.bodega.migration_operations import AddFieldIfMissing
+
 
 class Migration(migrations.Migration):
 
@@ -11,7 +13,7 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.AddField(
+        AddFieldIfMissing(
             model_name='articulo',
             name='precio_lista',
             field=models.DecimalField(blank=True, decimal_places=2, max_digits=12, null=True, validators=[django.core.validators.MinValueValidator(0)], verbose_name='precio de lista'),

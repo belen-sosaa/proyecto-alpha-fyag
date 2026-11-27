@@ -20,6 +20,7 @@
     .registro p { margin: 4px 0; }
     .registro small, .registro time { color: var(--secundario); }
     .critico { color: #a32121; font-weight: 650; }
+    .bajo { color: #92400e; font-weight: 650; }
     .resumen { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr)); gap: 12px; margin: 16px 0 0; }
     .resumen dt { color: var(--secundario); }
     .resumen dd { margin: 5px 0 0; font-size: 1.25rem; font-weight: 750; }
@@ -71,7 +72,9 @@
           <li class="registro">
             <strong>{{ articulo.descripcion }}</strong>
             <p><small>{{ articulo.sku }} · {{ articulo.categoria.nombre }}</small></p>
-            <p{% if articulo.es_stock_critico %} class="critico"{% endif %}>{{ articulo.stock_fisico }} {{ articulo.unidad_medida }} · {{ articulo.estado }}</p>
+            <p{% if articulo.es_stock_critico %} class="critico"{% elif articulo.es_stock_bajo %} class="bajo"{% endif %}>
+              {{ articulo.stock_fisico }} {{ articulo.unidad_medida }} · {{ articulo.estado }}{% if articulo.es_stock_bajo %} · Reponer{% endif %}
+            </p>
           </li>
         {% empty %}
           <li class="vacio">Aún no hay artículos registrados.</li>

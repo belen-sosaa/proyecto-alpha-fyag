@@ -1,0 +1,16 @@
+<fieldset class="compra-linea" data-linea-compra>
+  <legend>Detalle del artículo</legend>
+  {{ linea.non_field_errors }}
+  <div class="compra-campos">
+    <div>{{ linea.articulo_id.as_field_group }}</div>
+    <div>{{ linea.cantidad.as_field_group }}</div>
+    <div>{{ linea.precio_unitario_neto.as_field_group }}</div>
+    <div data-precio-lista>{{ linea.precio_lista.as_field_group }}</div>
+  </div>
+  <div class="compra-campos compra-descuentos">
+    <div>{{ linea.descuento_1.as_field_group }}</div>
+    <div>{{ linea.descuento_2.as_field_group }}</div>
+    <div>{{ linea.descuento_3.as_field_group }}</div>
+  </div>
+  <button type="button" class="boton boton-secundario" data-quitar-linea hidden>Quitar artículo</button>
+</fieldset>

@@ -14,17 +14,17 @@ class EntidadComercial(models.Model):
     tipo_entidad = models.CharField(max_length=15, choices=Tipo.choices, default=Tipo.PROVEEDOR)
     contacto = models.CharField(max_length=150, blank=True, null=True)
     datos_bancarios = models.TextField(blank=True, null=True)
-    giro = models.CharField(max_length=200, blank=True)
-    direccion = models.CharField("dirección", max_length=200, blank=True)
-    region = models.CharField("región", max_length=100, blank=True)
-    comuna = models.CharField(max_length=100, blank=True)
-    ciudad = models.CharField(max_length=100, blank=True)
-    representante_legal = models.CharField(max_length=200, blank=True)
-    rut_representante = models.CharField("RUT del representante", max_length=12, blank=True)
-    banco = models.CharField(max_length=100, blank=True)
-    tipo_cuenta = models.CharField("tipo de cuenta", max_length=50, blank=True)
-    numero_cuenta = models.CharField("número de cuenta", max_length=50, blank=True)
-    correo_pagos = models.EmailField("correo para pagos", blank=True)
+    giro = models.CharField(max_length=200, blank=True, db_default="")
+    direccion = models.CharField("dirección", max_length=200, blank=True, db_default="")
+    region = models.CharField("región", max_length=100, blank=True, db_default="")
+    comuna = models.CharField(max_length=100, blank=True, db_default="")
+    ciudad = models.CharField(max_length=100, blank=True, db_default="")
+    representante_legal = models.CharField(max_length=200, blank=True, db_default="")
+    rut_representante = models.CharField("RUT del representante", max_length=12, blank=True, db_default="")
+    banco = models.CharField(max_length=100, blank=True, db_default="")
+    tipo_cuenta = models.CharField("tipo de cuenta", max_length=50, blank=True, db_default="")
+    numero_cuenta = models.CharField("número de cuenta", max_length=50, blank=True, db_default="")
+    correo_pagos = models.EmailField("correo para pagos", blank=True, db_default="")
 
     @classmethod
     def proveedores(cls):
@@ -52,6 +52,11 @@ class ContactoEntidad(models.Model):
 
 
 class FacturaCompra(models.Model):
+    class TipoDocumento(models.TextChoices):
+        FACTURA = "FACTURA", "Factura"
+        GUIA = "GUIA_DESPACHO", "Guía de despacho"
+        NOTA_CREDITO = "NOTA_CREDITO", "Nota de crédito"
+
     class EstadoIngreso(models.TextChoices):
         PENDIENTE = "PENDIENTE", "Pendiente"
         CONFIRMADO = "CONFIRMADO", "Confirmado"
@@ -59,7 +64,11 @@ class FacturaCompra(models.Model):
 
     proveedor = models.ForeignKey(EntidadComercial, on_delete=models.PROTECT)
     folio = models.CharField(max_length=50)
-    tipo_documento = models.CharField(max_length=20, default="FACTURA")
+    tipo_documento = models.CharField(max_length=20, choices=TipoDocumento.choices, default=TipoDocumento.FACTURA)
+    # Una factura puede respaldar una guía y una nota de crédito puede corregir una factura.
+    documento_origen = models.ForeignKey(
+        "self", on_delete=models.PROTECT, related_name="documentos_asociados", null=True, blank=True,
+    )
     fecha_emision = models.DateField()
     subtotal_neto = models.DecimalField(max_digits=12, decimal_places=2)
     iva = models.DecimalField(max_digits=12, decimal_places=2)
@@ -72,6 +81,17 @@ class FacturaCompra(models.Model):
     class Meta:
         db_table = "bodega_facturacompra"
         unique_together = [("folio", "proveedor", "tipo_documento")]
+        # La base también impide asociar dos facturas a la misma guía si se guardan a la vez.
+        constraints = [
+            models.UniqueConstraint(
+                fields=["documento_origen"],
+                condition=Q(tipo_documento="FACTURA", documento_origen__isnull=False),
+                name="compras_factura_unica_por_guia",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.get_tipo_documento_display()} {self.folio} · {self.proveedor}"
 
 
 class DetalleFactura(models.Model):
@@ -87,6 +107,8 @@ class DetalleFactura(models.Model):
     costo_unitario_neto_final = models.DecimalField(
         max_digits=12, decimal_places=2, db_column="costo_neto_final",
     )
+    # Es el precio de venta propuesto en esta línea. El costo de compra se guarda por separado.
+    precio_lista = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
 
     class Meta:
         db_table = "bodega_detallefactura"

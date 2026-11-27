@@ -7,7 +7,7 @@
         <th>Descripción</th>
         <th>Categoría</th>
         <th>Unidad</th>
-        <th>Stock</th>
+        <th class="columna-stock">Stock</th>
         <th>Estado</th>
         <th class="inventario-acciones">Acciones</th>
       </tr>
@@ -15,15 +15,17 @@
 
     <tbody>
       {% for articulo in articulos %}
-        <tr>
+        <tr{% if articulo.es_stock_critico %} class="fila-stock-critico"{% endif %}>
           <td>{{ articulo.sku }}</td>
           <td>{{ articulo.codigo_barras|default_if_none:"—" }}</td>
           <td>{{ articulo.descripcion }}</td>
           <td>{{ articulo.categoria.nombre }}</td>
           <td>{{ articulo.unidad_medida }}</td>
-          <td>{{ articulo.stock_fisico }}</td>
+          <td class="columna-stock">{{ articulo.stock_fisico }}</td>
           <td>
-            <span class="estado-stock {% if articulo.es_stock_critico %}estado-stock-critico{% endif %}">{{ articulo.estado }}</span>
+            <span class="estado-stock{% if articulo.es_stock_critico %} estado-stock-critico{% elif articulo.es_stock_bajo %} estado-stock-bajo{% endif %}">
+              {{ articulo.estado }}{% if articulo.es_stock_bajo %} · Reponer{% endif %}
+            </span>
           </td>
           <td class="inventario-acciones">
             <a class="boton boton-secundario" href="{% url 'articulo_detalle' articulo.pk %}">Ver detalle</a>

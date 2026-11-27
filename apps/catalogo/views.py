@@ -21,7 +21,7 @@ def contexto_catalogo(usuario, titulo="Catálogo de insumos"):
 
 
 def datos_articulo(articulo):
-    """Serializa los datos relacionales del insumo para la auditoría."""
+    # Serializa los datos relacionales del insumo para la auditoría.
     return {
         "sku": articulo.sku,
         "codigo_barras": articulo.codigo_barras,
@@ -84,7 +84,7 @@ def catalogo_listar(request):
 
 @facultad_requerida("ingresar_articulo")
 def articulo_crear(request):
-    """Alta usada desde el panel de bodega, con ingreso de stock inicial."""
+    # Alta usada desde el panel de bodega, con ingreso de stock inicial.
     form = ArticuloForm(request.POST if request.method == "POST" else None)
     if request.method == "POST" and form.is_valid():
         try:
@@ -109,9 +109,7 @@ def articulo_crear(request):
 @facultad_requerida("ingresar_articulo")
 def catalogo_crear(request):
     contexto = contexto_catalogo(request.user, "Crear insumo")
-    form = ArticuloCatalogoForm(
-        request.POST if request.method == "POST" else None, editar_precio=contexto["perm"]["gestionar_precio_lista"],
-    )
+    form = ArticuloCatalogoForm(request.POST if request.method == "POST" else None)
     if request.method == "POST" and form.is_valid():
         try:
             with transaction.atomic():
@@ -138,7 +136,6 @@ def catalogo_crear(request):
 @facultad_requerida("editar_articulo")
 def catalogo_editar(request, pk):
     contexto = contexto_catalogo(request.user, "Editar insumo")
-    editar_precio = contexto["perm"]["gestionar_precio_lista"]
     if request.method == "POST":
         form = None
         try:
@@ -148,7 +145,7 @@ def catalogo_editar(request, pk):
                     Articulo.objects.select_for_update(), pk=pk,
                 )
                 anterior = datos_articulo(articulo)
-                form = ArticuloCatalogoForm(request.POST, instance=articulo, editar_precio=editar_precio)
+                form = ArticuloCatalogoForm(request.POST, instance=articulo)
                 if form.is_valid():
                     articulo = form.save()
                     BitacoraAuditoria.objects.create(
@@ -169,7 +166,7 @@ def catalogo_editar(request, pk):
                 )
     else:
         articulo = get_object_or_404(Articulo, pk=pk)
-        form = ArticuloCatalogoForm(instance=articulo, editar_precio=editar_precio)
+        form = ArticuloCatalogoForm(instance=articulo)
     return render(request, "catalogo/catalogo.html", {
         **contexto, "form": form,
     })

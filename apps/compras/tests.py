@@ -1,3 +1,4 @@
+from decimal import Decimal
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
@@ -39,6 +40,105 @@ class IngresoFacturaTests(TestCase):
     def confirmar(self, factura_id):
         return self.client.post(reverse("confirmar_ingreso"), {"factura_id": factura_id},
                                 content_type="application/json")
+
+    def registrar_documento(self, tipo, folio, lineas, origen=None, proveedor=None):
+        return self.client.post(reverse("registrar_factura"), {
+            "proveedor_id": (proveedor or self.proveedor).pk, "folio": folio,
+            "tipo_documento": tipo, "fecha_emision": "2026-11-22", "documento_origen_id": origen,
+            "detalles": lineas,
+        }, content_type="application/json")
+
+    def test_factura_web_con_varias_lineas_y_precio_de_lista_al_confirmar(self):
+        self.client.force_login(self.usuarios[ADMIN_BODEGA])
+        vista = reverse("vista_registrar_compra")
+        self.assertContains(self.client.get(vista), "detalles-TOTAL_FORMS")
+        respuesta = self.client.post(vista, {
+            "proveedor_id": self.proveedor.pk, "folio": "WEB-VARIAS", "fecha_emision": "2026-11-22",
+            "tipo_documento": "FACTURA", "detalles-TOTAL_FORMS": 2, "detalles-INITIAL_FORMS": 0,
+            "detalles-0-articulo_id": self.articulo.pk, "detalles-0-cantidad": 3,
+            "detalles-0-precio_unitario_neto": "100.00", "detalles-0-descuento_1": "10",
+            "detalles-0-precio_lista": "140.00",
+            "detalles-1-articulo_id": self.otro_articulo.pk, "detalles-1-cantidad": 1,
+            "detalles-1-precio_unitario_neto": "20.00",
+        })
+        self.assertRedirects(respuesta, reverse("compras"))
+        factura = FacturaCompra.objects.get(folio="WEB-VARIAS")
+        self.assertEqual(factura.detalles.count(), 2)
+        self.assertEqual(str(factura.total), "345.10")
+        self.articulo.refresh_from_db()
+        self.assertIsNone(self.articulo.precio_lista)
+        self.assertEqual(self.confirmar(factura.pk).status_code, 201)
+        self.articulo.refresh_from_db()
+        self.assertEqual(self.articulo.stock_fisico, 13)
+        self.assertEqual(str(self.articulo.precio_lista), "140.00")
+        self.otro_articulo.refresh_from_db()
+        self.assertIsNone(self.otro_articulo.precio_lista)
+        self.assertTrue(BitacoraAuditoria.objects.filter(
+            accion="COMPRA", entidad="Articulo", id_registro=self.articulo.pk,
+        ).exists())
+
+    def test_guia_y_factura_asociada_actualizan_existencias_una_sola_vez(self):
+        self.client.force_login(self.usuarios[ADMIN_BODEGA])
+        linea = {"articulo_id": self.articulo.pk, "cantidad": 4}
+        registro = self.registrar_documento("GUIA_DESPACHO", "GUIA-1", [linea])
+        self.assertEqual(registro.status_code, 201, registro.content)
+        guia_id = registro.json()["id"]
+        self.assertEqual(registro.json()["iva"], "0.00")
+        self.assertEqual(self.confirmar(guia_id).status_code, 201)
+        datos_factura = {**linea, "precio_unitario_neto": "100", "precio_lista": "150"}
+        distinta = self.registrar_documento("FACTURA", "N-2", [{**datos_factura, "cantidad": 3}], guia_id)
+        self.assertEqual(distinta.status_code, 400)
+        registro = self.registrar_documento("FACTURA", "N-2", [datos_factura], guia_id)
+        self.assertEqual(registro.status_code, 201, registro.content)
+        duplicada = self.registrar_documento("FACTURA", "N-3", [datos_factura], guia_id)
+        self.assertEqual(duplicada.status_code, 409)
+        self.assertEqual(duplicada.json()["codigo"], "GUIA_YA_FACTURADA")
+        confirmacion = self.confirmar(registro.json()["id"])
+        self.assertEqual(confirmacion.status_code, 201, confirmacion.content)
+        self.assertEqual(confirmacion.json()["movimientos"], [])
+        self.articulo.refresh_from_db()
+        self.assertEqual(self.articulo.stock_fisico, 14)
+        self.assertEqual(str(self.articulo.precio_lista), "150.00")
+        self.assertEqual(MovimientoCardex.objects.get().documento_referencia, "Guía de despacho GUIA-1")
+
+    def test_nota_de_credito_limita_stock_e_importe_y_conserva_la_factura(self):
+        self.client.force_login(self.usuarios[ADMIN_BODEGA])
+        linea = {"articulo_id": self.articulo.pk, "cantidad": 4, "precio_unitario_neto": "100"}
+        origen = self.registrar_documento("FACTURA", "ORIGEN", [linea]).json()["id"]
+        self.assertEqual(self.confirmar(origen).status_code, 201)
+        sin_origen = self.registrar_documento("NOTA_CREDITO", "C-0", [linea])
+        self.assertEqual(sin_origen.status_code, 400)
+        proveedor_ajeno = EntidadComercial.objects.create(rut="22222222-2", razon_social="Otro proveedor")
+        self.assertEqual(self.registrar_documento(
+            "NOTA_CREDITO", "C-0", [linea], origen, proveedor_ajeno,
+        ).status_code, 400)
+        exceso = self.registrar_documento("NOTA_CREDITO", "C-0", [{**linea, "precio_unitario_neto": "101"}], origen)
+        self.assertEqual(exceso.status_code, 400)
+        lineas_credito = [{**linea, "cantidad": 3}]
+        primero = self.registrar_documento("NOTA_CREDITO", "C-1", lineas_credito, origen).json()["id"]
+        segundo = self.registrar_documento("NOTA_CREDITO", "C-2", lineas_credito, origen).json()["id"]
+        self.assertEqual(self.client.get(reverse("finanzas")).context["resumen"]["total"], Decimal("476.00"))
+
+        self.client.force_login(self.usuarios[BODEGUERO])
+        Articulo.objects.filter(pk=self.articulo.pk).update(stock_fisico=2)
+        respuesta = self.confirmar(primero)
+        self.assertEqual(respuesta.status_code, 409)
+        self.assertEqual(respuesta.json()["codigo"], "STOCK_FUERA_DE_RANGO")
+        self.assertEqual(FacturaCompra.objects.get(pk=primero).estado_ingreso, "PENDIENTE")
+        self.assertFalse(MovimientoCardex.objects.filter(tipo=MovimientoCardex.Tipo.REVERSA).exists())
+        Articulo.objects.filter(pk=self.articulo.pk).update(stock_fisico=14)
+        respuesta = self.confirmar(primero)
+        self.assertEqual(respuesta.status_code, 201, respuesta.content)
+        self.assertEqual(self.confirmar(primero).json()["codigo"], "INGRESO_YA_CONFIRMADO")
+        self.assertEqual(self.confirmar(segundo).json()["codigo"], "DOCUMENTO_INVALIDO")
+        self.articulo.refresh_from_db()
+        self.assertEqual(self.articulo.stock_fisico, 11)
+        movimiento = MovimientoCardex.objects.get(tipo=MovimientoCardex.Tipo.REVERSA)
+        self.assertEqual(movimiento.stock_resultante, 11)
+        self.assertEqual(movimiento.proveedor, self.proveedor)
+        self.assertEqual(FacturaCompra.objects.get(pk=origen).detalles.get().cantidad, 4)
+        self.client.force_login(self.usuarios[ADMIN_BODEGA])
+        self.assertEqual(self.client.get(reverse("finanzas")).context["resumen"]["total"], Decimal("119.00"))
 
     def test_factura_y_confirmacion_guardan_datos_y_bloquean_un_ingreso_duplicado(self):
         self.client.force_login(self.usuarios[FINANZAS])

@@ -6,12 +6,12 @@
 {% block content %}
   <section class="ficha-operativa">
   {# El alta registra la ficha del insumo y permite indicar sus existencias iniciales. #}
-  <form method="post">
+  <form method="post" class="formulario-centrado">
     {% csrf_token %}
     {% include "catalogo/campos_alta_articulo.html" %}
 
     <div class="acciones-ficha">
-      <button type="submit" class="boton">Guardar artículo</button>
+      <button type="submit" class="boton-confirmar"><i class="fas fa-check" aria-hidden="true"></i> Guardar artículo</button>
       <a class="boton boton-secundario" href="{% url 'bodega_web' %}">Cancelar</a>
     </div>
   </form>

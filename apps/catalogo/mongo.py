@@ -6,7 +6,7 @@ from pymongo import MongoClient
 
 @lru_cache(maxsize=1)
 def obtener_cliente():
-    """Reutiliza un cliente de MongoDB por proceso."""
+    # Reutiliza un cliente de MongoDB por proceso.
     # El cliente se inicializa al consultar una ficha. Las credenciales vienen de la configuración.
     return MongoClient(
         settings.MONGO_URI,
@@ -17,5 +17,5 @@ def obtener_cliente():
 
 
 def obtener_base():
-    """Obtiene la base configurada en settings.py."""
+    # Obtiene la base configurada en settings.py.
     return obtener_cliente()[settings.MONGO_DB_NAME]

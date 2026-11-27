@@ -9,6 +9,7 @@
       .catalogo-panel { max-width: none; }
       .inventario-herramientas { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 16px 0; }
       .estado-stock { display: inline-block; padding: 4px 10px; border-radius: 999px; background: #dcfce7; color: #166534; font-size: .8rem; font-weight: 700; white-space: nowrap; }
+      .estado-stock-bajo { background: #fef3c7; color: #92400e; }
       .estado-stock-critico { background: #fee2e2; color: #991b1b; }
       @media print {
         .menu-operativo, .fondo-menu, [data-abrir-menu], .mensaje, .inventario-herramientas, .inventario-filtros, .inventario-acciones { display: none; }
@@ -27,7 +28,7 @@
   <section class="ficha-operativa{% if not form and not articulo %} catalogo-panel{% endif %}">
   {% if form %}
 
-    <form method="post">
+    <form method="post" class="formulario-centrado">
       {% csrf_token %}
       {% if alta_articulo %}
         {% include "catalogo/campos_alta_articulo.html" %}
@@ -36,7 +37,7 @@
       {% endif %}
 
       <div class="acciones-ficha">
-        <button type="submit" class="boton">Guardar</button>
+        <button type="submit" class="boton-confirmar"><i class="fas fa-check" aria-hidden="true"></i> Guardar</button>
         <a class="boton boton-secundario" href="{% url 'catalogo_listar' %}">Cancelar</a>
       </div>
     </form>
@@ -56,11 +57,11 @@
       y sin movimientos asociados.
     </p>
 
-    <form method="post">
+    <form method="post" class="formulario-centrado">
       {% csrf_token %}
 
       <div class="acciones-ficha">
-        <button type="submit" class="boton boton-peligro">Confirmar eliminación</button>
+        <button type="submit" class="boton-peligro"><i class="fas fa-trash" aria-hidden="true"></i> Confirmar eliminación</button>
         <a class="boton boton-secundario" href="{% url 'catalogo_listar' %}">Cancelar</a>
       </div>
     </form>

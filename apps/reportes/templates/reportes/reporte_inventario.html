@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block title %}Reporte de inventario · FYAG{% endblock %}
+
+{% block content %}
+  <h1>Reporte de inventario</h1>
+  <form method="get" class="inventario-filtros">
+    {{ reporte.form.as_p }}
+    <button type="submit" class="boton">Filtrar</button>
+    <a class="boton boton-secundario" href="{% url 'reportes:inventario' %}">Limpiar</a>
+  </form>
+  {% if reporte.valid is False %}{{ reporte.form.non_field_errors }}{% endif %}
+
+  <div class="inventario-herramientas">
+    <a class="boton" href="{% url 'reportes:inventario_excel' %}?{{ request.GET.urlencode }}">Excel</a>
+    <a class="boton boton-peligro" href="{% url 'reportes:inventario_pdf' %}?{{ request.GET.urlencode }}">PDF</a>
+  </div>
+
+  <div class="tabla-desplazable" role="region" tabindex="0" aria-label="Reporte de inventario">
+    <table>
+      <thead><tr>
+        <th>SKU</th><th>Artículo</th><th>Categoría</th><th>Ubicación</th>
+        <th>Stock Actual</th><th>Stock Mínimo</th><th>Stock Crítico</th><th>Estado Stock</th>
+        {% if ver_costos %}<th>Precio Lista</th><th>Valorización</th>{% endif %}
+      </tr></thead>
+      <tbody>
+        {% for row in reporte.rows %}
+          <tr>
+            <td>{{ row.sku }}</td><td>{{ row.articulo }}</td><td>{{ row.categoria }}</td><td>{{ row.ubicacion }}</td>
+            <td>{{ row.stock }}</td><td>{{ row.stock_minimo }}</td><td>{{ row.stock_critico }}</td>
+            <td><span class="estado-stock {% if row.estado == 'bajo' %}estado-stock-bajo{% elif row.estado == 'critico' or row.estado == 'sin_stock' %}estado-stock-critico{% endif %}">{{ row.estado_display }}</span></td>
+            {% if ver_costos %}<td>{{ row.precio }}</td><td>{{ row.valorizacion }}</td>{% endif %}
+          </tr>
+        {% empty %}
+          <tr><td colspan="{% if ver_costos %}10{% else %}8{% endif %}">No hay artículos con los filtros seleccionados.</td></tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr>
+          <td colspan="4"><strong>Total: {{ reporte.totals.articulos }} artículos</strong></td>
+          <td><strong>{{ reporte.totals.unidades }} unidades</strong></td>
+          <td colspan="{% if ver_costos %}4{% else %}3{% endif %}"></td>
+          {% if ver_costos %}<td></td><td><strong>{{ reporte.totals.valorizacion }}</strong></td>{% endif %}
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+{% endblock %}

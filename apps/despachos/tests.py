@@ -1,5 +1,7 @@
 import json
+from contextlib import closing
 from decimal import Decimal
+from io import BytesIO
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
@@ -8,6 +10,7 @@ from django.db import IntegrityError
 from django.test import TestCase
 from django.urls import reverse
 from pymongo.errors import ServerSelectionTimeoutError
+from pypdf import PdfReader
 
 from apps.bodega.models import Articulo, BitacoraAuditoria, Categoria, MovimientoCardex, Obra
 from apps.compras.models import EntidadComercial
@@ -91,12 +94,19 @@ class DespachoTransaccionalTests(TestCase):
             "nombre": self.obra.nombre, "cliente": cliente.pk, "numero_presupuesto": "P-002",
             "presupuesto_asignado": "4000", "tecnico_responsable": "Técnico nuevo",
         }), reverse("obras"))
-        self.assertRedirects(self.client.post(editar_articulo, {
-            "sku": self.articulo.sku, "descripcion": self.articulo.descripcion,
-            "categoria": self.articulo.categoria_id, "unidad_medida": self.articulo.unidad_medida,
-            "stock_minimo": self.articulo.stock_minimo, "stock_critico": self.articulo.stock_critico,
-            "precio_lista": "500",
-        }), reverse("catalogo_listar"))
+        proveedor = EntidadComercial.objects.create(rut="22222222-2", razon_social="Proveedor de prueba")
+        factura = self.client.post(reverse("registrar_factura"), {
+            "proveedor_id": proveedor.pk, "folio": "PRECIO-QA", "fecha_emision": "2026-11-26",
+            "detalles": [{
+                "articulo_id": self.articulo.pk, "cantidad": 1,
+                "precio_unitario_neto": "100", "precio_lista": "500",
+            }],
+        }, content_type="application/json")
+        self.assertEqual(factura.status_code, 201)
+        confirmacion = self.client.post(
+            reverse("confirmar_ingreso"), {"factura_id": factura.json()["id"]}, content_type="application/json",
+        )
+        self.assertEqual(confirmacion.status_code, 201)
         self.assertRedirects(self.despachar(1), reverse("despachos"))
 
         finanzas = get_user_model().objects.create_user(username="finanzas_consulta")
@@ -224,6 +234,7 @@ class RecepcionDespachoTests(TestCase):
             articulo=cls.articulo, obra=obra, usuario=cls.bodeguero, cantidad=2,
         )
         cls.comprobante_url = reverse("comprobante_despacho", args=[cls.despacho.pk])
+        cls.pdf_url = reverse("descargar_comprobante_despacho", args=[cls.despacho.pk])
         cls.recepcion_url = reverse("registrar_recepcion", args=[cls.despacho.pk])
 
     def test_firma_vinculada_al_comprobante_y_auditada_sin_movimiento_de_stock(self):
@@ -275,6 +286,39 @@ class RecepcionDespachoTests(TestCase):
                 self.assertRedirects(respuesta, self.comprobante_url)
                 self.assertFalse(RecepcionDespacho.objects.exists())
         self.assertFalse(BitacoraAuditoria.objects.exists())
+
+    def test_pdf_descargable_con_firma_y_permisos_del_comprobante(self):
+        self.assertRedirects(self.client.get(self.pdf_url), f"{reverse('login')}?next={self.pdf_url}")
+        self.client.force_login(self.supervisor)
+        self.assertNotContains(self.client.get(self.comprobante_url), self.pdf_url)
+        self.assertEqual(self.client.get(self.pdf_url).status_code, 404)
+        self.client.post(self.recepcion_url, {"firma": json.dumps(self.firma)})
+
+        for usuario in (self.supervisor, self.bodeguero, self.admin):
+            with self.subTest(usuario=usuario):
+                self.client.force_login(usuario)
+                self.assertContains(self.client.get(self.comprobante_url), self.pdf_url)
+                with closing(self.client.get(self.pdf_url)) as respuesta:
+                    self.assertEqual(respuesta.status_code, 200)
+                    self.assertEqual(respuesta["Content-Type"], "application/pdf")
+                    self.assertIn(f'attachment; filename="despacho-{self.despacho.pk}-firmado.pdf"',
+                                  respuesta["Content-Disposition"])
+                    self.assertIn("no-store", respuesta["Cache-Control"])
+                    pdf = PdfReader(BytesIO(b"".join(respuesta.streaming_content)))
+                self.assertEqual(len(pdf.pages), 1)
+                pagina = pdf.pages[0]
+                texto = pagina.extract_text()
+                for dato in ("Obra Norte", "REF-002", "Válvula", "2 unidad", "bodeguero", "Ana", "Firma de recepción"):
+                    self.assertIn(dato, texto)
+                self.assertTrue(any(
+                    operador == b"l" and tuple(punto) == (29.25, 109.2)
+                    for punto, operador in pagina.get_contents().operations
+                ))
+
+        for usuario in (self.otro_supervisor, self.otro_bodeguero):
+            with self.subTest(usuario=usuario):
+                self.client.force_login(usuario)
+                self.assertEqual(self.client.get(self.pdf_url).status_code, 404)
 
     def test_segundo_envio_no_reemplaza_la_firma(self):
         self.client.force_login(self.supervisor)
@@ -334,11 +378,14 @@ class ArticuloPorCodigoTests(TestCase):
         self.assertEqual(self.client.get(url, {"codigo": "1" * 101}).status_code, 400)
         self.assertEqual(self.client.post(url).status_code, 405)
 
-    def test_consulta_requiere_sesion_y_permiso_de_despacho(self):
+    def test_consulta_requiere_sesion_y_perm_solo_de_despacho_o_recepcion(self):
         url = reverse("articulo_por_codigo")
         self.assertRedirects(self.client.get(url), f"{reverse('login')}?next={url}")
         self.client.force_login(self.supervisor)
-        self.assertEqual(self.client.get(url, {"codigo": self.articulo.codigo_barras}).status_code, 403)
+        consulta = self.client.get(url, {"codigo": self.articulo.codigo_barras})
+        self.assertEqual(consulta.status_code, 200)
+        self.assertEqual(consulta.json()["id"], self.articulo.pk)
+        self.assertEqual(self.client.post(reverse("procesar_despacho")).status_code, 403)
 
     def test_lector_se_muestra_en_nuevo_despacho_segun_el_rol(self):
         url = reverse("despachos")

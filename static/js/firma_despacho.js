@@ -16,6 +16,7 @@ let punteroActivo = null;
 let cantidadPuntos = 0;
 
 function puntoFirma(evento) {
+    // En un teléfono el dibujo se ve más pequeño. Convertimos cada toque al tamaño usado para guardar la firma.
     const area = lienzoFirma.getBoundingClientRect();
     const x = Math.round((evento.clientX - area.left) * lienzoFirma.width / area.width);
     const y = Math.round((evento.clientY - area.top) * lienzoFirma.height / area.height);
@@ -28,6 +29,7 @@ function puntoFirma(evento) {
 lienzoFirma.addEventListener("pointerdown", (evento) => {
     if (punteroActivo !== null || evento.button !== 0 || cantidadPuntos >= 4000) return;
     punteroActivo = evento.pointerId;
+    // Seguimos el mismo dedo o mouse aunque se mueva fuera del borde antes de soltarlo.
     lienzoFirma.setPointerCapture(punteroActivo);
     const punto = puntoFirma(evento);
     trazos.push([punto]);
@@ -58,6 +60,7 @@ function terminarTrazo(evento) {
     const tieneFirma = trazos.some((trazo) => trazo.length > 1);
     const excedioLimite = cantidadPuntos >= 4000;
     confirmarRecepcion.disabled = !tieneFirma || excedioLimite;
+    // El formulario envía las coordenadas del dibujo para poder mostrarlo en pantalla y en el PDF.
     campoFirma.value = confirmarRecepcion.disabled ? "" : JSON.stringify(trazos);
     if (excedioLimite) {
         estadoFirma.textContent = "La firma es demasiado extensa. Bórrala y vuelve a dibujarla.";

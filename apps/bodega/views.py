@@ -83,13 +83,22 @@ def vista_bodega(request, modulo=None):
     elif modulo == "auditoria":
         contexto["eventos"] = BitacoraAuditoria.objects.select_related("usuario").order_by("-fecha_hora", "-pk")[:20]
     elif modulo == "compras":
-        contexto["facturas"] = FacturaCompra.objects.order_by("-fecha_emision", "-pk").values(
-            "pk", "folio", "fecha_emision", "proveedor__razon_social", "estado_ingreso",
+        contexto["facturas"] = FacturaCompra.objects.select_related("proveedor", "documento_origen").order_by(
+            "-fecha_emision", "-pk",
         )[:20]
     elif modulo == "finanzas":
+        # Las guías registran entradas físicas. Finanzas suma las facturas y resta las notas ya aplicadas.
+        facturas = Q(tipo_documento__iexact=FacturaCompra.TipoDocumento.FACTURA)
+        creditos = Q(
+            tipo_documento=FacturaCompra.TipoDocumento.NOTA_CREDITO,
+            estado_ingreso=FacturaCompra.EstadoIngreso.CONFIRMADO, documento_origen__isnull=False,
+        )
         contexto["resumen"] = FacturaCompra.objects.aggregate(
-            facturas=Count("pk"), neto=Sum("subtotal_neto", default=0),
-            iva=Sum("iva", default=0), total=Sum("total", default=0),
+            facturas=Count("pk", filter=facturas),
+            **{
+                nombre: Sum(campo, filter=facturas, default=0) - Sum(campo, filter=creditos, default=0)
+                for nombre, campo in (("neto", "subtotal_neto"), ("iva", "iva"), ("total", "total"))
+            },
         )
     return render(request, "bodega/bodega.html", contexto)
 
