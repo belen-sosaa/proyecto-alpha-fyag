@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block title %}{{ titulo_panel }} · FYAG{% endblock %}
+
+{% block content %}
+  {% if form %}
+    <form method="post">
+      {% csrf_token %}
+      {{ form.as_p }}
+      {% if form.instance.pk %}
+        <p><strong>Costo acumulado de materiales</strong> $ {{ form.instance.costo_materiales|floatformat:"2g" }}</p>
+      {% endif %}
+      <button type="submit">Guardar obra</button>
+      <a class="boton boton-secundario" href="{% url 'obras' %}">Volver a obras</a>
+    </form>
+  {% else %}
+    <p>
+      <a class="boton" href="{% url 'obras_nueva' %}">Nueva obra</a>
+      <a class="boton boton-secundario" href="{% url 'despachos' %}">Volver a despachos</a>
+    </p>
+    <div class="tabla-desplazable" role="region" aria-label="Obras" tabindex="0">
+      <table>
+        <thead><tr><th>Obra</th><th>Cliente</th><th>Creación</th><th>Servicio</th><th>Supervisor</th><th>Estado</th><th>Costo de materiales</th></tr></thead>
+        <tbody>
+          {% for obra in obras %}
+            <tr>
+              <th scope="row"><a href="{% url 'obras_editar' obra.pk %}">{{ obra.nombre }}</a></th>
+              <td>{{ obra.cliente|default_if_none:"—" }}</td>
+              <td>{{ obra.fecha_creacion|date:"d/m/Y"|default:"—" }}</td>
+              <td>{{ obra.get_tipo_servicio_display|default:"—" }}</td>
+              <td>{{ obra.supervisor_responsable|default:"—" }}</td>
+              <td>{{ obra.get_estado_display }}</td>
+              <td>$ {{ obra.costo_materiales|floatformat:"2g" }}</td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="7">Aún no hay obras registradas.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% endif %}
+{% endblock %}

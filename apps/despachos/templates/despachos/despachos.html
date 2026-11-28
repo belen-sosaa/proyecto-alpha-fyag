@@ -1,12 +1,13 @@
 <section class="despacho-panel" aria-labelledby="nuevo-despacho">
   <div class="despacho-formulario-cabecera">
     <h2 id="nuevo-despacho">Nuevo despacho</h2>
+    {% if perm.gestionar_obras %}<a class="boton boton-secundario" href="{% url 'obras' %}">Ver obras</a>{% endif %}
     <button type="button" class="boton" data-abrir-lector
             aria-haspopup="dialog" aria-controls="lector-codigo">
       <i class="fas fa-qrcode" aria-hidden="true"></i> Escanear artículo
     </button>
   </div>
-  <form method="post" action="{% url 'procesar_despacho' %}" class="despacho-formulario">
+  <form method="post" action="{% url 'procesar_despacho' %}" class="despacho-formulario" data-operacion-offline="despacho">
     {% csrf_token %}
     {% include "despachos/obra_auto.html" %}
     <div>

@@ -1,0 +1,25 @@
+:root {
+  color-scheme: light;
+  font-family: system-ui, sans-serif;
+  color: #1e293b;
+  background: #f3f5f9;
+  line-height: 1.5;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; }
+header { display: flex; justify-content: space-between; gap: 16px; padding: 16px 5vw; background: #10224c; color: white; }
+header a { color: inherit; }
+main { width: min(100% - 32px, 1000px); margin: 24px auto; }
+h1, h2 { line-height: 1.2; }
+.formularios { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr)); gap: 16px; }
+section { min-width: 0; margin-top: 16px; padding: 16px; border: 1px solid #dce3ee; border-radius: 12px; background: white; }
+section h2 { margin-top: 0; }
+label { display: block; margin-bottom: 12px; }
+input, select, textarea, button { min-height: 44px; padding: 8px 12px; border: 1px solid #8797ae; border-radius: 8px; font: inherit; }
+input, select, textarea { display: block; width: 100%; color: inherit; background: white; }
+button { cursor: pointer; background: #1d4ed8; color: white; border-color: transparent; }
+button:disabled { opacity: .55; cursor: default; }
+.acciones { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.linea { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 8px; }
+li + li { margin-top: 8px; }

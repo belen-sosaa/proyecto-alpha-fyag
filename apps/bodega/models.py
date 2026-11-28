@@ -5,6 +5,7 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
 from django.db import models
+from django.utils import timezone
 
 
 # Django 5.1 cambió el nombre del parámetro de CheckConstraint.
@@ -206,10 +207,30 @@ class Articulo(models.Model):
 
 
 class Obra(models.Model):
+    class TipoServicio(models.TextChoices):
+        PROYECTO = "PROYECTO", "Proyecto"
+        MANTENCION = "MANTENCION", "Mantención"
+        CLIMATIZACION = "CLIMATIZACION", "Climatización"
+        ELECTRICO = "ELECTRICO", "Proyecto eléctrico"
+        EMERGENCIA = "EMERGENCIA", "Emergencia"
+        GARANTIA = "GARANTIA", "Garantía"
+        REPUESTOS = "REPUESTOS", "Venta de repuestos"
+        MEJORAS = "MEJORAS", "Mejoras"
+
+    class Estado(models.TextChoices):
+        EN_PROCESO = "EN_PROCESO", "En proceso"
+        FINALIZADA = "FINALIZADA", "Finalizada"
+        SUSPENDIDA = "SUSPENDIDA", "Suspendida"
+        CANCELADA = "CANCELADA", "Cancelada"
+
     nombre = models.CharField(max_length=200)
     latitud = models.FloatField(null=True, blank=True)
     longitud = models.FloatField(null=True, blank=True)
-    estado = models.CharField(max_length=20, default="ACTIVA")
+    estado = models.CharField(max_length=20, choices=Estado.choices, default=Estado.EN_PROCESO)
+    fecha_creacion = models.DateField("fecha de creación", default=timezone.localdate, null=True, blank=True)
+    tipo_servicio = models.CharField(max_length=30, choices=TipoServicio.choices, blank=True)
+    supervisor_responsable = models.CharField(max_length=200, blank=True)
+    costo_materiales = models.DecimalField(max_digits=24, decimal_places=2, default=0, editable=False)
     presupuesto_asignado = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     cliente = models.ForeignKey("compras.EntidadComercial", on_delete=models.PROTECT, null=True, blank=True)
 
@@ -240,10 +261,12 @@ class MovimientoCardex(RegistroInalterable):
         DEVOLUCION = "DEVOLUCION", "Devolución"
         AJUSTE = "AJUSTE", "Ajuste"
         REVERSA = "REVERSA", "Reversa"
+        USO_INTERNO = "USO_INTERNO", "Uso interno"
+        CAMBIO = "CAMBIO", "Cambio de artículo"
 
     nombre_registro = "El movimiento del Cardex"
 
-    tipo = models.CharField(max_length=10, choices=Tipo.choices)
+    tipo = models.CharField(max_length=11, choices=Tipo.choices)
     cantidad = models.PositiveIntegerField(validators=[MinValueValidator(1)])
     articulo = models.ForeignKey(Articulo, on_delete=models.PROTECT)
     usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
@@ -254,6 +277,13 @@ class MovimientoCardex(RegistroInalterable):
     stock_resultante = models.PositiveIntegerField()
     justificacion = models.TextField(null=True, blank=True)
     documento_referencia = models.CharField(max_length=100, blank=True, default="")
+    destino = models.CharField(max_length=200, blank=True)
+    solicitante_responsable = models.CharField(max_length=200, blank=True)
+    variacion_stock = models.IntegerField(null=True, blank=True)
+    costo_unitario = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    movimiento_original = models.ForeignKey("self", on_delete=models.PROTECT, null=True, blank=True)
+    despacho_origen = models.ForeignKey("despachos.Despacho", on_delete=models.PROTECT, null=True, blank=True)
+    conteo_origen = models.ForeignKey("ConteoInventario", on_delete=models.PROTECT, null=True, blank=True)
 
     class Meta:
         # La base valida cantidad y tipo aunque la escritura omita la validación del modelo.
@@ -265,7 +295,7 @@ class MovimientoCardex(RegistroInalterable):
             models.CheckConstraint(
                 name="cardex_tipo_valido",
                 **{PARAMETRO_CONDICION: models.Q(
-                    tipo__in=["INGRESO", "DESPACHO", "MERMA", "DEVOLUCION", "AJUSTE", "REVERSA"]
+                    tipo__in=["INGRESO", "DESPACHO", "MERMA", "DEVOLUCION", "AJUSTE", "REVERSA", "USO_INTERNO", "CAMBIO"]
                 )},
             ),
             models.CheckConstraint(
@@ -279,6 +309,13 @@ class MovimientoCardex(RegistroInalterable):
                 name="cardex_proveedor_devolucion",
                 **{PARAMETRO_CONDICION: (
                     ~models.Q(tipo="DEVOLUCION") | models.Q(proveedor__isnull=False)
+                )},
+            ),
+            models.CheckConstraint(
+                name="cardex_uso_interno_responsable",
+                **{PARAMETRO_CONDICION: (
+                    ~models.Q(tipo="USO_INTERNO")
+                    | models.Q(destino__regex=r"\S", solicitante_responsable__regex=r"\S")
                 )},
             ),
         ]
@@ -321,9 +358,24 @@ class BitacoraAuditoria(RegistroInalterable):
 
 
 class ConteoInventario(models.Model):
+    class Estado(models.TextChoices):
+        EN_PROCESO = "EN_PROCESO", "En proceso"
+        FINALIZADO = "FINALIZADO", "Finalizado"
+
     usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
     fecha_hora = models.DateTimeField(auto_now_add=True)
     observacion = models.TextField(blank=True)
+    estado = models.CharField(max_length=20, choices=Estado.choices, default=Estado.EN_PROCESO)
+
+
+class OperacionSincronizada(models.Model):
+    usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    clave = models.UUIDField()
+    huella = models.CharField(max_length=64)
+    resultado = models.JSONField(default=dict)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["usuario", "clave"], name="operacion_sincronizada_unica")]
 
 
 class DetalleConteoInventario(models.Model):

@@ -47,6 +47,17 @@ function detenerCamara() {
   activarCamara.disabled = false;
 }
 
+function seleccionarArticulo(articulo) {
+  const id = String(articulo.id);
+  if (!Array.from(articulos.options).some((opcion) => opcion.value === id)) {
+    articulos.add(new Option(articulo.sku + " | " + articulo.descripcion, id));
+  }
+  articulos.value = id;
+  seleccion.textContent = "Artículo seleccionado por código.";
+  lector.close();
+  articulos.focus();
+}
+
 async function buscarCodigo(valor, formato) {
   // La entrada manual y la cámara comparten la consulta. Una nueva búsqueda cancela la anterior.
   detenerCamara();
@@ -74,6 +85,7 @@ async function buscarCodigo(valor, formato) {
       mensaje.textContent = "Tu rol no tiene permiso para buscar artículos de despacho.";
       return;
     }
+    if (respuesta.status >= 500) throw new Error("Servidor no disponible");
 
     // La respuesta puede llegar después de cerrar el diálogo o de iniciar otra búsqueda.
     const articulo = await respuesta.json();
@@ -84,19 +96,14 @@ async function buscarCodigo(valor, formato) {
       return;
     }
 
-    // El despacho sigue enviando el ID del artículo. El código solo ayuda a seleccionarlo.
-    const id = String(articulo.id);
-    // Si el insumo se creó después de abrir la pantalla, todavía puede no aparecer en el selector.
-    if (!Array.from(articulos.options).some((opcion) => opcion.value === id)) {
-      articulos.add(new Option(articulo.sku + " | " + articulo.descripcion, id));
-    }
-    articulos.value = id;
-    seleccion.textContent = "Artículo seleccionado por código.";
-    lector.close();
-    articulos.focus();
+    seleccionarArticulo(articulo);
   } catch {
     if (!controlador.signal.aborted && lector.open) {
-      mensaje.textContent = "No se pudo buscar el artículo. Intenta de nuevo.";
+      const coincidencias = window.buscarCodigoGuardado?.(valor, formato);
+      if (coincidencias?.length === 1) seleccionarArticulo(coincidencias[0]);
+      else if (coincidencias?.length > 1) mensaje.textContent = "El código coincide con varios artículos. Selecciona uno manualmente.";
+      else if (coincidencias) mensaje.textContent = "No se encontró el código en el inventario descargado.";
+      else mensaje.textContent = "No se pudo buscar el artículo. Intenta de nuevo.";
     }
   } finally {
     if (consulta === controlador) consulta = null;

@@ -2,7 +2,7 @@ import logging
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.core.exceptions import PermissionDenied
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.paginator import Paginator
 from django.db import DatabaseError, transaction
 from django.db.models import Q
@@ -19,6 +19,7 @@ from apps.cuentas.roles import ADMIN_BODEGA
 from .comprobantes import generar_comprobante_firmado
 from .forms import RecepcionDespachoForm
 from .models import Despacho, RecepcionDespacho
+from .preparacion import ultimo_costo_material
 
 
 logger = logging.getLogger(__name__)
@@ -169,75 +170,73 @@ def articulo_por_codigo(request):
     return JsonResponse(coincidencias[0])
 
 
+def guardar_despacho(usuario, datos):
+    try:
+        obra_id, articulo_id, cantidad = [int(str(datos[campo])) for campo in ("obra", "articulo", "cantidad")]
+    except (KeyError, ValueError) as error:
+        raise ValidationError("Selecciona una obra, un artículo y una cantidad válida.") from error
+    if not (1 <= obra_id <= 2**63 - 1 and 1 <= articulo_id <= 2**63 - 1 and 1 <= cantidad <= 2**31 - 1):
+        raise ValidationError("Selecciona una obra, un artículo y una cantidad válida.")
+
+    with transaction.atomic():
+        obra = Obra.objects.select_for_update().get(pk=obra_id)
+        if obra.estado != Obra.Estado.EN_PROCESO:
+            raise ValidationError("La obra debe estar en proceso para recibir materiales.", code="conflicto")
+        articulo = Articulo.objects.select_for_update().get(pk=articulo_id)
+        stock_anterior = articulo.stock_fisico
+        if stock_anterior < cantidad:
+            raise ValidationError("Stock insuficiente para realizar el despacho.", code="conflicto")
+
+        costo_unitario = ultimo_costo_material(articulo)
+        if costo_unitario is not None:
+            obra.costo_materiales += cantidad * costo_unitario
+            obra.save(update_fields=["costo_materiales"])
+        articulo.stock_fisico -= cantidad
+        articulo.save(update_fields=["stock_fisico"])
+        movimiento = MovimientoCardex.objects.create(
+            tipo=MovimientoCardex.Tipo.DESPACHO, articulo=articulo, obra=obra,
+            cantidad=cantidad, usuario=usuario, stock_resultante=articulo.stock_fisico,
+            variacion_stock=-cantidad, costo_unitario=costo_unitario,
+        )
+        despacho = Despacho.objects.create(
+            articulo=articulo, obra=obra, cantidad=cantidad, usuario=usuario,
+            mongodb_id=str(movimiento.pk), costo_unitario=costo_unitario,
+        )
+        BitacoraAuditoria.objects.create(
+            usuario=usuario, accion="CREAR", entidad="MovimientoCardex",
+            id_registro=movimiento.pk, valor_anterior={"stock_fisico": stock_anterior},
+            valor_nuevo={
+                "stock_fisico": articulo.stock_fisico, "despacho_id": despacho.pk,
+                "articulo_id": articulo.pk, "obra_id": obra.pk, "cantidad": cantidad,
+            },
+            detalle=f"Despacho {despacho.pk} confirmado.",
+        )
+        documento = documento_cardex(
+            movimiento, operacion="despacho_material", despacho_id=despacho.pk,
+            dispositivo=str(datos.get("dispositivo", "tablet_operativa"))[:100],
+            geo_ubicacion={"latitud": obra.latitud, "longitud": obra.longitud},
+            tag_iot=str(datos.get("tag_iot", ""))[:100], sku=articulo.sku,
+            descripcion=articulo.descripcion, obra=obra.nombre,
+        )
+        transaction.on_commit(lambda: guardar_respaldo_cardex([documento]), robust=True)
+    return despacho
+
+
 @facultad_requerida("despachar")
 def procesar_despacho(request):
     if request.method != "POST":
         return redirect("despachos")
-    obra_id = request.POST.get("obra")
-    articulo_id = request.POST.get("articulo")
-    if not obra_id or not articulo_id:
-        messages.error(request, "Debe seleccionar una obra y un artículo.")
-        return redirect("despachos")
     try:
-        cantidad = int(request.POST.get("cantidad", "0"))
-    except (TypeError, ValueError):
-        messages.error(request, "La cantidad ingresada no es válida.")
-        return redirect("despachos")
-    if cantidad <= 0:
-        messages.error(request, "La cantidad debe ser mayor que cero.")
-        return redirect("despachos")
-    try:
-        obra_id = int(obra_id)
-        articulo_id = int(articulo_id)
-    except ValueError:
-        messages.error(request, "La obra o el artículo seleccionado no existe.")
-        return redirect("despachos")
-    try:
-        with transaction.atomic():
-            obra = Obra.objects.get(pk=obra_id)
-            # Otro despacho del mismo artículo debe esperar hasta que quede guardado el nuevo saldo.
-            articulo = Articulo.objects.select_for_update().get(pk=articulo_id)
-            stock_anterior = articulo.stock_fisico
-            if stock_anterior < cantidad:
-                messages.error(request, "Stock insuficiente para realizar el despacho.")
-                return redirect("despachos")
-
-            articulo.stock_fisico = stock_anterior - cantidad
-            articulo.save(update_fields=["stock_fisico"])
-            movimiento = MovimientoCardex.objects.create(
-                tipo=MovimientoCardex.Tipo.DESPACHO, articulo=articulo, obra=obra,
-                cantidad=cantidad, usuario=request.user, stock_resultante=articulo.stock_fisico,
-            )
-            despacho = Despacho.objects.create(
-                articulo=articulo, obra=obra, cantidad=cantidad, usuario=request.user,
-                mongodb_id=str(movimiento.pk),
-            )
-            BitacoraAuditoria.objects.create(
-                usuario=request.user, accion="CREAR", entidad="MovimientoCardex",
-                id_registro=movimiento.pk, valor_anterior={"stock_fisico": stock_anterior},
-                valor_nuevo={
-                    "stock_fisico": articulo.stock_fisico, "despacho_id": despacho.pk,
-                    "articulo_id": articulo.pk, "obra_id": obra.pk, "cantidad": cantidad,
-                },
-                detalle=f"Despacho {despacho.pk} confirmado.",
-            )
-            documento = documento_cardex(
-                movimiento, operacion="despacho_material", despacho_id=despacho.pk,
-                dispositivo=request.POST.get("dispositivo", "tablet_operativa"),
-                geo_ubicacion={"latitud": obra.latitud, "longitud": obra.longitud},
-                tag_iot=request.POST.get("tag_iot", ""), sku=articulo.sku,
-                descripcion=articulo.descripcion, obra=obra.nombre,
-            )
-            # El respaldo se ejecuta solo si se confirma la transacción de inventario.
-            transaction.on_commit(lambda: guardar_respaldo_cardex([documento]), robust=True)
+        guardar_despacho(request.user, request.POST)
+    except ValidationError as error:
+        messages.error(request, error.message)
     except (Articulo.DoesNotExist, Obra.DoesNotExist):
         messages.error(request, "La obra o el artículo seleccionado no existe.")
-        return redirect("despachos")
     except DatabaseError:
         logger.exception("Falló la transacción de despacho.")
         messages.error(request, "No se pudo registrar el despacho. Vuelve a intentarlo.")
-        return redirect("despachos")
-    messages.success(request, "Despacho registrado correctamente.")
+    else:
+        messages.success(request, "Despacho registrado correctamente.")
     return redirect("despachos")
 
 
@@ -247,5 +246,7 @@ def obras_buscar(request):
     # Las consultas cortas suelen traer demasiadas coincidencias para una lista de sugerencias.
     if len(q) < 3:
         return JsonResponse([], safe=False)
-    obras = Obra.objects.filter(nombre__icontains=q).order_by("nombre", "id").values("id", "nombre")[:10]
+    obras = Obra.objects.filter(estado=Obra.Estado.EN_PROCESO, nombre__icontains=q).order_by(
+        "nombre", "id",
+    ).values("id", "nombre")[:10]
     return JsonResponse(list(obras), safe=False)

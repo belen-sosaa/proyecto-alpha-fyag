@@ -4,6 +4,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#10224c">
+  <link rel="manifest" href="{% static 'manifest.json' %}">
 
   <title>{% block title %}FYAG{% endblock %}</title>
 
@@ -400,6 +402,15 @@
           <p class="mensaje {{ message.tags }}" role="status">{{ message }}</p>
         {% endfor %}
         <main class="{% if panel_operativo %}contenido-operativo{% else %}contenido{% endif %}">
+          <div data-offline-config data-cuenta="{% if user.is_authenticated %}{{ user.pk }}{% endif %}"
+               data-sync="{% url 'sincronizar_offline' %}" data-worker="{% url 'service_worker' %}"
+               data-conteos="{% url 'conteos' %}" data-logout="{% url 'logout' %}">
+            {% if user.is_authenticated %}
+              <p data-offline-barra hidden><a href="{% url 'operacion_offline' %}">Operación sin conexión</a>
+                <span data-offline-estado role="status"></span></p>
+              <p data-offline-mensaje role="status" hidden></p>
+            {% endif %}
+          </div>
           {% block content %}{% endblock %}
         </main>
       </div>
@@ -408,6 +419,8 @@
   {% if panel_operativo %}
     <script src="{% static 'js/navegacion_operativa.js' %}" defer></script>
   {% endif %}
+  <script src="{% static 'js/cola-offline.js' %}" defer></script>
+  <script src="{% static 'js/operacion-offline.js' %}" defer></script>
   {% block extra_js %}{% endblock %}
 </body>
 </html>

@@ -20,12 +20,14 @@ from django.urls import path
 from django.views.generic import RedirectView
 from apps.bodega.conteos import (
     consultar_discrepancias,
+    finalizar_conteo,
     nuevo_conteo,
     registrar_conteo,
     vista_conteos,
     vista_discrepancias,
 )
-from apps.bodega.egresos import registrar_egreso, vista_egreso
+from apps.bodega.egresos import registrar_egreso, vista_cambio, vista_egreso
+from apps.bodega.offline import operacion_offline, service_worker, sincronizar
 from apps.bodega.views import vista_bodega, vista_cardex
 from apps.compras.views import (
     confirmar_ingreso,
@@ -55,6 +57,7 @@ from apps.despachos.views import (
     registrar_recepcion,
     vista_despacho,
 )
+from apps.despachos.preparacion import gestionar_obras
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -68,8 +71,11 @@ urlpatterns = [
     path('bodega/conteos/', vista_conteos, name='conteos'),
     path('bodega/conteos/nuevo/', nuevo_conteo, name='nuevo_conteo'),
     path('bodega/conteos/<int:conteo_id>/', vista_discrepancias, name='discrepancias_conteo'),
+    path('bodega/conteos/<int:conteo_id>/finalizar/', finalizar_conteo, name='finalizar_conteo'),
     path('bodega/mermas/', vista_egreso, {'tipo': 'MERMA'}, name='merma_crear'),
     path('bodega/devoluciones/', vista_egreso, {'tipo': 'DEVOLUCION'}, name='devolucion_crear'),
+    path('bodega/uso-interno/', vista_egreso, {'tipo': 'USO_INTERNO'}, name='uso_interno_crear'),
+    path('bodega/cambios/', vista_cambio, name='cambio_crear'),
     path('auditoria/', vista_bodega, {'modulo': 'auditoria'}, name='auditoria'),
     path('compras/', vista_bodega, {'modulo': 'compras'}, name='compras'),
     path('compras/nueva/', vista_registrar_compra, name='vista_registrar_compra'),
@@ -99,6 +105,9 @@ urlpatterns = [
     path('despachos/<int:despacho_id>/recepcion/', registrar_recepcion, name='registrar_recepcion'),
     path('mobile/', RedirectView.as_view(pattern_name='despachos', query_string=True), name='bodega_mobile'),
     path('obras/buscar/', obras_buscar, name="obras_buscar"),
+    path('obras/', gestionar_obras, name='obras'),
+    path('obras/nueva/', gestionar_obras, {'nueva': True}, name='obras_nueva'),
+    path('obras/<int:pk>/editar/', gestionar_obras, name='obras_editar'),
     path('despacho/procesar/', procesar_despacho, name='procesar_despacho'),
     path('api/proveedores/', listar_proveedores, name='listar_proveedores'),
     path('api/articulos/<int:articulo_id>/ultimos-precios/', consultar_ultimos_precios, name='api_ultimos_precios'),
@@ -108,6 +117,10 @@ urlpatterns = [
     path('api/conteos/<int:conteo_id>/discrepancias/', consultar_discrepancias, name='api_discrepancias_conteo'),
     path('api/mermas/', registrar_egreso, {'tipo': 'MERMA'}, name='registrar_merma'),
     path('api/devoluciones/', registrar_egreso, {'tipo': 'DEVOLUCION'}, name='registrar_devolucion'),
+    path('api/uso-interno/', registrar_egreso, {'tipo': 'USO_INTERNO'}, name='registrar_uso_interno'),
+    path('api/offline/sincronizar/', sincronizar, name='sincronizar_offline'),
+    path('operacion-offline/', operacion_offline, name='operacion_offline'),
+    path('service-worker.js', service_worker, name='service_worker'),
 ]
 
 if settings.DEBUG:

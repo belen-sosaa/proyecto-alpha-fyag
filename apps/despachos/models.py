@@ -10,6 +10,7 @@ class Despacho(models.Model):
     usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
     mongodb_id = models.CharField(max_length=100, blank=True, null=True)
     tipo_movimiento = models.CharField(max_length=20, default="DESPACHO")
+    costo_unitario = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True, editable=False)
 
     class Meta:
         # Mantiene la tabla y los despachos creados cuando el modelo pertenecía a bodega.

@@ -1,5 +1,6 @@
 <h1>Conteo físico #{{ conteo.pk }}</h1>
 <p>{{ conteo.usuario.get_full_name|default:conteo.usuario.get_username }} · {{ conteo.fecha_hora|date:"d/m/Y H:i" }}</p>
+<p><strong>Estado</strong> {{ conteo.get_estado_display }}</p>
 {% if conteo.observacion %}
   <p><strong>Observación</strong> {{ conteo.observacion|linebreaksbr }}</p>
 {% endif %}
@@ -26,5 +27,11 @@
   <p>No hay diferencias de stock.</p>
 {% endif %}
 <div class="conteos-acciones">
+  {% if puede_finalizar %}
+    <form method="post" action="{% url 'finalizar_conteo' conteo.pk %}">
+      {% csrf_token %}
+      <button type="submit">{% if detalles %}Finalizar y ajustar stock{% else %}Finalizar conteo{% endif %}</button>
+    </form>
+  {% endif %}
   <a class="boton boton-secundario" href="{% url 'conteos' %}">Volver a conteos</a>
 </div>

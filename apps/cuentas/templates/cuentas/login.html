@@ -226,6 +226,8 @@
 
     </div>
 
+    <script src="{% static 'js/cola-offline.js' %}"></script>
+    <script>if (window.indexedDB) ColaFYAG.activarCuenta("").catch(() => {});</script>
     <script src="{% static 'js/formato_rut.js' %}" defer></script>
   </body>
 </html>

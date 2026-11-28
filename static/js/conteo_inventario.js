@@ -27,6 +27,14 @@ quitarLinea.addEventListener("click", () => {
     lineasConteo.lastElementChild.querySelector("select").focus();
 });
 
+document.getElementById("form-conteo").addEventListener("reset", () => {
+    // El navegador restablece los campos después del evento reset.
+    setTimeout(() => {
+        while (lineasConteo.children.length > 1) lineasConteo.lastElementChild.remove();
+        actualizarLineas();
+    }, 0);
+});
+
 actualizarLineas();
 agregarLinea.hidden = false;
 quitarLinea.hidden = false;

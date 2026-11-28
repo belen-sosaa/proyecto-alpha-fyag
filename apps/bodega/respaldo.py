@@ -41,3 +41,13 @@ def guardar_respaldo_cardex(documentos):
             "Falló el respaldo de Cardex en MongoDB para los movimientos %s.",
             [documento["movimiento_id"] for documento in documentos],
         )
+
+
+def guardar_respaldo_sincronizacion(documento):
+    try:
+        with timeout(3):
+            obtener_base()["sincronizacion_tablets"].update_one(
+                {"_id": documento["_id"]}, {"$setOnInsert": documento}, upsert=True,
+            )
+    except PyMongoError:
+        logger.exception("Falló el respaldo de la operación sincronizada %s.", documento["operacion_id"])

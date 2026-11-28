@@ -37,14 +37,17 @@
             <div class="panel-cabecera">
               <h2 id="salida-a-obra"><i class="fas fa-truck-fast" aria-hidden="true"></i> Despacho a obra</h2>
               <a class="accion" href="{% url 'despachos' %}#nuevo-despacho">Nuevo despacho</a>
+              {% if perm.gestionar_obras %}<a class="accion" href="{% url 'obras' %}">Ver obras</a>{% endif %}
             </div>
           </section>
         {% endif %}
         {% if perm.registrar_merma %}
           <section class="panel" aria-labelledby="otros-egresos">
             <div class="panel-cabecera">
-              <h2 id="otros-egresos"><i class="fas fa-triangle-exclamation" aria-hidden="true"></i> Mermas y devoluciones</h2>
+              <h2 id="otros-egresos"><i class="fas fa-boxes-stacked" aria-hidden="true"></i> Movimientos de bodega</h2>
               <a class="accion" href="{% url 'merma_crear' %}">Registrar merma</a>
+              {% if perm.registrar_uso_interno %}<a class="accion" href="{% url 'uso_interno_crear' %}">Registrar uso interno</a>{% endif %}
+              {% if perm.registrar_cambio %}<a class="accion" href="{% url 'cambio_crear' %}">Cambiar artículos en obra</a>{% endif %}
               {% if perm.registrar_devolucion %}
                 <a class="accion" href="{% url 'devolucion_crear' %}">Registrar devolución</a>
               {% endif %}

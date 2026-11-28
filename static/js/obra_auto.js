@@ -44,19 +44,21 @@ document.querySelectorAll("[data-obra-autocomplete]").forEach((root) => {
         const response = await fetch(url, {
           signal: controller.signal,
           headers: { Accept: "application/json" },
+        }).catch((error) => {
+          if (error.name === "AbortError") throw error;
+          return null;
         });
 
         // Una sesión vencida devuelve el login en lugar de la lista JSON.
-        if (response.redirected) {
+        if (response?.redirected) {
           window.location.assign(response.url);
           return;
         }
 
-        if (!response.ok) {
-          throw new Error("Error de búsqueda");
-        }
-
-        const obras = await response.json();
+        const obras = response?.ok ? await response.json() : (
+          (!response || response.status >= 500) ? window.buscarObrasGuardadas?.(q) : null
+        );
+        if (!obras) throw new Error("Error de búsqueda");
 
         // Si la persona ya escribió algo distinto, ignoramos la consulta vieja aunque haya terminado después.
         if (actual !== version) return;

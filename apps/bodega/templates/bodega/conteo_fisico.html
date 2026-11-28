@@ -1,6 +1,6 @@
 <h1>Registrar conteo físico</h1>
 <p>Ingresa la cantidad que encontraste en bodega. El sistema guardará la diferencia para revisarla.</p>
-<form method="post" id="form-conteo">
+<form method="post" id="form-conteo" data-operacion-offline="conteo">
   {% csrf_token %}
   {{ formulario.management_form }}
   {{ formulario.non_form_errors }}

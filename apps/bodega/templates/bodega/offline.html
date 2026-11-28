@@ -1,0 +1,61 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#10224c">
+  <title>Operación sin conexión · FYAG</title>
+  <link rel="manifest" href="{% static 'manifest.json' %}">
+  <link rel="stylesheet" href="{% static 'css/operacion-offline.css' %}">
+  <script src="{% static 'js/cola-offline.js' %}" defer></script>
+  <script src="{% static 'js/operacion-offline.js' %}" defer></script>
+</head>
+<body>
+  <header><strong>Logística FYAG</strong> <a href="{% url 'inicio' %}">Panel operativo</a></header>
+  <main data-offline-config data-sync="{% url 'sincronizar_offline' %}" data-worker="{% url 'service_worker' %}"
+        data-conteos="{% url 'conteos' %}" data-logout="{% url 'logout' %}">
+    <h1>Operación sin conexión</h1>
+    <p data-offline-estado role="status">Cargando datos de la tablet…</p>
+    <p data-offline-mensaje role="status" hidden></p>
+    <p data-offline-acceso hidden><a href="{% url 'login' %}">Iniciar sesión</a> con conexión para preparar esta tablet.</p>
+    <button data-offline-sincronizar type="button" hidden>Sincronizar y actualizar datos</button>
+    <div class="formularios">
+      <section data-offline-tipo="despacho" hidden>
+        <h2>Nuevo despacho</h2>
+        <button type="button" data-abrir-lector aria-haspopup="dialog" aria-controls="lector-codigo">Escanear artículo</button>
+        <form data-operacion-offline="despacho">
+          <label>Obra <select name="obra" data-offline-obras required></select></label>
+          <label>Artículo <select id="input-articulo" name="articulo" data-offline-articulos required></select></label>
+          <p id="articulo-escaneado" role="status"></p>
+          <label>Cantidad <input name="cantidad" type="number" min="1" max="2147483647" value="1" inputmode="numeric" required></label>
+          <button type="submit">Guardar despacho</button>
+        </form>
+        {% include "lector_codigo.html" %}
+      </section>
+      <section data-offline-tipo="conteo" hidden>
+        <h2>Nuevo conteo físico</h2>
+        <form data-operacion-offline="conteo">
+          <div data-offline-lineas></div>
+          <div class="acciones">
+            <button type="button" data-offline-agregar>Agregar artículo</button>
+            <button type="button" data-offline-quitar disabled>Quitar último</button>
+          </div>
+          <label>Observación <textarea name="observacion" maxlength="2000" rows="2"></textarea></label>
+          <button type="submit">Guardar conteo</button>
+        </form>
+      </section>
+    </div>
+    <section data-offline-listado hidden>
+      <h2>Cola de esta tablet</h2>
+      <ul data-offline-cola></ul>
+    </section>
+    <template data-offline-linea>
+      <div class="linea">
+        <label>Artículo <select name="articulo" data-offline-articulos required></select></label>
+        <label>Cantidad contada <input name="stock_fisico" type="number" min="0" max="2147483647" inputmode="numeric" required></label>
+      </div>
+    </template>
+  </main>
+</body>
+</html>

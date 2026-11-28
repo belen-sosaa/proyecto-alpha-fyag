@@ -31,7 +31,7 @@
       {% if pagina.object_list %}
         <div class="conteo-tabla">
           <table aria-label="Historial de conteos">
-            <thead><tr><th scope="col">Conteo</th><th scope="col">Fecha</th><th scope="col">Responsable</th><th scope="col">Discrepancias</th></tr></thead>
+            <thead><tr><th scope="col">Conteo</th><th scope="col">Fecha</th><th scope="col">Responsable</th><th scope="col">Discrepancias</th><th scope="col">Estado</th></tr></thead>
             <tbody>
               {% for registro in pagina %}
                 <tr>
@@ -39,6 +39,7 @@
                   <td>{{ registro.fecha_hora|date:"d/m/Y H:i" }}</td>
                   <td>{{ registro.usuario.get_full_name|default:registro.usuario.get_username }}</td>
                   <td>{{ registro.discrepancias }}</td>
+                  <td>{{ registro.get_estado_display }}</td>
                 </tr>
               {% endfor %}
             </tbody>

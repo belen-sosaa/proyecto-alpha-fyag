@@ -17,7 +17,7 @@
     {% csrf_token %}
     {{ form.as_p }}
     <div class="egreso-acciones">
-      <button type="submit">Confirmar egreso</button>
+      <button type="submit">Confirmar registro</button>
       <a class="boton boton-secundario" href="{% url 'bodega_web' %}">Volver a bodega</a>
     </div>
   </form>
@@ -32,7 +32,7 @@
     const justificacion = formularioEgreso.elements.justificacion;
     const botonConfirmar = formularioEgreso.querySelector('button[type="submit"]');
     function validarMotivo() {
-      botonConfirmar.disabled = justificacion.value.trim() === "";
+      botonConfirmar.disabled = justificacion.required && justificacion.value.trim() === "";
     }
     justificacion.addEventListener("input", validarMotivo);
     validarMotivo();
